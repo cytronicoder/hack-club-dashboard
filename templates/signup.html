@@ -255,6 +255,10 @@
                 </label>
             </div>
             
+            <div id="leader-info" style="display: none; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 1rem; font-size: 0.875rem; color: #856404;">
+                <i class="fas fa-info-circle"></i> <strong>Leader Verification Required:</strong> You'll need to verify your leadership status with your registered email and club name before completing signup.
+            </div>
+            
             <button type="submit" class="btn-auth">
                 <i class="fas fa-user-plus"></i> Create Account
             </button>
@@ -276,4 +280,15 @@
         </div>
     </div>
 </div>
+
+<script>
+document.getElementById('isLeader').addEventListener('change', function() {
+    const leaderInfo = document.getElementById('leader-info');
+    if (this.checked) {
+        leaderInfo.style.display = 'block';
+    } else {
+        leaderInfo.style.display = 'none';
+    }
+});
+</script>
 {% endblock %}

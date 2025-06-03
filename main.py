@@ -197,6 +197,36 @@ class AirtableService:
         encoded_table_name = urllib.parse.quote(self.table_name)
         self.base_url = f'https://api.airtable.com/v0/{self.base_id}/{encoded_table_name}'
 
+    def verify_club_leader(self, email, club_name):
+        """Verify if the given email and club name match in the Club Leaders & Emails table"""
+        if not self.api_token:
+            print("No Airtable API token found")
+            return False
+
+        # URL encode the table name for Club Leaders & Emails
+        leaders_table_name = urllib.parse.quote('Club Leaders & Emails')
+        leaders_url = f'https://api.airtable.com/v0/{self.base_id}/{leaders_table_name}'
+
+        try:
+            # Search for records matching the email and club name
+            # Using the exact field names from the Airtable table
+            params = {
+                'filterByFormula': f'AND(FIND("{email}", {{Current Leaders\' Emails}}) > 0, FIND("{club_name}", {{Venue}}) > 0)'
+            }
+            
+            response = requests.get(leaders_url, headers=self.headers, params=params)
+            
+            if response.status_code == 200:
+                data = response.json()
+                records = data.get('records', [])
+                return len(records) > 0  # Return True if any matching records found
+            else:
+                print(f"Airtable leaders verification error: {response.status_code} - {response.text}")
+                return False
+        except Exception as e:
+            print(f"Error verifying club leader: {str(e)}")
+            return False
+
     def log_pizza_grant(self, submission_data):
         if not self.api_token:
             print("No Airtable API token found")
@@ -532,6 +562,88 @@ def slack_callback():
         }
         return redirect(url_for('complete_slack_signup'))
 
+@app.route('/verify-leader', methods=['GET', 'POST'])
+@limiter.limit("50 per minute")
+def verify_leader():
+    if not db_available:
+        flash('Database is currently unavailable. Please try again later.', 'error')
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        data = request.get_json()
+        
+        email = data.get('email', '').strip()
+        club_name = data.get('club_name', '').strip()
+        
+        if not email or not club_name:
+            return jsonify({'error': 'Email and club name are required'}), 400
+        
+        # Verify with Airtable
+        is_verified = airtable_service.verify_club_leader(email, club_name)
+        
+        if is_verified:
+            # Store verification data in session
+            session['leader_verification'] = {
+                'email': email,
+                'club_name': club_name,
+                'verified': True
+            }
+            return jsonify({'success': True, 'message': 'Leader verification successful!'})
+        else:
+            return jsonify({'error': 'Club leader verification failed. Please check your email and club name.'}), 400
+    
+    return render_template('verify_leader.html')
+
+@app.route('/complete-leader-signup', methods=['GET', 'POST'])
+@limiter.limit("50 per minute")
+def complete_leader_signup():
+    if not db_available:
+        flash('Database is currently unavailable. Please try again later.', 'error')
+        return redirect(url_for('signup'))
+
+    signup_data = session.get('signup_data')
+    leader_verification = session.get('leader_verification')
+    
+    if not signup_data or not leader_verification or not leader_verification.get('verified'):
+        flash('Invalid signup session. Please start over.', 'error')
+        return redirect(url_for('signup'))
+
+    try:
+        # Create the user
+        user = User(
+            username=signup_data['username'],
+            email=signup_data['email'],
+            first_name=signup_data['first_name'],
+            last_name=signup_data['last_name'],
+            birthday=datetime.strptime(signup_data['birthday'], '%Y-%m-%d').date() if signup_data['birthday'] else None
+        )
+        user.set_password(signup_data['password'])
+        db.session.add(user)
+        db.session.flush()
+
+        # Create the club with the verified club name
+        club = Club(
+            name=leader_verification['club_name'],
+            description=f"Official {leader_verification['club_name']} Hack Club",
+            leader_id=user.id
+        )
+        club.generate_join_code()
+        db.session.add(club)
+
+        db.session.commit()
+
+        # Clear session data
+        session.pop('signup_data', None)
+        session.pop('leader_verification', None)
+
+        flash(f'Account created successfully! Welcome to {club.name}!', 'success')
+        return redirect(url_for('login'))
+
+    except Exception as e:
+        db.session.rollback()
+        flash('Database error. Please try again later.', 'error')
+        return redirect(url_for('signup'))
+
 @app.route('/complete-slack-signup', methods=['GET', 'POST'])
 @limiter.limit("50 per minute")
 def complete_slack_signup():
@@ -678,21 +790,24 @@ def signup():
                 flash('Username already taken', 'error')
                 return render_template('signup.html')
 
+            # If user wants to be a leader, redirect to verification
+            if is_leader:
+                session['signup_data'] = {
+                    'username': username,
+                    'email': email,
+                    'password': password,
+                    'first_name': first_name,
+                    'last_name': last_name,
+                    'birthday': birthday,
+                    'is_leader': True
+                }
+                return redirect(url_for('verify_leader'))
+
             user = User(username=username, email=email, first_name=first_name, last_name=last_name, birthday=datetime.strptime(birthday, '%Y-%m-%d').date() if birthday else None)
             user.set_password(password)
             db.session.add(user)
-            db.session.flush()
-
-            if is_leader:
-                club = Club(
-                    name=f"{username}'s Club",
-                    description="A new Hack Club - edit your club details in the dashboard",
-                    leader_id=user.id
-                )
-                club.generate_join_code()
-                db.session.add(club)
-
             db.session.commit()
+            
             flash('Account created successfully! Please log in.', 'success')
             return redirect(url_for('login'))
         except Exception as e:
