@@ -209,8 +209,9 @@ class AirtableService:
 
         try:
             # Search for records matching the email and club name
+            # Using the correct field names from the Airtable structure
             params = {
-                'filterByFormula': f'AND({{Current Leaders\' Email}} = "{email}", {{Venue}} = "{club_name}")'
+                'filterByFormula': f'AND({{Current Leaders\' Em}} = "{email}", {{Venue}} = "{club_name}")'
             }
             
             response = requests.get(leaders_url, headers=self.headers, params=params)
