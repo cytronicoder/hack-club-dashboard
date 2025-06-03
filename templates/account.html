@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}Account Settings - Hack Club Dashboard{% endblock %}
+
+{% block extra_head %}
+<style>
+    .account-container {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+
+    .account-header {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+
+    .account-header h1 {
+        font-size: 2.5rem;
+        color: var(--text);
+        margin-bottom: 0.5rem;
+        font-weight: 700;
+    }
+
+    .account-header p {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+    }
+
+    .account-sections {
+        display: grid;
+        gap: 2rem;
+    }
+
+    .account-section {
+        background: var(--surface);
+        border-radius: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        overflow: hidden;
+        border: 1px solid var(--border);
+    }
+
+    .section-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--background);
+    }
+
+    .section-header h2 {
+        margin: 0;
+        color: var(--text);
+        font-size: 1.25rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .section-body {
+        padding: 2rem;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .password-section {
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .password-section h3 {
+        margin: 0 0 1rem 0;
+        color: var(--text);
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .btn-danger {
+        background-color: var(--error);
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background-color: #dc2626;
+        transform: translateY(-1px);
+    }
+
+    @media (max-width: 768px) {
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+
+        .account-header h1 {
+            font-size: 2rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="account-container">
+    <div class="account-header">
+        <h1><i class="fas fa-user-cog"></i> Account Settings</h1>
+        <p>Manage your account information and preferences</p>
+    </div>
+
+    <div class="account-sections">
+        <div class="account-section">
+            <div class="section-header">
+                <h2><i class="fas fa-user"></i> Profile Information</h2>
+            </div>
+            <div class="section-body">
+                <form id="profileForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" value="{{ current_user.username }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" value="{{ current_user.email }}" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">First Name</label>
+                            <input type="text" class="form-control" id="firstName" value="{{ current_user.first_name or '' }}" maxlength="50">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Last Name</label>
+                            <input type="text" class="form-control" id="lastName" value="{{ current_user.last_name or '' }}" maxlength="50">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Birthday</label>
+                            <input type="date" class="form-control" id="birthday" value="{{ current_user.birthday.strftime('%Y-%m-%d') if current_user.birthday else '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Hackatime API Key</label>
+                            <input type="password" class="form-control" id="hackatimeApiKey" value="{{ current_user.hackatime_api_key or '' }}" placeholder="Enter your Hackatime API key">
+                            <small style="color: #64748b; font-size: 0.875rem;">Get your API key from <a href="https://hackatime.hackclub.com/settings" target="_blank">Hackatime Settings</a></small>
+                        </div>
+                    </div>
+
+                    
+
+                    <div class="password-section">
+                        <h3><i class="fas fa-lock"></i> Change Password</h3>
+                        <div class="form-group">
+                            <label class="form-label">Current Password</label>
+                            <input type="password" class="form-control" id="currentPassword" placeholder="Enter current password to change">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">New Password</label>
+                                <input type="password" class="form-control" id="newPassword" placeholder="Enter new password">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Confirm New Password</label>
+                                <input type="password" class="form-control" id="confirmPassword" placeholder="Confirm new password">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                            <i class="fas fa-undo"></i> Reset
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="account-section">
+            <div class="section-header">
+                <h2><i class="fas fa-info-circle"></i> Account Information</h2>
+            </div>
+            <div class="section-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Member Since</label>
+                        <input type="text" class="form-control" value="{{ current_user.created_at.strftime('%B %d, %Y') }}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Last Login</label>
+                        <input type="text" class="form-control" value="{{ current_user.last_login.strftime('%B %d, %Y at %I:%M %p') if current_user.last_login else 'Never' }}" readonly>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.getElementById('profileForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const username = document.getElementById('username').value;
+        const email = document.getElementById('email').value;
+        const firstName = document.getElementById('firstName').value;
+        const lastName = document.getElementById('lastName').value;
+        const birthday = document.getElementById('birthday').value;
+        const hackatimeApiKey = document.getElementById('hackatimeApiKey').value;
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (newPassword && newPassword !== confirmPassword) {
+            showToast('error', 'New passwords do not match', 'Validation Error');
+            return;
+        }
+
+        const data = {
+            username: username,
+            email: email,
+            first_name: firstName,
+            last_name: lastName,
+            birthday: birthday,
+            hackatime_api_key: hackatimeApiKey
+        };
+
+        if (newPassword) {
+            if (!currentPassword) {
+                showToast('error', 'Current password is required to change password', 'Validation Error');
+                return;
+            }
+            data.current_password = currentPassword;
+            data.new_password = newPassword;
+        }
+
+        fetch('/api/user/update', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                showToast('success', data.message, 'Account Updated');
+                document.getElementById('currentPassword').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('confirmPassword').value = '';
+            } else {
+                showToast('error', data.error || 'Failed to update account', 'Error');
+            }
+        })
+        .catch(error => {
+            showToast('error', 'Error updating account', 'Error');
+        });
+    });
+
+    function resetForm() {
+        document.getElementById('username').value = '{{ current_user.username }}';
+        document.getElementById('email').value = '{{ current_user.email }}';
+        document.getElementById('firstName').value = '{{ current_user.first_name or '' }}';
+        document.getElementById('lastName').value = '{{ current_user.last_name or '' }}';
+        document.getElementById('birthday').value = '{{ current_user.birthday.strftime('%Y-%m-%d') if current_user.birthday else '' }}';
+        document.getElementById('hackatimeApiKey').value = '{{ current_user.hackatime_api_key or '' }}';
+        document.getElementById('currentPassword').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmPassword').value = '';
+        showToast('info', 'Form reset to original values', 'Reset');
+    }
+</script>
+{% endblock %}

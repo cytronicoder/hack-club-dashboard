@@ -1,0 +1,831 @@
+
+{% extends "base.html" %}
+
+{% block title %}Hack Club Dashboard - Manage Your Club{% endblock %}
+
+{% block extra_styles %}
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #ec3750 0%, #ff6b7a 50%, #ff8c82 100%);
+        --secondary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --accent-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --glass-bg: rgba(255, 255, 255, 0.1);
+        --glass-border: rgba(255, 255, 255, 0.2);
+        --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.1);
+        --shadow-strong: 0 20px 60px rgba(0, 0, 0, 0.15);
+        --text-light: rgba(255, 255, 255, 0.9);
+        --text-dim: rgba(255, 255, 255, 0.7);
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes slideInLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-100px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(100px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    
+
+    
+
+    .hero-section {
+        background: linear-gradient(135deg, #ec3750 0%, #ff6b7a 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: white;
+        position: relative;
+        overflow: hidden;
+        padding: 4rem 2rem;
+    }
+
+    .hero-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+            radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+    }
+
+    .floating-shapes {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+        overflow: hidden;
+    }
+
+    .shape {
+        position: absolute;
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        border-radius: 50%;
+        animation: float 6s ease-in-out infinite;
+    }
+
+    .shape:nth-child(1) {
+        width: 140px;
+        height: 140px;
+        top: 15%;
+        left: 8%;
+        animation-delay: 0s;
+    }
+
+    .shape:nth-child(2) {
+        width: 100px;
+        height: 100px;
+        top: 25%;
+        right: 12%;
+        animation-delay: 2s;
+    }
+
+    .shape:nth-child(3) {
+        width: 170px;
+        height: 170px;
+        bottom: 25%;
+        left: 20%;
+        animation-delay: 4s;
+    }
+
+    .shape:nth-child(4) {
+        width: 120px;
+        height: 120px;
+        bottom: 15%;
+        right: 8%;
+        animation-delay: 1s;
+    }
+
+    .shape:nth-child(5) {
+        width: 80px;
+        height: 80px;
+        top: 55%;
+        left: 2%;
+        animation-delay: 3s;
+    }
+
+    .shape:nth-child(6) {
+        width: 110px;
+        height: 110px;
+        top: 65%;
+        right: 2%;
+        animation-delay: 5s;
+    }
+
+    
+
+    .floating-sticker {
+        position: absolute;
+        z-index: 1;
+        opacity: 0.4;
+        transition: all 0.3s ease;
+        animation: float 8s ease-in-out infinite;
+        pointer-events: none;
+    }
+
+    .floating-sticker:hover {
+        opacity: 0.7;
+        transform: scale(1.05) rotate(5deg);
+    }
+
+    .sticker-1 {
+        top: 8%;
+        left: 5%;
+        width: 130px;
+        animation-delay: 0s;
+        transform: rotate(-15deg);
+    }
+
+    .sticker-2 {
+        top: 5%;
+        right: 5%;
+        width: 135px;
+        animation-delay: 2s;
+        transform: rotate(20deg);
+    }
+
+    .sticker-3 {
+        bottom: 35%;
+        left: 3%;
+        width: 140px;
+        animation-delay: 1s;
+        transform: rotate(-10deg);
+    }
+
+    .sticker-4 {
+        bottom: 8%;
+        right: 30%;
+        width: 125px;
+        animation-delay: 3s;
+        transform: rotate(15deg);
+    }
+
+    .sticker-5 {
+        top: 30%;
+        left: 2%;
+        width: 120px;
+        animation-delay: 4s;
+        transform: rotate(-25deg);
+    }
+
+    .sticker-6 {
+        top: 70%;
+        right: 3%;
+        width: 135px;
+        animation-delay: 1.5s;
+        transform: rotate(10deg);
+    }
+
+    .section-sticker {
+        position: absolute;
+        opacity: 0.3;
+        transition: all 0.3s ease;
+        animation: float 10s ease-in-out infinite;
+        pointer-events: none;
+    }
+
+    .features-section {
+        position: relative;
+    }
+
+    .features-sticker-1 {
+        top: 5%;
+        left: 2%;
+        width: 85px;
+        animation-delay: 0s;
+        transform: rotate(-20deg);
+    }
+
+    .features-sticker-2 {
+        top: 8%;
+        right: 2%;
+        width: 90px;
+        animation-delay: 3s;
+        transform: rotate(25deg);
+    }
+
+    .features-sticker-3 {
+        bottom: 8%;
+        left: 2%;
+        width: 80px;
+        animation-delay: 1.5s;
+        transform: rotate(-15deg);
+    }
+
+    .stats-sticker {
+        top: 5%;
+        right: 3%;
+        width: 95px;
+        animation-delay: 2s;
+        transform: rotate(15deg);
+    }
+
+    .hero-content {
+        position: relative;
+        z-index: 10;
+        max-width: 1000px;
+        width: 100%;
+        padding: 2rem;
+        animation: fadeInUp 1s ease-out;
+    }
+
+    .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        padding: 0.75rem 1.5rem;
+        border-radius: 50px;
+        margin-bottom: 2rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        animation: pulse 3s ease-in-out infinite;
+    }
+
+    .hero-title {
+        font-size: clamp(2.8rem, 8vw, 5.5rem);
+        font-weight: 900;
+        margin-bottom: 1.5rem;
+        color: white;
+        line-height: 1.1;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+
+    .hero-subtitle {
+        font-size: clamp(1.1rem, 3vw, 1.6rem);
+        margin-bottom: 2.5rem;
+        color: rgba(255, 255, 255, 0.9);
+        font-weight: 400;
+        line-height: 1.6;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .cta-buttons {
+        display: flex;
+        gap: 1.5rem;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 2.5rem;
+    }
+
+    .btn-hero {
+        padding: 1rem 2.5rem;
+        font-size: 1.1rem;
+        font-weight: 700;
+        border-radius: 50px;
+        text-decoration: none;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-width: 220px;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(20px);
+        border: 2px solid transparent;
+    }
+
+    .btn-hero::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s;
+    }
+
+    .btn-hero:hover::before {
+        left: 100%;
+    }
+
+    .btn-primary-hero {
+        background: var(--glass-bg);
+        color: white;
+        border-color: var(--glass-border);
+        box-shadow: var(--shadow-soft);
+    }
+
+    .btn-primary-hero:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: translateY(-5px) scale(1.05);
+        box-shadow: var(--shadow-strong);
+        border-color: rgba(255, 255, 255, 0.4);
+    }
+
+    .btn-secondary-hero {
+        background: rgba(255, 255, 255, 0.95);
+        color: #ec3750;
+        border-color: rgba(255, 255, 255, 0.3);
+        box-shadow: var(--shadow-soft);
+    }
+
+    .btn-secondary-hero:hover {
+        background: white;
+        transform: translateY(-5px) scale(1.05);
+        box-shadow: var(--shadow-strong);
+        color: #d63146;
+    }
+
+    .features-section {
+        padding: 8rem 0;
+        background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+        position: relative;
+    }
+
+    .features-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 2rem;
+    }
+
+    .features-header {
+        text-align: center;
+        margin-bottom: 6rem;
+        animation: fadeInUp 1s ease-out 0.2s both;
+    }
+
+    .features-header .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: linear-gradient(135deg, #ec3750, #ff6b7a);
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 50px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 20px rgba(236, 55, 80, 0.3);
+    }
+
+    .features-header h2 {
+        font-size: clamp(2.5rem, 6vw, 4rem);
+        color: #1a202c;
+        margin-bottom: 1.5rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #1a202c 0%, #4a5568 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .features-header p {
+        font-size: 1.25rem;
+        color: #64748b;
+        max-width: 700px;
+        margin: 0 auto;
+        line-height: 1.7;
+    }
+
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+        gap: 2.5rem;
+        margin-top: 4rem;
+    }
+
+    .feature-card {
+        background: white;
+        padding: 3rem;
+        border-radius: 24px;
+        text-align: center;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        border: 1px solid #f1f5f9;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .feature-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: var(--primary-gradient);
+        transform: scaleX(0);
+        transition: transform 0.4s ease;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 25px 60px rgba(0,0,0,0.15);
+        border-color: #ec3750;
+    }
+
+    .feature-card:hover::before {
+        transform: scaleX(1);
+    }
+
+    .feature-card:nth-child(odd) {
+        animation: slideInLeft 1s ease-out both;
+    }
+
+    .feature-card:nth-child(even) {
+        animation: slideInRight 1s ease-out both;
+    }
+
+    .feature-card:nth-child(1) { animation-delay: 0.1s; }
+    .feature-card:nth-child(2) { animation-delay: 0.2s; }
+    .feature-card:nth-child(3) { animation-delay: 0.3s; }
+    .feature-card:nth-child(4) { animation-delay: 0.4s; }
+    .feature-card:nth-child(5) { animation-delay: 0.5s; }
+    .feature-card:nth-child(6) { animation-delay: 0.6s; }
+
+    .feature-icon {
+        width: 100px;
+        height: 100px;
+        background: var(--primary-gradient);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 2rem;
+        font-size: 2.5rem;
+        color: white;
+        box-shadow: 0 10px 30px rgba(236, 55, 80, 0.3);
+        transition: all 0.4s ease;
+        position: relative;
+    }
+
+    .feature-card:hover .feature-icon {
+        transform: scale(1.1) rotate(5deg);
+        box-shadow: 0 15px 40px rgba(236, 55, 80, 0.4);
+    }
+
+    .feature-icon::after {
+        content: '';
+        position: absolute;
+        top: -20px;
+        left: -20px;
+        right: -20px;
+        bottom: -20px;
+        border-radius: 50%;
+        border: 2px solid rgba(236, 55, 80, 0.2);
+        animation: pulse 3s ease-in-out infinite;
+    }
+
+    .feature-card h3 {
+        font-size: 1.5rem;
+        color: #1a202c;
+        margin-bottom: 1rem;
+        font-weight: 700;
+    }
+
+    .feature-card p {
+        color: #64748b;
+        line-height: 1.7;
+        font-size: 1rem;
+    }
+
+    .stats-section {
+        background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+        padding: 6rem 0;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stats-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+        opacity: 0.5;
+    }
+
+    .stats-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 2rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 3rem;
+        text-align: center;
+        position: relative;
+        z-index: 2;
+    }
+
+    .stat-item {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        padding: 3rem 2rem;
+        border-radius: 20px;
+        transition: all 0.4s ease;
+        animation: fadeInUp 1s ease-out both;
+    }
+
+    .stat-item:nth-child(1) { animation-delay: 0.1s; }
+    .stat-item:nth-child(2) { animation-delay: 0.2s; }
+    .stat-item:nth-child(3) { animation-delay: 0.3s; }
+    .stat-item:nth-child(4) { animation-delay: 0.4s; }
+
+    .stat-item:hover {
+        transform: translateY(-10px);
+        background: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    }
+
+    .stat-item h3 {
+        font-size: 3.5rem;
+        background: var(--primary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 1rem;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .stat-item p {
+        color: var(--text-light);
+        font-size: 1.2rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    @media (max-width: 768px) {
+        .hero-title {
+            font-size: 3rem;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+        }
+
+        .cta-buttons {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .btn-hero {
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .features-header h2 {
+            font-size: 2.5rem;
+        }
+
+        .feature-card {
+            padding: 2rem;
+        }
+
+        .features-grid {
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        .stats-container {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+        }
+
+        .stat-item {
+            padding: 2rem 1rem;
+        }
+
+        .stat-item h3 {
+            font-size: 2.5rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .hero-content {
+            padding: 2rem 1rem;
+        }
+
+        .stats-container {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .hack-club-flag {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1000;
+        height: auto;
+        transition: all 0.3s ease;
+        transform: translateX(-2px);
+    }
+
+    .hack-club-flag:hover {
+        transform: translateX(0px) scale(1.2);
+    }
+
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary-gradient);
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #d63146;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<a href="https://hackclub.com" target="_blank" class="hack-club-flag">
+    <br>
+    <br>
+    <br>
+    <br>
+    <img style="width: 150px;" src="{{ url_for('static', filename='assets/flag-orpheus-left.png') }}" alt="Hack Club" />
+</a>
+
+<div class="hero-section">
+    <div class="floating-shapes">
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+    </div>
+    
+    <img src="{{ url_for('static', filename='assets/orpheus-having-boba.png') }}" alt="Orpheus Boba" class="floating-sticker sticker-1">
+    <img src="{{ url_for('static', filename='assets/orpheus-skateboarding-PCB.png') }}" alt="Orpheus Skateboard" class="floating-sticker sticker-2">
+    <img src="{{ url_for('static', filename='assets/orphmoji_peefest.png') }}" alt="Orphmoji Happy" class="floating-sticker sticker-3">
+    <img src="{{ url_for('static', filename='assets/orphmoji_scared.png') }}" alt="Orphmoji Scared" class="floating-sticker sticker-4">
+    <img src="{{ url_for('static', filename='assets/Rummage.png') }}" alt="Rummage" class="floating-sticker sticker-5">
+    <img src="{{ url_for('static', filename='assets/hackers,_assemble!.png') }}" alt="Hackers Assemble" class="floating-sticker sticker-6">
+    
+    <div class="hero-content">
+        <div class="hero-badge">
+            <i class="fas fa-rocket"></i>
+            <span>1000+ Hack Clubs worldwide!!</span>
+        </div>
+        
+        <h1 class="hero-title">
+            <i class="fas fa-flag"></i> Hack Club Dashboard
+        </h1>
+        
+        <p class="hero-subtitle">
+            Empower your coding community with the ultimate club management platform. 
+            Track progress, organize events, and celebrate achievements together.
+        </p>
+        
+        <div class="cta-buttons">
+            <a href="{{ url_for('signup') }}" class="btn-hero btn-primary-hero">
+                <i class="fas fa-rocket"></i>
+                Start Your Journey
+            </a>
+            <a href="{{ url_for('login') }}" class="btn-hero btn-secondary-hero">
+                <i class="fas fa-sign-in-alt"></i>
+                Sign In
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="features-section">
+    <img src="{{ url_for('static', filename='assets/parts.png') }}" alt="Mo Parts Mo Problems" class="section-sticker features-sticker-1">
+    <img src="{{ url_for('static', filename='assets/find.png') }}" alt="Find Out" class="section-sticker features-sticker-2">
+    <img src="{{ url_for('static', filename='assets/orpheus-having-boba.png') }}" alt="Orpheus Boba" class="section-sticker features-sticker-3">
+    
+    <div class="features-container">
+        <div class="features-header">
+            <div class="badge">
+                <i class="fas fa-star"></i>
+                <span>Everything You Need</span>
+            </div>
+            <h2>Built for Modern Hack Clubs</h2>
+            <p>Our comprehensive platform provides everything you need to run a successful coding community, from member management to project showcases.</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3>Smart Member Management</h3>
+                <p>Effortlessly manage your club members with intelligent tracking, progress monitoring, and engagement analytics that help your community thrive.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <h3>Event Organization</h3>
+                <p>Plan hackathons, workshops, and meetings with our intuitive scheduler. Send automated reminders and track attendance seamlessly.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-code"></i>
+                </div>
+                <h3>Project Tracking</h3>
+                <p>Monitor coding challenges, assignments, and member projects. Provide feedback and celebrate milestones with built-in achievement systems.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-pizza-slice"></i>
+                </div>
+                <h3>Pizza Grant Integration</h3>
+                <p>Streamlined submission process for Hack Club pizza grants. Get funding for your amazing projects with just a few clicks.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-trophy"></i>
+                </div>
+                <h3>Achievement Showcase</h3>
+                <p>Create stunning portfolios of member projects and club achievements. Build a legacy that inspires future hackers.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3>Advanced Analytics</h3>
+                <p>Track club growth, member engagement, and project completion rates with beautiful dashboards and detailed insights.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="stats-section">
+    <img src="{{ url_for('static', filename='assets/hackers,_assemble!.png') }}" alt="Hackers Assemble" class="section-sticker stats-sticker">
+    
+    <div class="stats-container">
+        <div class="stat-item">
+            <h3>1,000+</h3>
+            <p>Active Clubs</p>
+        </div>
+        <div class="stat-item">
+            <h3>50,000+</h3>
+            <p>Student Hackers</p>
+        </div>
+        <div class="stat-item">
+            <h3>100,000+</h3>
+            <p>Projects Built</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

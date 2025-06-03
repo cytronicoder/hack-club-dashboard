@@ -1,0 +1,346 @@
+
+{% extends "base.html" %}
+
+{% block title %}Complete Your Signup - Hack Clubs Dash{% endblock %}
+
+{% block extra_head %}
+<style>
+    .auth-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+        position: relative;
+    }
+
+    .auth-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('{{ url_for("static", filename="assets/Dinos.jpg") }}') center/cover;
+        filter: blur(3px);
+        z-index: 0;
+    }
+
+    .auth-container::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 1;
+    }
+
+    .auth-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        padding: 3rem;
+        width: 100%;
+        max-width: 500px;
+        border: 1px solid #e1e8ed;
+        position: relative;
+        z-index: 2;
+    }
+
+    .auth-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .auth-header h1 {
+        color: #1a202c;
+        margin-bottom: 0.5rem;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+
+    .auth-header p {
+        color: #718096;
+        margin: 0;
+        font-size: 0.95rem;
+    }
+
+    .slack-user-info {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        border: 2px solid #e2e8f0;
+    }
+
+    .slack-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #ec3750, #d63146);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+
+    .slack-details h3 {
+        margin: 0 0 0.25rem 0;
+        color: #1a202c;
+        font-size: 1.1rem;
+    }
+
+    .slack-details p {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+
+    .auth-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .form-group {
+        position: relative;
+    }
+
+    .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #2d3748;
+        font-size: 0.875rem;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+        background: white;
+        color: #2d3748;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #ec3750;
+        box-shadow: 0 0 0 3px rgba(236, 55, 80, 0.1);
+        transform: translateY(-1px);
+    }
+
+    .form-control::placeholder {
+        color: #a0aec0;
+    }
+
+    .btn-auth {
+        background: linear-gradient(135deg, #ec3750, #d63146);
+        color: white;
+        border: none;
+        padding: 1rem;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .btn-auth:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(236, 55, 80, 0.3);
+    }
+
+    .btn-auth:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem;
+        background: #f7fafc;
+        border-radius: 8px;
+        border: 2px solid #e2e8f0;
+        transition: all 0.2s ease;
+    }
+
+    .checkbox-group:hover {
+        border-color: #ec3750;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: #ec3750;
+    }
+
+    .checkbox-group label {
+        margin: 0;
+        color: #2d3748;
+        font-weight: 500;
+        cursor: pointer;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .leader-badge {
+        background: linear-gradient(135deg, #ec3750, #d63146);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .slack-logo {
+        width: 40px;
+        height: 40px;
+        background: #4a154b;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        color: white;
+        font-size: 1.2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="slack-logo">
+                <i class="fab fa-slack"></i>
+            </div>
+            <h1>We need more info!</h1>
+            <p>Complete your signup to get started</p>
+        </div>
+
+        <div class="slack-user-info">
+            {% if slack_data.image_url %}
+                <img src="{{ slack_data.image_url }}" alt="Profile" class="slack-avatar" style="object-fit: cover;">
+            {% else %}
+                <div class="slack-avatar">
+                    {{ slack_data.first_name[0] if slack_data.first_name else slack_data.name[0] if slack_data.name else 'U' }}
+                </div>
+            {% endif %}
+            <div class="slack-details">
+                <h3>{{ slack_data.real_name or slack_data.display_name or slack_data.name or 'Slack User' }}</h3>
+                <p>{{ slack_data.email or 'No email provided' }}</p>
+            </div>
+        </div>
+
+        <form id="completeSignupForm" class="auth-form">
+            <div class="form-group">
+                <label class="form-label">Username *</label>
+                <input type="text" class="form-control" id="username" placeholder="Choose a username" required minlength="3" maxlength="30">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Email Address *</label>
+                <input type="email" class="form-control" id="email" value="{{ slack_data.email or '' }}" placeholder="Enter your email" required>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label">First Name *</label>
+                    <input type="text" class="form-control" id="firstName" value="{{ slack_data.first_name or '' }}" placeholder="Enter your first name" required maxlength="50">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Last Name</label>
+                    <input type="text" class="form-control" id="lastName" value="{{ slack_data.last_name or '' }}" placeholder="Enter your last name" maxlength="50">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Birthday</label>
+                <input type="date" class="form-control" id="birthday" placeholder="Enter your birthday">
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="isLeader">
+                <label for="isLeader">
+                    I want to create and lead a club 
+                    <span class="leader-badge">Leader</span>
+                </label>
+            </div>
+            
+            <button type="submit" class="btn-auth" id="submitBtn">
+                <i class="fas fa-user-plus"></i> Complete Signup
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+document.getElementById('completeSignupForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const originalText = submitBtn.innerHTML;
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
+    
+    const data = {
+        username: document.getElementById('username').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        first_name: document.getElementById('firstName').value.trim(),
+        last_name: document.getElementById('lastName').value.trim(),
+        birthday: document.getElementById('birthday').value,
+        is_leader: document.getElementById('isLeader').checked
+    };
+    
+    fetch('/complete-slack-signup', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('success', data.message, 'Account Created');
+            setTimeout(() => {
+                window.location.href = '/dashboard';
+            }, 1500);
+        } else {
+            showToast('error', data.error || 'Failed to create account', 'Error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    })
+    .catch(error => {
+        showToast('error', 'Network error. Please try again.', 'Error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,1408 @@
+
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Hack Club Dashboard{% endblock %}
+
+{% block extra_head %}
+<style>
+    .admin-container {
+        padding: 2rem 0;
+        min-height: calc(100vh - 200px);
+    }
+
+    .admin-header {
+        text-align: center;
+        margin-bottom: 3rem;
+        padding: 2rem;
+        background: linear-gradient(135deg, #ec3750 0%, #ff6b7a 100%);
+        color: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(236, 55, 80, 0.3);
+    }
+
+    .admin-header h1 {
+        font-size: 3rem;
+        font-weight: 900;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+
+    .admin-header p {
+        font-size: 1.2rem;
+        opacity: 0.9;
+        margin: 0;
+    }
+
+    .admin-nav {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 3rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .admin-tab {
+        background: white;
+        border: 2px solid #e2e8f0;
+        color: #64748b;
+        padding: 1rem 2rem;
+        border-radius: 12px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+    }
+
+    .admin-tab:hover {
+        background: #f8fafc;
+        border-color: #ec3750;
+        color: #ec3750;
+        transform: translateY(-2px);
+    }
+
+    .admin-tab.active {
+        background: #ec3750;
+        border-color: #ec3750;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(236, 55, 80, 0.3);
+    }
+
+    .admin-section {
+        display: none;
+    }
+
+    .admin-section.active {
+        display: block;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 2rem;
+        margin-bottom: 3rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: var(--gradient);
+    }
+
+    .stat-card.users::before { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+    .stat-card.clubs::before { background: linear-gradient(135deg, #10b981, #059669); }
+    .stat-card.posts::before { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .stat-card.assignments::before { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        border-color: #ec3750;
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-card.users .stat-icon { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+    .stat-card.clubs .stat-icon { background: linear-gradient(135deg, #10b981, #059669); }
+    .stat-card.posts .stat-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .stat-card.assignments .stat-icon { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 900;
+        color: #1a202c;
+        margin-bottom: 0.5rem;
+        line-height: 1;
+    }
+
+    .stat-label {
+        color: #64748b;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.875rem;
+    }
+
+    .data-table {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+    }
+
+    .table-header {
+        background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+        padding: 2rem;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .table-header h3 {
+        margin: 0;
+        color: #1a202c;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .search-box {
+        padding: 0.75rem 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 1rem;
+        width: 300px;
+        transition: all 0.2s ease;
+    }
+
+    .search-box:focus {
+        outline: none;
+        border-color: #ec3750;
+        box-shadow: 0 0 0 3px rgba(236, 55, 80, 0.1);
+    }
+
+    .table-content {
+        padding: 0;
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th, td {
+        padding: 1.5rem;
+        text-align: left;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    td {
+        color: #4b5563;
+    }
+
+    tr:hover {
+        background: #f8fafc;
+    }
+
+    .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-admin {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-user {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .status-suspended {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .status-active {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-action {
+        padding: 0.4rem 0.75rem;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        white-space: nowrap;
+        min-width: auto;
+        text-decoration: none;
+    }
+
+    .btn-action i {
+        font-size: 0.7rem;
+    }
+
+    .btn-edit {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .btn-edit:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-delete {
+        background: #ef4444;
+        color: white;
+    }
+
+    .btn-delete:hover {
+        background: #dc2626;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-suspend {
+        background: #f59e0b;
+        color: white;
+    }
+
+    .btn-suspend:hover {
+        background: #d97706;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+    }
+
+    .btn-login {
+        background: #10b981;
+        color: white;
+    }
+
+    .btn-login:hover {
+        background: #059669;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-reset {
+        background: #8b5cf6;
+        color: white;
+    }
+
+    .btn-reset:hover {
+        background: #7c3aed;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3);
+    }
+
+    .activity-feed {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+    }
+
+    .activity-item {
+        padding: 1.5rem;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .activity-item:hover {
+        background: #f8fafc;
+    }
+
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+
+    .activity-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        color: white;
+        background: linear-gradient(135deg, #ec3750, #d63146);
+    }
+
+    .activity-content {
+        flex: 1;
+    }
+
+    .activity-content h4 {
+        margin: 0 0 0.25rem 0;
+        color: #1a202c;
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+
+    .activity-content p {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.875rem;
+    }
+
+    .activity-time {
+        color: #9ca3af;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        z-index: 1000;
+        backdrop-filter: blur(5px);
+    }
+
+    .modal-backdrop.show {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 20px;
+        padding: 0;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        transform: scale(0.9);
+        transition: all 0.3s ease;
+    }
+
+    .modal-backdrop.show .modal-content {
+        transform: scale(1);
+    }
+
+    .modal-header {
+        padding: 2rem;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        color: #1a202c;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: #9ca3af;
+        cursor: pointer;
+        padding: 0.5rem;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+
+    .modal-close:hover {
+        background: #f3f4f6;
+        color: #374151;
+    }
+
+    .modal-body {
+        padding: 2rem;
+    }
+
+    .modal-footer {
+        padding: 1.5rem 2rem;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .admin-header h1 {
+            font-size: 2rem;
+        }
+
+        .admin-nav {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .table-header {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+
+        .search-box {
+            width: 100%;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+    }
+
+    .loading {
+        text-align: center;
+        padding: 3rem;
+        color: #64748b;
+    }
+
+    .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #e2e8f0;
+        border-radius: 50%;
+        border-top-color: #ec3750;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container admin-container">
+    <div class="admin-header">
+        <h1><i class="fas fa-crown"></i> Admin Dashboard</h1>
+        <p>Manage users, clubs, and everything in between</p>
+    </div>
+
+    <div class="admin-nav">
+        <button class="admin-tab active" onclick="showAdminSection('overview')" data-section="overview">
+            <i class="fas fa-chart-pie"></i> Overview
+        </button>
+        <button class="admin-tab" onclick="showAdminSection('users')" data-section="users">
+            <i class="fas fa-users"></i> Users
+        </button>
+        <button class="admin-tab" onclick="showAdminSection('clubs')" data-section="clubs">
+            <i class="fas fa-flag"></i> Clubs
+        </button>
+        <button class="admin-tab" onclick="showAdminSection('activity')" data-section="activity">
+            <i class="fas fa-stream"></i> Activity
+        </button>
+        <button class="admin-tab" onclick="showAdminSection('admins')" data-section="admins">
+            <i class="fas fa-crown"></i> Admins
+        </button>
+    </div>
+
+    <div class="admin-section active" id="overview">
+        <div class="stats-grid">
+            <div class="stat-card users">
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-number" id="totalUsers">{{ total_users }}</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+
+            <div class="stat-card clubs">
+                <div class="stat-icon">
+                    <i class="fas fa-flag"></i>
+                </div>
+                <div class="stat-number" id="totalClubs">{{ total_clubs }}</div>
+                <div class="stat-label">Total Clubs</div>
+            </div>
+
+            <div class="stat-card posts">
+                <div class="stat-icon">
+                    <i class="fas fa-comment"></i>
+                </div>
+                <div class="stat-number" id="totalPosts">{{ total_posts }}</div>
+                <div class="stat-label">Total Posts</div>
+            </div>
+
+            <div class="stat-card assignments">
+                <div class="stat-icon">
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <div class="stat-number" id="totalAssignments">{{ total_assignments }}</div>
+                <div class="stat-label">Total Assignments</div>
+            </div>
+        </div>
+
+        <div class="data-table">
+            <div class="table-header">
+                <h3>Recent Activity Overview</h3>
+            </div>
+            <div class="table-content">
+                <div class="activity-feed">
+                    {% for user in recent_users %}
+                    <div class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                        <div class="activity-content">
+                            <h4>New user registered</h4>
+                            <p>{{ user.username }} ({{ user.email }}) joined</p>
+                        </div>
+                        <div class="activity-time">
+                            {{ user.created_at.strftime('%b %d, %Y') if user.created_at else 'Unknown' }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    {% for club in recent_clubs %}
+                    <div class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-flag"></i>
+                        </div>
+                        <div class="activity-content">
+                            <h4>New club created</h4>
+                            <p>{{ club.name }} by {{ club.leader.username }}</p>
+                        </div>
+                        <div class="activity-time">
+                            {{ club.created_at.strftime('%b %d, %Y') if club.created_at else 'Unknown' }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-section" id="users">
+        <div class="data-table">
+            <div class="table-header">
+                <h3>User Management</h3>
+                <input type="text" class="search-box" placeholder="Search users..." id="userSearch">
+            </div>
+            <div class="table-content">
+                <div class="loading" id="usersLoading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading users...</p>
+                </div>
+                <table id="usersTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Clubs</th>
+                            <th>Joined</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-section" id="clubs">
+        <div class="data-table">
+            <div class="table-header">
+                <h3>Club Management</h3>
+                <input type="text" class="search-box" placeholder="Search clubs..." id="clubSearch">
+            </div>
+            <div class="table-content">
+                <div class="loading" id="clubsLoading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading clubs...</p>
+                </div>
+                <table id="clubsTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Club Name</th>
+                            <th>Leader</th>
+                            <th>Members</th>
+                            <th>Location</th>
+                            <th>Balance</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clubsTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-section" id="activity">
+        <div class="data-table">
+            <div class="table-header">
+                <h3>System Activity</h3>
+            </div>
+            <div class="table-content">
+                <div class="activity-feed">
+                    {% for post in recent_posts %}
+                    <div class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-comment"></i>
+                        </div>
+                        <div class="activity-content">
+                            <h4>New post in {{ post.club.name }}</h4>
+                            <p>By {{ post.user.username }}: {{ post.content[:100] }}...</p>
+                        </div>
+                        <div class="activity-time">
+                            {{ post.created_at.strftime('%b %d, %Y %H:%M') if post.created_at else 'Unknown' }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-section" id="admins">
+        <div class="data-table">
+            <div class="table-header">
+                <h3>Administrator Management</h3>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <input type="text" class="search-box" placeholder="Search admins..." id="adminSearch">
+                    <button class="btn btn-primary" onclick="openModal('addAdminModal')">
+                        <i class="fas fa-plus"></i> Add Admin
+                    </button>
+                </div>
+            </div>
+            <div class="table-content">
+                <div class="loading" id="adminsLoading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading administrators...</p>
+                </div>
+                <table id="adminsTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Administrator</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th>Clubs Led</th>
+                            <th>Last Login</th>
+                            <th>Admin Since</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminsTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="editUserModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit User</h3>
+            <button class="modal-close" onclick="closeModal('editUserModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="editUserForm">
+                <input type="hidden" id="editUserId">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-control" id="editUsername" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" id="editEmail" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" id="editIsAdmin"> Administrator
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" id="editIsSuspended"> Suspended
+                    </label>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('editUserModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveUserChanges()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="editClubModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Club</h3>
+            <button class="modal-close" onclick="closeModal('editClubModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="editClubForm">
+                <input type="hidden" id="editClubId">
+                <div class="form-group">
+                    <label class="form-label">Club Name</label>
+                    <input type="text" class="form-control" id="editClubName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="editClubDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Location</label>
+                    <input type="text" class="form-control" id="editClubLocation">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Balance</label>
+                    <input type="number" class="form-control" id="editClubBalance" step="0.01">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('editClubModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveClubChanges()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="addAdminModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Add Administrator</h3>
+            <button class="modal-close" onclick="closeModal('addAdminModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="addAdminForm">
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" class="form-control" id="addAdminEmail" placeholder="Enter user's email" required>
+                    <small style="color: #64748b; font-size: 0.875rem;">The user must already have an account.</small>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('addAdminModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="addNewAdmin()">Add Administrator</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="confirmModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="confirmTitle">Confirm Action</h3>
+            <button class="modal-close" onclick="closeModal('confirmModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="confirmMessage">Are you sure you want to proceed?</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('confirmModal')">Cancel</button>
+            <button class="btn btn-primary" id="confirmButton" onclick="executeConfirmedAction()">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="resetPasswordModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Reset Password</h3>
+            <button class="modal-close" onclick="closeModal('resetPasswordModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Enter new password for <span id="resetPasswordUsername"></span>:</p>
+            <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input type="password" class="form-control" id="newPassword" placeholder="Enter new password" minlength="6" required>
+                <small style="color: #64748b; font-size: 0.875rem;">Password must be at least 6 characters long.</small>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('resetPasswordModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="executePasswordReset()">Reset Password</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="loginAsModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Login as User</h3>
+            <button class="modal-close" onclick="closeModal('loginAsModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to login as "<span id="loginAsUsername"></span>"?</p>
+            <p style="color: #f59e0b; font-size: 0.9rem;"><i class="fas fa-exclamation-triangle"></i> This will log you out of your admin account.</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('loginAsModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="executeLoginAs()">Login as User</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let usersData = [];
+let clubsData = [];
+let adminsData = [];
+
+function showAdminSection(section) {
+    document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    
+    document.getElementById(section).classList.add('active');
+    document.querySelector(`[data-section="${section}"]`).classList.add('active');
+    
+    if (section === 'users') {
+        loadUsers();
+    } else if (section === 'clubs') {
+        loadClubs();
+    } else if (section === 'admins') {
+        loadAdmins();
+    }
+}
+
+async function loadUsers() {
+    const loading = document.getElementById('usersLoading');
+    const table = document.getElementById('usersTable');
+    
+    try {
+        const response = await fetch('/api/admin/users');
+        const data = await response.json();
+        usersData = data.users;
+        
+        renderUsersTable(usersData);
+        
+        loading.style.display = 'none';
+        table.style.display = 'table';
+    } catch (error) {
+        console.error('Error loading users:', error);
+        showToast('error', 'Failed to load users');
+    }
+}
+
+async function loadClubs() {
+    const loading = document.getElementById('clubsLoading');
+    const table = document.getElementById('clubsTable');
+    
+    try {
+        const response = await fetch('/api/admin/clubs');
+        const data = await response.json();
+        clubsData = data.clubs;
+        
+        renderClubsTable(clubsData);
+        
+        loading.style.display = 'none';
+        table.style.display = 'table';
+    } catch (error) {
+        console.error('Error loading clubs:', error);
+        showToast('error', 'Failed to load clubs');
+    }
+}
+
+function renderUsersTable(users) {
+    const tbody = document.getElementById('usersTableBody');
+    tbody.innerHTML = '';
+    
+    users.forEach(user => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <strong>${user.username}</strong>
+            </td>
+            <td>${user.email}</td>
+            <td>
+                <span class="status-badge ${user.is_admin ? 'status-admin' : 'status-user'}">
+                    ${user.is_admin ? 'Admin' : 'User'}
+                </span>
+            </td>
+            <td>
+                <span class="status-badge ${user.is_suspended ? 'status-suspended' : 'status-active'}">
+                    ${user.is_suspended ? 'Suspended' : 'Active'}
+                </span>
+            </td>
+            <td>${user.clubs_led + user.clubs_joined} clubs</td>
+            <td>${user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}</td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-action btn-edit" onclick="editUser(${user.id})">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button class="btn-action btn-login" onclick="loginAsUser(${user.id}, '${user.username}')">
+                        <i class="fas fa-sign-in-alt"></i> Login as
+                    </button>
+                    <button class="btn-action btn-reset" onclick="resetUserPassword(${user.id}, '${user.username}')">
+                        <i class="fas fa-key"></i> Reset Pwd
+                    </button>
+                    <button class="btn-action btn-delete" onclick="deleteUser(${user.id}, '${user.username}')">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function renderClubsTable(clubs) {
+    const tbody = document.getElementById('clubsTableBody');
+    tbody.innerHTML = '';
+    
+    clubs.forEach(club => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><strong>${club.name}</strong></td>
+            <td>${club.leader} (${club.leader_email})</td>
+            <td>${club.member_count} members</td>
+            <td>${club.location || 'Not specified'}</td>
+            <td>$${club.balance.toFixed(2)}</td>
+            <td>${club.created_at ? new Date(club.created_at).toLocaleDateString() : 'Unknown'}</td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-action btn-edit" onclick="editClub(${club.id})">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button class="btn-action btn-delete" onclick="deleteClub(${club.id}, '${club.name}')">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function editUser(userId) {
+    const user = usersData.find(u => u.id === userId);
+    if (!user) return;
+    
+    document.getElementById('editUserId').value = user.id;
+    document.getElementById('editUsername').value = user.username;
+    document.getElementById('editEmail').value = user.email;
+    document.getElementById('editIsAdmin').checked = user.is_admin;
+    document.getElementById('editIsSuspended').checked = user.is_suspended;
+    
+    openModal('editUserModal');
+}
+
+function editClub(clubId) {
+    const club = clubsData.find(c => c.id === clubId);
+    if (!club) return;
+    
+    document.getElementById('editClubId').value = club.id;
+    document.getElementById('editClubName').value = club.name;
+    document.getElementById('editClubDescription').value = club.description || '';
+    document.getElementById('editClubLocation').value = club.location || '';
+    document.getElementById('editClubBalance').value = club.balance;
+    
+    openModal('editClubModal');
+}
+
+async function saveUserChanges() {
+    const userId = document.getElementById('editUserId').value;
+    const userData = {
+        username: document.getElementById('editUsername').value,
+        email: document.getElementById('editEmail').value,
+        is_admin: document.getElementById('editIsAdmin').checked,
+        is_suspended: document.getElementById('editIsSuspended').checked
+    };
+    
+    try {
+        const response = await fetch(`/api/admin/users/${userId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(userData)
+        });
+        
+        if (response.ok) {
+            showToast('success', 'User updated successfully');
+            closeModal('editUserModal');
+            loadUsers();
+        } else {
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to update user');
+        }
+    } catch (error) {
+        showToast('error', 'Failed to update user');
+    }
+}
+
+async function saveClubChanges() {
+    const clubId = document.getElementById('editClubId').value;
+    const clubData = {
+        name: document.getElementById('editClubName').value,
+        description: document.getElementById('editClubDescription').value,
+        location: document.getElementById('editClubLocation').value,
+        balance: parseFloat(document.getElementById('editClubBalance').value)
+    };
+    
+    try {
+        const response = await fetch(`/api/admin/clubs/${clubId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(clubData)
+        });
+        
+        if (response.ok) {
+            showToast('success', 'Club updated successfully');
+            closeModal('editClubModal');
+            loadClubs();
+        } else {
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to update club');
+        }
+    } catch (error) {
+        showToast('error', 'Failed to update club');
+    }
+}
+
+function deleteUser(userId, username) {
+    document.getElementById('confirmTitle').textContent = 'Delete User';
+    document.getElementById('confirmMessage').innerHTML = `Are you sure you want to delete user "<strong>${username}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This action cannot be undone.</span>`;
+    pendingAction = 'deleteUser';
+    pendingUserId = userId;
+    pendingUsername = username;
+    openModal('confirmModal');
+}
+
+function deleteClub(clubId, clubName) {
+    document.getElementById('confirmTitle').textContent = 'Delete Club';
+    document.getElementById('confirmMessage').innerHTML = `Are you sure you want to delete club "<strong>${clubName}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This action cannot be undone.</span>`;
+    pendingAction = 'deleteClub';
+    pendingUserId = clubId;
+    pendingUsername = clubName;
+    openModal('confirmModal');
+}
+
+async function executeConfirmedAction() {
+    if (pendingAction === 'deleteUser') {
+        try {
+            const response = await fetch(`/api/admin/users/${pendingUserId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                showToast('success', 'User deleted successfully');
+                loadUsers();
+            } else {
+                const error = await response.json();
+                showToast('error', error.error || 'Failed to delete user');
+            }
+        } catch (error) {
+            showToast('error', 'Failed to delete user');
+        }
+    } else if (pendingAction === 'deleteClub') {
+        try {
+            const response = await fetch(`/api/admin/clubs/${pendingUserId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                showToast('success', 'Club deleted successfully');
+                loadClubs();
+            } else {
+                const error = await response.json();
+                showToast('error', error.error || 'Failed to delete club');
+            }
+        } catch (error) {
+            showToast('error', 'Failed to delete club');
+        }
+    } else if (pendingAction === 'removeAdmin') {
+        try {
+            const response = await fetch(`/api/admin/administrators/${pendingUserId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                showToast('success', 'Administrator privileges removed successfully');
+                loadAdmins();
+            } else {
+                const error = await response.json();
+                showToast('error', error.error || 'Failed to remove administrator');
+            }
+        } catch (error) {
+            showToast('error', 'Failed to remove administrator');
+        }
+    }
+    
+    closeModal('confirmModal');
+    pendingAction = null;
+    pendingUserId = null;
+    pendingUsername = null;
+}
+
+function openModal(modalId) {
+    document.getElementById(modalId).classList.add('show');
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('show');
+}
+
+async function loadAdmins() {
+    const loading = document.getElementById('adminsLoading');
+    const table = document.getElementById('adminsTable');
+    
+    try {
+        const response = await fetch('/api/admin/administrators');
+        const data = await response.json();
+        adminsData = data.admins;
+        
+        renderAdminsTable(adminsData);
+        
+        loading.style.display = 'none';
+        table.style.display = 'table';
+    } catch (error) {
+        console.error('Error loading admins:', error);
+        showToast('error', 'Failed to load administrators');
+    }
+}
+
+function renderAdminsTable(admins) {
+    const tbody = document.getElementById('adminsTableBody');
+    tbody.innerHTML = '';
+    
+    admins.forEach(admin => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <strong>${admin.username}</strong>
+                ${admin.is_super_admin ? '<span style="margin-left: 0.5rem; color: #ec3750; font-size: 0.75rem;"><i class="fas fa-crown"></i> Super Admin</span>' : ''}
+            </td>
+            <td>${admin.email}</td>
+            <td>
+                <span class="status-badge ${admin.is_suspended ? 'status-suspended' : 'status-active'}">
+                    ${admin.is_suspended ? 'Suspended' : 'Active'}
+                </span>
+            </td>
+            <td>${admin.clubs_led} clubs</td>
+            <td>${admin.last_login ? new Date(admin.last_login).toLocaleDateString() : 'Never'}</td>
+            <td>${admin.created_at ? new Date(admin.created_at).toLocaleDateString() : 'Unknown'}</td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-action btn-edit" onclick="editAdmin(${admin.id})">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    ${!admin.is_super_admin ? `
+                        <button class="btn-action btn-delete" onclick="removeAdmin(${admin.id}, '${admin.username}')">
+                            <i class="fas fa-user-minus"></i> Remove
+                        </button>
+                    ` : ''}
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function editAdmin(adminId) {
+    const admin = adminsData.find(a => a.id === adminId);
+    if (!admin) return;
+    
+    document.getElementById('editUserId').value = admin.id;
+    document.getElementById('editUsername').value = admin.username;
+    document.getElementById('editEmail').value = admin.email;
+    document.getElementById('editIsAdmin').checked = admin.is_admin;
+    document.getElementById('editIsSuspended').checked = admin.is_suspended;
+    
+    openModal('editUserModal');
+}
+
+async function addNewAdmin() {
+    const email = document.getElementById('addAdminEmail').value.trim();
+    
+    if (!email) {
+        showToast('error', 'Email address is required');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/admin/administrators', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email: email
+            })
+        });
+        
+        if (response.ok) {
+            showToast('success', 'Administrator added successfully');
+            closeModal('addAdminModal');
+            document.getElementById('addAdminForm').reset();
+            loadAdmins();
+        } else {
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to add administrator');
+        }
+    } catch (error) {
+        showToast('error', 'Failed to add administrator');
+    }
+}
+
+function removeAdmin(adminId, username) {
+    document.getElementById('confirmTitle').textContent = 'Remove Administrator';
+    document.getElementById('confirmMessage').innerHTML = `Are you sure you want to remove administrator privileges from "<strong>${username}</strong>"?`;
+    pendingAction = 'removeAdmin';
+    pendingUserId = adminId;
+    pendingUsername = username;
+    openModal('confirmModal');
+}
+
+document.getElementById('userSearch').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const filteredUsers = usersData.filter(user => 
+        user.username.toLowerCase().includes(searchTerm) ||
+        user.email.toLowerCase().includes(searchTerm)
+    );
+    renderUsersTable(filteredUsers);
+});
+
+document.getElementById('clubSearch').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const filteredClubs = clubsData.filter(club => 
+        club.name.toLowerCase().includes(searchTerm) ||
+        club.leader.toLowerCase().includes(searchTerm) ||
+        (club.location && club.location.toLowerCase().includes(searchTerm))
+    );
+    renderClubsTable(filteredClubs);
+});
+
+document.getElementById('adminSearch').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const filteredAdmins = adminsData.filter(admin => 
+        admin.username.toLowerCase().includes(searchTerm) ||
+        admin.email.toLowerCase().includes(searchTerm)
+    );
+    renderAdminsTable(filteredAdmins);
+});
+
+let pendingAction = null;
+let pendingUserId = null;
+let pendingUsername = null;
+
+function loginAsUser(userId, username) {
+    document.getElementById('loginAsUsername').textContent = username;
+    pendingUserId = userId;
+    pendingUsername = username;
+    openModal('loginAsModal');
+}
+
+async function executeLoginAs() {
+    try {
+        const response = await fetch(`/api/admin/login-as-user/${pendingUserId}`, {
+            method: 'POST'
+        });
+        
+        if (response.ok) {
+            window.location.href = '/dashboard';
+        } else {
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to login as user');
+        }
+    } catch (error) {
+        showToast('error', 'Failed to login as user');
+    }
+    closeModal('loginAsModal');
+}
+
+function resetUserPassword(userId, username) {
+    document.getElementById('resetPasswordUsername').textContent = username;
+    document.getElementById('newPassword').value = '';
+    pendingUserId = userId;
+    pendingUsername = username;
+    openModal('resetPasswordModal');
+}
+
+async function executePasswordReset() {
+    const newPassword = document.getElementById('newPassword').value;
+    
+    if (!newPassword || newPassword.length < 6) {
+        showToast('error', 'Password must be at least 6 characters long');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/admin/reset-password/${pendingUserId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                new_password: newPassword
+            })
+        });
+        
+        if (response.ok) {
+            showToast('success', `Password reset successfully for ${pendingUsername}`);
+            closeModal('resetPasswordModal');
+        } else {
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to reset password');
+        }
+    } catch (error) {
+        showToast('error', 'Failed to reset password');
+    }
+}
+
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal-backdrop')) {
+        e.target.classList.remove('show');
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,238 @@
+
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Hack Clubs Dash{% endblock %}
+
+{% block extra_head %}
+<style>
+    .dashboard-container {
+        padding: 3rem 0;
+        min-height: calc(100vh - 200px);
+    }
+
+    .dashboard-header {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+
+    .dashboard-header h1 {
+        font-size: 3rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 1rem;
+    }
+
+    .dashboard-header p {
+        font-size: 1.25rem;
+        color: var(--text-secondary);
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .clubs-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 2rem;
+        margin-top: 2rem;
+    }
+
+    .club-card {
+        background: var(--surface);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        transition: var(--transition);
+        cursor: pointer;
+        border: 2px solid transparent;
+    }
+
+    .club-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-hover);
+        border-color: var(--primary);
+    }
+
+    .club-card-header {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white;
+        padding: 2rem;
+        text-align: center;
+    }
+
+    .club-avatar {
+        width: 80px;
+        height: 80px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 2rem;
+    }
+
+    .club-card h3 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .club-role {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin-top: 0.5rem;
+        display: inline-block;
+    }
+
+    .club-card-body {
+        padding: 2rem;
+    }
+
+    .club-description {
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+    }
+
+    .club-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .club-meta span {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        max-width: 500px;
+        margin: 0 auto;
+    }
+
+    .empty-state-icon {
+        font-size: 4rem;
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+        opacity: 0.5;
+    }
+
+    .empty-state h2 {
+        color: var(--text);
+        margin-bottom: 1rem;
+    }
+
+    .empty-state p {
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+        line-height: 1.6;
+    }
+
+    .empty-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    @media (max-width: 768px) {
+        .clubs-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .empty-actions {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .dashboard-header h1 {
+            font-size: 2rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container dashboard-container">
+    <div class="dashboard-header">
+        <h1>Welcome, {{ current_user.username }}!</h1>
+        <p>Choose a club to manage or join a new one</p>
+    </div>
+
+    {% if led_clubs or memberships %}
+        <div class="clubs-grid">
+            {% for club in led_clubs %}
+                <div class="club-card" onclick="window.location.href='{{ url_for('club_dashboard', club_id=club.id) }}'">
+                    <div class="club-card-header">
+                        <div class="club-avatar">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                        <h3>{{ club.name }}</h3>
+                        <span class="club-role">Club Leader</span>
+                    </div>
+                    <div class="club-card-body">
+                        <p class="club-description">{{ club.description or 'No description available' }}</p>
+                        <div class="club-meta">
+                            <span><i class="fas fa-map-marker-alt"></i> {{ club.location or 'No location' }}</span>
+                            <span><i class="fas fa-users"></i> {{ club.members|length + 1 }} members</span>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+
+            {% for membership in memberships %}
+                <div class="club-card" onclick="window.location.href='{{ url_for('club_dashboard', club_id=membership.club.id) }}'">
+                    <div class="club-card-header">
+                        <div class="club-avatar">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h3>{{ membership.club.name }}</h3>
+                        <span class="club-role">{{ membership.role|title }}</span>
+                    </div>
+                    <div class="club-card-body">
+                        <p class="club-description">{{ membership.club.description or 'No description available' }}</p>
+                        <div class="club-meta">
+                            <span><i class="fas fa-map-marker-alt"></i> {{ membership.club.location or 'No location' }}</span>
+                            <span><i class="fas fa-users"></i> {{ membership.club.members|length + 1 }} members</span>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="fas fa-users-slash"></i>
+            </div>
+            <h2>You haven't joined any clubs yet</h2>
+            <p>Get started by creating your own club or joining an existing one with a join code!</p>
+            <div class="empty-actions">
+                <a href="{{ url_for('signup') }}?is_leader=true" class="btn btn-primary">
+                    <i class="fas fa-crown"></i> Create a Club
+                </a>
+                <button class="btn btn-secondary" onclick="joinClubPrompt()">
+                    <i class="fas fa-sign-in-alt"></i> Join Club
+                </button>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    function joinClubPrompt() {
+        const joinCode = prompt('Enter the club join code:');
+        if (joinCode) {
+            window.location.href = `/join-club?code=${joinCode}`;
+        }
+    }
+</script>
+{% endblock %}
