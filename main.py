@@ -209,37 +209,10 @@ class AirtableService:
 
         try:
             # Search for records matching the email and club name
-            # Try different possible field name variations
-            possible_filters = [
-                f'AND({{Email}} = "{email}", {{Club}} = "{club_name}")',
-                f'AND({{Email}} = "{email}", {{Venue}} = "{club_name}")',
-                f'AND({{Leader Email}} = "{email}", {{Club Name}} = "{club_name}")',
-                f'AND({{Leader Email}} = "{email}", {{Venue}} = "{club_name}")',
-                f'AND({{Current Leaders\' Email}} = "{email}", {{Venue}} = "{club_name}")',
-                f'AND({{Current Leaders\' Em}} = "{email}", {{Venue}} = "{club_name}")'
-            ]
-            
-            # Try each filter until one works
-            response = None
-            for filter_formula in possible_filters:
-                params = {
-                    'filterByFormula': filter_formula
-                }
-                try:
-                    response = requests.get(leaders_url, headers=self.headers, params=params)
-                    if response.status_code == 200:
-                        break
-                    else:
-                        print(f"Filter failed: {filter_formula} - {response.status_code}")
-                except Exception as e:
-                    print(f"Filter error: {filter_formula} - {str(e)}")
-                    continue
-            
-            # If all filters failed, use the last response
-            if not response:
-                params = {
-                    'filterByFormula': possible_filters[0]
-                }
+            # Using the exact field names from the Airtable table
+            params = {
+                'filterByFormula': f'AND(FIND("{email}", {{Current Leaders\' Em}}) > 0, FIND("{club_name}", {{Venue}}) > 0)'
+            }
             
             response = requests.get(leaders_url, headers=self.headers, params=params)
             
