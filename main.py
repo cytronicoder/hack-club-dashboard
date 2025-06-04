@@ -867,9 +867,12 @@ def login():
                 user.last_login = datetime.utcnow()
                 db.session.commit()
 
-                # Login user
-                login_user(user, remember=True)
-                print(f"DEBUG: User {user.username} logged in successfully")
+                # Generate remember token FIRST before login
+                remember_token = user.generate_remember_token()
+                user.last_login = datetime.utcnow()
+                db.session.commit()
+                
+                print(f"DEBUG: Generated remember token for {user.username}")
 
                 # Cache user data in session for when DB is down
                 session['user_cache'] = {
@@ -883,6 +886,10 @@ def login():
                     'remember_token': remember_token
                 }
                 session.permanent = True
+
+                # Login user AFTER setting up session
+                login_user(user, remember=True)
+                print(f"DEBUG: User {user.username} logged in successfully, is_authenticated: {current_user.is_authenticated}")
 
                 # Set remember token cookie (5 days)
                 resp = redirect(url_for('dashboard'))
@@ -994,10 +1001,13 @@ def validate_remember_token():
     """Validate remember token and sync with database when available"""
     # Skip validation for auth routes to avoid conflicts
     auth_routes = ['login', 'logout', 'signup', 'slack_login', 'slack_callback', 
-                   'complete_slack_signup', 'verify_leader', 'complete_leader_signup']
+                   'complete_slack_signup', 'verify_leader', 'complete_leader_signup', 'static']
     
-    if request.endpoint in auth_routes:
+    # Skip for static files and auth routes
+    if request.endpoint in auth_routes or (request.endpoint and request.endpoint.startswith('static')):
         return
+    
+    print(f"DEBUG: before_request for endpoint: {request.endpoint}, authenticated: {current_user.is_authenticated}")
     
     remember_token = request.cookies.get('remember_token')
 
@@ -1062,7 +1072,12 @@ def validate_remember_token():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    print(f"DEBUG: Dashboard accessed by user: {current_user.username if current_user.is_authenticated else 'Anonymous'}")
+    print(f"DEBUG: Dashboard route accessed. User authenticated: {current_user.is_authenticated}")
+    if current_user.is_authenticated:
+        print(f"DEBUG: Current user: {current_user.username} (ID: {current_user.id})")
+    else:
+        print("DEBUG: User not authenticated, should be redirected by @login_required")
+    
     # Get user's club memberships
     memberships = ClubMembership.query.filter_by(user_id=current_user.id).all()
     led_clubs = Club.query.filter_by(leader_id=current_user.id).all()
