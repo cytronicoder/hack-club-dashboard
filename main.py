@@ -39,7 +39,7 @@ try:
     login_manager = LoginManager()
     login_manager.init_app(app)
     login_manager.login_view = 'login'
-
+    
     limiter = Limiter(
         key_func=get_remote_address,
         app=app,
@@ -69,7 +69,6 @@ class User(db.Model):
     is_suspended = db.Column(db.Boolean, default=False)
     hackatime_api_key = db.Column(db.String(255))
     slack_user_id = db.Column(db.String(255), unique=True)
-    remember_token = db.Column(db.String(255), unique=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -77,29 +76,17 @@ class User(db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-    @property
     def is_authenticated(self):
         return True
 
-    @property
     def is_active(self):
         return not self.is_suspended
 
-    @property
     def is_anonymous(self):
         return False
 
     def get_id(self):
         return str(self.id)
-
-    def generate_remember_token(self):
-        """Generate a secure remember token"""
-        self.remember_token = secrets.token_urlsafe(32)
-        return self.remember_token
-
-    def verify_remember_token(self, token):
-        """Verify a remember token"""
-        return self.remember_token == token
 
 class Club(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -192,56 +179,8 @@ class ClubProject(db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     if not db_available:
-        # When DB is down, try to load from cached session data
-        user_data = session.get('user_cache')
-        if user_data and user_data.get('id') == int(user_id):
-            # Create a temporary user object
-            class TempUser:
-                def __init__(self, data):
-                    self.id = data['id']
-                    self.username = data['username']
-                    self.email = data['email']
-                    self.first_name = data.get('first_name')
-                    self.last_name = data.get('last_name')
-                    self.is_admin = data.get('is_admin', False)
-                    self.is_suspended = data.get('is_suspended', False)
-
-                @property
-                def is_authenticated(self):
-                    return True
-
-                @property
-                def is_active(self):
-                    return not self.is_suspended
-
-                @property
-                def is_anonymous(self):
-                    return False
-
-                def get_id(self):
-                    return str(self.id)
-
-            temp_user = TempUser(user_data)
-            return temp_user
         return None
-
-    try:
-        user = db.session.get(User, int(user_id))
-        # If user is found and we have cached data, make sure cache is up to date
-        if user:
-            session['user_cache'] = {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'first_name': user.first_name,
-                'last_name': user.last_name,
-                'is_admin': user.is_admin,
-                'is_suspended': user.is_suspended
-            }
-        return user
-    except Exception as e:
-        print(f"Error loading user {user_id}: {e}")
-        return None
+    return db.session.get(User, int(user_id))
 
 # Airtable Service for Pizza Grants
 class AirtableService:
@@ -274,9 +213,9 @@ class AirtableService:
             params = {
                 'filterByFormula': f'AND(FIND("{email}", {{Current Leaders\' Emails}}) > 0, FIND("{club_name}", {{Venue}}) > 0)'
             }
-
+            
             response = requests.get(leaders_url, headers=self.headers, params=params)
-
+            
             if response.status_code == 200:
                 data = response.json()
                 records = data.get('records', [])
@@ -604,33 +543,11 @@ def slack_callback():
 
     if user:
         # User exists, log them in
-        remember_token = user.generate_remember_token()
+        login_user(user)
         user.last_login = datetime.utcnow()
         db.session.commit()
-
-        login_user(user, remember=True)
-
-        # Cache user data in session for when DB is down
-        session['user_cache'] = {
-            'id': user.id,
-            'username': user.username,
-            'email': user.email,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-            'is_admin': user.is_admin,
-            'is_suspended': user.is_suspended
-        }
-
-        # Set remember token cookie (5 days)
-        resp = redirect(url_for('dashboard'))
-        resp.set_cookie('remember_token', remember_token, 
-                      max_age=5*24*60*60,  # 5 days
-                      secure=False,  # Set to True in production with HTTPS
-                      httponly=True,
-                      samesite='Lax')
-
         flash(f'Welcome back, {user.username}!', 'success')
-        return resp
+        return redirect(url_for('dashboard'))
     else:
         # New user, store Slack data in session and show completion modal
         session['slack_signup_data'] = {
@@ -654,16 +571,16 @@ def verify_leader():
 
     if request.method == 'POST':
         data = request.get_json()
-
+        
         email = data.get('email', '').strip()
         club_name = data.get('club_name', '').strip()
-
+        
         if not email or not club_name:
             return jsonify({'error': 'Email and club name are required'}), 400
-
+        
         # Verify with Airtable
         is_verified = airtable_service.verify_club_leader(email, club_name)
-
+        
         if is_verified:
             # Store verification data in session
             session['leader_verification'] = {
@@ -674,7 +591,7 @@ def verify_leader():
             return jsonify({'success': True, 'message': 'Leader verification successful!'})
         else:
             return jsonify({'error': 'Club leader verification failed. Please check your email and club name.'}), 400
-
+    
     return render_template('verify_leader.html')
 
 @app.route('/complete-leader-signup', methods=['GET', 'POST'])
@@ -685,7 +602,7 @@ def complete_leader_signup():
         return redirect(url_for('dashboard'))
 
     leader_verification = session.get('leader_verification')
-
+    
     if not leader_verification or not leader_verification.get('verified'):
         flash('Invalid verification session. Please start over.', 'error')
         return redirect(url_for('dashboard'))
@@ -693,7 +610,7 @@ def complete_leader_signup():
     try:
         # Check if this is for an existing user or new signup
         signup_data = session.get('signup_data')
-
+        
         if signup_data:
             # New user signup flow
             user = User(
@@ -706,10 +623,10 @@ def complete_leader_signup():
             user.set_password(signup_data['password'])
             db.session.add(user)
             db.session.flush()
-
+            
             # Clear signup session data
             session.pop('signup_data', None)
-
+            
             flash_message = f'Account created successfully! Welcome to {leader_verification["club_name"]}!'
             redirect_route = 'login'
         else:
@@ -733,7 +650,7 @@ def complete_leader_signup():
         session.pop('leader_verification', None)
 
         flash(flash_message, 'success')
-
+        
         if redirect_route == 'club_dashboard':
             return redirect(url_for('club_dashboard', club_id=club.id))
         else:
@@ -771,8 +688,7 @@ def complete_slack_signup():
             return jsonify({'error': 'Username must be at least 3 characters long'}), 400
 
         if not email:
-            return jsonify({'error': 'Email is required'}),```python
- 400
+            return jsonify({'error': 'Email is required'}), 400
 
         if not first_name:
             return jsonify({'error': 'First name is required'}), 400
@@ -812,41 +728,13 @@ def complete_slack_signup():
 
             db.session.commit()
 
-            # Generate remember token
-            remember_token = user.generate_remember_token()
-
-            # Log user in first
-            login_user(user, remember=True)
-
-            # Set remember token cookie (5 days)
-            resp = redirect(url_for('dashboard'))
-            resp.set_cookie('remember_token', remember_token, 
-                          max_age=5*24*60*60,  # 5 days
-                          secure=False,  # Set to True in production with HTTPS
-                          httponly=True,
-                          samesite='Lax')
-
-            # Cache user data in session for when DB is down
-            session['user_cache'] = {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'first_name': user.first_name,
-                'last_name': user.last_name,
-                'is_admin': user.is_admin,
-                'is_suspended': user.is_suspended,
-                'remember_token': remember_token
-            }
-            session.permanent = True
-
-            # Clear Slack signup data after successful login
+            # Clear Slack signup data and log user in
             session.pop('slack_signup_data', None)
+            login_user(user)
+            user.last_login = datetime.utcnow()
+            db.session.commit()
 
-            return jsonify({
-                'success': True, 
-                'message': 'Account created successfully!',
-                'remember_token': remember_token
-            })
+            return jsonify({'success': True, 'message': 'Account created successfully!'})
 
         except Exception as e:
             db.session.rollback()
@@ -879,45 +767,11 @@ def login():
         try:
             user = User.query.filter_by(email=email).first()
             if user and user.check_password(password):
-                # Generate remember token for persistent login
-                remember_token = user.generate_remember_token()
+                login_user(user)
                 user.last_login = datetime.utcnow()
                 db.session.commit()
-
-                # Generate remember token FIRST before login
-                remember_token = user.generate_remember_token()
-                user.last_login = datetime.utcnow()
-                db.session.commit()
-
-                print(f"DEBUG: Generated remember token for {user.username}")
-
-                # Cache user data in session for when DB is down
-                session['user_cache'] = {
-                    'id': user.id,
-                    'username': user.username,
-                    'email': user.email,
-                    'first_name': user.first_name,
-                    'last_name': user.last_name,
-                    'is_admin': user.is_admin,
-                    'is_suspended': user.is_suspended,
-                    'remember_token': remember_token
-                }
-                session.permanent = True
-
-                # Login user AFTER setting up session
-                login_user(user, remember=True)
-                print(f"DEBUG: User {user.username} logged in successfully, is_authenticated: {current_user.is_authenticated}")
-
-                # Set remember token cookie (5 days)
-                resp = redirect(url_for('dashboard'))
-                resp.set_cookie('remember_token', remember_token, 
-                              max_age=5*24*60*60,  # 5 days
-                              secure=False,  # Set to True in production with HTTPS
-                              httponly=True,
-                              samesite='Lax')
-
                 flash(f'Welcome back, {user.username}!', 'success')
-                return resp
+                return redirect(url_for('dashboard'))
 
             flash('Invalid email or password', 'error')
         except Exception as e:
@@ -970,7 +824,7 @@ def signup():
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
-
+            
             flash('Account created successfully! Please log in.', 'success')
             return redirect(url_for('login'))
         except Exception as e:
@@ -989,125 +843,16 @@ def require_database(f):
 
 @app.route('/logout')
 @login_required
+@require_database
 def logout():
-    # Clear remember token from database if available
-    if db_available and current_user.is_authenticated:
-        try:
-            if hasattr(current_user, 'id'):
-                user = User.query.get(current_user.id)
-                if user:
-                    user.remember_token = None
-                    db.session.commit()
-        except:
-            pass
-
-    # Clear session cache
-    session.pop('user_cache', None)
-
     logout_user()
-
-    # Clear remember token cookie
-    resp = redirect(url_for('index'))
-    resp.set_cookie('remember_token', '', expires=0)
-
     flash('You have been logged out.', 'success')
-    return resp
-
-@app.before_request
-def validate_remember_token():
-    """Validate remember token and sync with database when available"""
-    # Skip validation for auth routes to avoid conflicts
-    auth_routes = ['login', 'logout', 'signup', 'slack_login', 'slack_callback', 
-                   'complete_slack_signup', 'verify_leader', 'complete_leader_signup', 'static']
-
-    # Skip for static files and auth routes
-    if request.endpoint in auth_routes or (request.endpoint and request.endpoint.startswith('static')):
-        return
-
-    print(f"DEBUG: before_request for endpoint: {request.endpoint}, authenticated: {current_user.is_authenticated}")
-
-    remember_token = request.cookies.get('remember_token')
-
-    if db_available and remember_token:
-        try:
-            # Always check the remember token against the database when it's available
-            user = User.query.filter_by(remember_token=remember_token).first()
-            if user and not user.is_suspended:
-                # If user is not currently authenticated, log them in
-                if not current_user.is_authenticated:
-                    login_user(user, remember=True)
-                    user.last_login = datetime.utcnow()
-                    db.session.commit()
-
-                # Always update cached user data when DB is available
-                session['user_cache'] = {
-                    'id': user.id,
-                    'username': user.username,
-                    'email': user.email,
-                    'first_name': user.first_name,
-                    'last_name': user.last_name,
-                    'is_admin': user.is_admin,
-                    'is_suspended': user.is_suspended,
-                    'remember_token': remember_token
-                }
-                session.permanent = True
-            elif user and user.is_suspended:
-                # If user is suspended, log them out and clear token
-                if current_user.is_authenticated:
-                    logout_user()
-                session.pop('user_cache', None)
-            elif not user:
-                # If token is invalid, clear it
-                if current_user.is_authenticated:
-                    logout_user()
-                session.pop('user_cache', None)
-        except Exception as e:
-            print(f"Error validating remember token: {e}")
-            pass
-    elif not db_available and remember_token and not current_user.is_authenticated:
-        # When DB is down, try to use cached session data
-        user_data = session.get('user_cache')
-        if user_data:
-            # Create a temporary user object from cached data
-            class TempUser:
-                def __init__(self, data):
-                    self.id = data['id']
-                    self.username = data['username']
-                    self.email = data['email']
-                    self.first_name = data.get('first_name')
-                    self.last_name = data.get('last_name')
-                    self.is_admin = data.get('is_admin', False)
-                    self.is_suspended = data.get('is_suspended', False)
-
-                @property
-                def is_authenticated(self):
-                    return True
-
-                @property
-                def is_active(self):
-                    return not self.is_suspended
-
-                @property
-                def is_anonymous(self):
-                    return False
-
-                def get_id(self):
-                    return str(self.id)
-
-            temp_user = TempUser(user_data)
-            # Set the current user manually for this request
-            from flask_login import _login_user
-            _login_user(temp_user, remember=True, fresh=False)
+    return redirect(url_for('index'))
 
 @app.route('/dashboard')
 @login_required
+@require_database
 def dashboard():
-    print(f"DEBUG: Dashboard route accessed. User authenticated: {current_user.is_authenticated}")
-    if current_user.is_authenticated:
-        print(f"DEBUG: Current user: {current_user.username} (ID: {current_user.id})")
-    else:
-        print("DEBUG: User not authenticated, should be redirected by @login_required")
-
     # Get user's club memberships
     memberships = ClubMembership.query.filter_by(user_id=current_user.id).all()
     led_clubs = Club.query.filter_by(leader_id=current_user.id).all()
@@ -1603,6 +1348,7 @@ def get_user_data(user_id):
             if ClubMembership.query.filter_by(club_id=club.id, user_id=user_id).first():
                 is_member_of_led_club = True
                 break
+
         if not is_member_of_led_club:
             return jsonify({'error': 'Unauthorized'}), 403
 
@@ -2099,7 +1845,7 @@ if __name__ == '__main__':
         print("Installing Flask-Limiter...")
         import subprocess
         subprocess.check_call(['pip', 'install', 'Flask-Limiter'])
-
+        
     if db_available:
         try:
             with app.app_context():
