@@ -869,6 +869,7 @@ def login():
 
                 # Login user
                 login_user(user, remember=True)
+                print(f"DEBUG: User {user.username} logged in successfully")
 
                 # Cache user data in session for when DB is down
                 session['user_cache'] = {
@@ -991,6 +992,13 @@ def logout():
 @app.before_request
 def validate_remember_token():
     """Validate remember token and sync with database when available"""
+    # Skip validation for auth routes to avoid conflicts
+    auth_routes = ['login', 'logout', 'signup', 'slack_login', 'slack_callback', 
+                   'complete_slack_signup', 'verify_leader', 'complete_leader_signup']
+    
+    if request.endpoint in auth_routes:
+        return
+    
     remember_token = request.cookies.get('remember_token')
 
     if db_available and remember_token:
@@ -1054,6 +1062,7 @@ def validate_remember_token():
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    print(f"DEBUG: Dashboard accessed by user: {current_user.username if current_user.is_authenticated else 'Anonymous'}")
     # Get user's club memberships
     memberships = ClubMembership.query.filter_by(user_id=current_user.id).all()
     led_clubs = Club.query.filter_by(leader_id=current_user.id).all()
