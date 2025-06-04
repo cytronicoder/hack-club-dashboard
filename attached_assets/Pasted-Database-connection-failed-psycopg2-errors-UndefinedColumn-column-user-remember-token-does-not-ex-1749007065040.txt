@@ -1,0 +1,32 @@
+Database connection failed: (psycopg2.errors.UndefinedColumn) column user.remember_token does not exist
+LINE 1: ..._key, "user".slack_user_id AS user_slack_user_id, "user".rem...
+                                                             ^
+
+[SQL: SELECT "user".id AS user_id, "user".username AS user_username, "user".email AS user_email, "user".password_hash AS user_password_hash, "user".first_name AS user_first_name, "user".last_name AS user_last_name, "user".birthday AS user_birthday, "user".created_at AS user_created_at, "user".last_login AS user_last_login, "user".is_admin AS user_is_admin, "user".is_suspended AS user_is_suspended, "user".hackatime_api_key AS user_hackatime_api_key, "user".slack_user_id AS user_slack_user_id, "user".remember_token AS user_remember_token 
+FROM "user" 
+WHERE "user".email = %(email_1)s 
+ LIMIT %(param_1)s]
+[parameters: {'email_1': 'ethan@hackclub.com', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+Starting app without database functionality...
+ * Serving Flask app 'main'
+ * Debug mode: on
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.31.128.44:5000
+Press CTRL+C to quit
+ * Restarting with stat
+Database connection failed: (psycopg2.errors.UndefinedColumn) column user.remember_token does not exist
+LINE 1: ..._key, "user".slack_user_id AS user_slack_user_id, "user".rem...
+                                                             ^
+
+[SQL: SELECT "user".id AS user_id, "user".username AS user_username, "user".email AS user_email, "user".password_hash AS user_password_hash, "user".first_name AS user_first_name, "user".last_name AS user_last_name, "user".birthday AS user_birthday, "user".created_at AS user_created_at, "user".last_login AS user_last_login, "user".is_admin AS user_is_admin, "user".is_suspended AS user_is_suspended, "user".hackatime_api_key AS user_hackatime_api_key, "user".slack_user_id AS user_slack_user_id, "user".remember_token AS user_remember_token 
+FROM "user" 
+WHERE "user".email = %(email_1)s 
+ LIMIT %(param_1)s]
+[parameters: {'email_1': 'ethan@hackclub.com', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+Starting app without database functionality...
+ * Debugger is active!
+ * Debugger PIN: 310-155-168
