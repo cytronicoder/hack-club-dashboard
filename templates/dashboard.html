@@ -327,10 +327,6 @@
     .empty-state {
         text-align: center;
         padding: 2rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 300px;
         animation: fadeInUp 1s ease-out 0.4s both;
     }
 
@@ -360,12 +356,13 @@
     }
 
     .action-btn i {
-        font-size: 0.9rem;
-        width: 16px;
-        height: 16px;
+        font-size: 1rem;
+        width: 1rem;
+        height: 1rem;
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        flex-shrink: 0;
     }
 
     .action-btn::before {
