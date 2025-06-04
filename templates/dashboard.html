@@ -499,7 +499,7 @@
                 <span>Welcome to your dashboard!</span>
             </div>
             <h1 class="dashboard-title">Hey there, {{ current_user.username }}!</h1>
-            <p class="dashboard-subtitle">Ready to build something amazing? Choose a club to manage or create your own coding community!</p>
+            <p class="dashboard-subtitle">Ready to build something amazing? Choose a club!</p>
         </div>
 
         {% if led_clubs or memberships %}
@@ -575,8 +575,7 @@
             <div class="empty-state">
                 <div class="action-buttons">
                     <a href="{{ url_for('verify_leader') }}" class="action-btn action-btn-primary">
-                        <i class="fas fa-crown"></i>
-                        Create a Club
+                        <p><i style="font-size: 20px;" class="fas fa-crown"></i> Create a Club</p>
                     </a>
                     <button class="action-btn action-btn-secondary" onclick="joinClubPrompt()">
                         <i class="fas fa-sign-in-alt"></i>
