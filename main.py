@@ -599,27 +599,41 @@ def verify_leader():
 def complete_leader_signup():
     if not db_available:
         flash('Database is currently unavailable. Please try again later.', 'error')
-        return redirect(url_for('signup'))
+        return redirect(url_for('dashboard'))
 
-    signup_data = session.get('signup_data')
     leader_verification = session.get('leader_verification')
     
-    if not signup_data or not leader_verification or not leader_verification.get('verified'):
-        flash('Invalid signup session. Please start over.', 'error')
-        return redirect(url_for('signup'))
+    if not leader_verification or not leader_verification.get('verified'):
+        flash('Invalid verification session. Please start over.', 'error')
+        return redirect(url_for('dashboard'))
 
     try:
-        # Create the user
-        user = User(
-            username=signup_data['username'],
-            email=signup_data['email'],
-            first_name=signup_data['first_name'],
-            last_name=signup_data['last_name'],
-            birthday=datetime.strptime(signup_data['birthday'], '%Y-%m-%d').date() if signup_data['birthday'] else None
-        )
-        user.set_password(signup_data['password'])
-        db.session.add(user)
-        db.session.flush()
+        # Check if this is for an existing user or new signup
+        signup_data = session.get('signup_data')
+        
+        if signup_data:
+            # New user signup flow
+            user = User(
+                username=signup_data['username'],
+                email=signup_data['email'],
+                first_name=signup_data['first_name'],
+                last_name=signup_data['last_name'],
+                birthday=datetime.strptime(signup_data['birthday'], '%Y-%m-%d').date() if signup_data['birthday'] else None
+            )
+            user.set_password(signup_data['password'])
+            db.session.add(user)
+            db.session.flush()
+            
+            # Clear signup session data
+            session.pop('signup_data', None)
+            
+            flash_message = f'Account created successfully! Welcome to {leader_verification["club_name"]}!'
+            redirect_route = 'login'
+        else:
+            # Existing user creating a club
+            user = current_user
+            flash_message = f'Club created successfully! Welcome to {leader_verification["club_name"]}!'
+            redirect_route = 'club_dashboard'
 
         # Create the club with the verified club name
         club = Club(
@@ -632,17 +646,20 @@ def complete_leader_signup():
 
         db.session.commit()
 
-        # Clear session data
-        session.pop('signup_data', None)
+        # Clear verification session data
         session.pop('leader_verification', None)
 
-        flash(f'Account created successfully! Welcome to {club.name}!', 'success')
-        return redirect(url_for('login'))
+        flash(flash_message, 'success')
+        
+        if redirect_route == 'club_dashboard':
+            return redirect(url_for('club_dashboard', club_id=club.id))
+        else:
+            return redirect(url_for(redirect_route))
 
     except Exception as e:
         db.session.rollback()
         flash('Database error. Please try again later.', 'error')
-        return redirect(url_for('signup'))
+        return redirect(url_for('dashboard'))
 
 @app.route('/complete-slack-signup', methods=['GET', 'POST'])
 @limiter.limit("50 per minute")
