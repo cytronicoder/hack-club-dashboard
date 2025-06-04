@@ -189,34 +189,42 @@ class ClubProject(db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     if not db_available:
-        # Try to load from remember token when DB is down
-        remember_token = request.cookies.get('remember_token')
-        if remember_token:
-            try:
-                # Store user data in session when DB comes back up
-                user_data = session.get('user_cache')
-                if user_data and user_data.get('id') == int(user_id):
-                    # Create a temporary user object
-                    temp_user = type('TempUser', (), {
-                        'id': user_data['id'],
-                        'username': user_data['username'],
-                        'email': user_data['email'],
-                        'first_name': user_data.get('first_name'),
-                        'last_name': user_data.get('last_name'),
-                        'is_admin': user_data.get('is_admin', False),
-                        'is_suspended': user_data.get('is_suspended', False),
-                        'is_authenticated': lambda: True,
-                        'is_active': lambda: not user_data.get('is_suspended', False),
-                        'is_anonymous': lambda: False,
-                        'get_id': lambda: str(user_data['id'])
-                    })()
-                    return temp_user
-            except:
-                pass
+        # When DB is down, try to load from cached session data
+        user_data = session.get('user_cache')
+        if user_data and user_data.get('id') == int(user_id):
+            # Create a temporary user object
+            temp_user = type('TempUser', (), {
+                'id': user_data['id'],
+                'username': user_data['username'],
+                'email': user_data['email'],
+                'first_name': user_data.get('first_name'),
+                'last_name': user_data.get('last_name'),
+                'is_admin': user_data.get('is_admin', False),
+                'is_suspended': user_data.get('is_suspended', False),
+                'is_authenticated': lambda: True,
+                'is_active': lambda: not user_data.get('is_suspended', False),
+                'is_anonymous': lambda: False,
+                'get_id': lambda: str(user_data['id'])
+            })()
+            return temp_user
         return None
+    
     try:
-        return db.session.get(User, int(user_id))
-    except:
+        user = db.session.get(User, int(user_id))
+        # If user is found and we have cached data, make sure cache is up to date
+        if user:
+            session['user_cache'] = {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'is_admin': user.is_admin,
+                'is_suspended': user.is_suspended
+            }
+        return user
+    except Exception as e:
+        print(f"Error loading user {user_id}: {e}")
         return None
 
 # Airtable Service for Pizza Grants
@@ -971,25 +979,63 @@ def logout():
 @app.before_request
 def validate_remember_token():
     """Validate remember token and sync with database when available"""
-    if db_available and not current_user.is_authenticated:
-        remember_token = request.cookies.get('remember_token')
-        if remember_token:
-            try:
-                user = User.query.filter_by(remember_token=remember_token).first()
-                if user and not user.is_suspended:
+    remember_token = request.cookies.get('remember_token')
+    
+    if db_available and remember_token:
+        try:
+            # Always check the remember token against the database when it's available
+            user = User.query.filter_by(remember_token=remember_token).first()
+            if user and not user.is_suspended:
+                # If user is not currently authenticated, log them in
+                if not current_user.is_authenticated:
                     login_user(user, remember=True)
-                    # Update cached user data
-                    session['user_cache'] = {
-                        'id': user.id,
-                        'username': user.username,
-                        'email': user.email,
-                        'first_name': user.first_name,
-                        'last_name': user.last_name,
-                        'is_admin': user.is_admin,
-                        'is_suspended': user.is_suspended
-                    }
-            except:
-                pass
+                    user.last_login = datetime.utcnow()
+                    db.session.commit()
+                
+                # Always update cached user data when DB is available
+                session['user_cache'] = {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'is_admin': user.is_admin,
+                    'is_suspended': user.is_suspended
+                }
+            elif user and user.is_suspended:
+                # If user is suspended, log them out and clear token
+                if current_user.is_authenticated:
+                    logout_user()
+                session.pop('user_cache', None)
+            elif not user:
+                # If token is invalid, clear it
+                if current_user.is_authenticated:
+                    logout_user()
+                session.pop('user_cache', None)
+        except Exception as e:
+            print(f"Error validating remember token: {e}")
+            pass
+    elif not db_available and remember_token and not current_user.is_authenticated:
+        # When DB is down, try to use cached session data
+        user_data = session.get('user_cache')
+        if user_data:
+            # Create a temporary user object from cached data
+            temp_user = type('TempUser', (), {
+                'id': user_data['id'],
+                'username': user_data['username'],
+                'email': user_data['email'],
+                'first_name': user_data.get('first_name'),
+                'last_name': user_data.get('last_name'),
+                'is_admin': user_data.get('is_admin', False),
+                'is_suspended': user_data.get('is_suspended', False),
+                'is_authenticated': lambda: True,
+                'is_active': lambda: not user_data.get('is_suspended', False),
+                'is_anonymous': lambda: False,
+                'get_id': lambda: str(user_data['id'])
+            })()
+            # Set the current user manually for this request
+            from flask_login import _login_user
+            _login_user(temp_user, remember=True, fresh=False)
 
 @app.route('/dashboard')
 @login_required
