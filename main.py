@@ -760,7 +760,6 @@ def complete_slack_signup():
         if not first_name:
             return jsonify({'error': 'First name is required'}), 400
 
-```python
         # Check if username or email is already taken
         if User.query.filter_by(username=username).first():
             return jsonify({'error': 'Username already taken'}), 400
