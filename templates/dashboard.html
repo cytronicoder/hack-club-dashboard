@@ -330,14 +330,15 @@
         animation: fadeInUp 1s ease-out 0.4s both;
     }
 
-    .action-buttons {
+    .cta-buttons {
         display: flex;
         gap: 1.5rem;
         justify-content: center;
         flex-wrap: wrap;
+        margin-top: 2.5rem;
     }
 
-    .action-btn {
+    .btn-hero {
         padding: 1rem 2.5rem;
         font-size: 1.1rem;
         font-weight: 700;
@@ -353,19 +354,10 @@
         overflow: hidden;
         backdrop-filter: blur(20px);
         border: 2px solid transparent;
+        cursor: pointer;
     }
 
-    .action-btn i {
-        font-size: 1rem;
-        width: 1rem;
-        height: 1rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-
-    .action-btn::before {
+    .btn-hero::before {
         content: '';
         position: absolute;
         top: 0;
@@ -376,32 +368,32 @@
         transition: left 0.5s;
     }
 
-    .action-btn:hover::before {
+    .btn-hero:hover::before {
         left: 100%;
     }
 
-    .action-btn-primary {
+    .btn-primary-hero {
         background: var(--glass-bg);
         color: white;
         border-color: var(--glass-border);
         box-shadow: var(--shadow-soft);
     }
 
-    .action-btn-primary:hover {
+    .btn-primary-hero:hover {
         background: rgba(255, 255, 255, 0.2);
         transform: translateY(-5px) scale(1.05);
         box-shadow: var(--shadow-strong);
         border-color: rgba(255, 255, 255, 0.4);
     }
 
-    .action-btn-secondary {
+    .btn-secondary-hero {
         background: rgba(255, 255, 255, 0.95);
         color: #ec3750;
         border-color: rgba(255, 255, 255, 0.3);
         box-shadow: var(--shadow-soft);
     }
 
-    .action-btn-secondary:hover {
+    .btn-secondary-hero:hover {
         background: white;
         transform: translateY(-5px) scale(1.05);
         box-shadow: var(--shadow-strong);
@@ -463,12 +455,12 @@
             gap: 1.5rem;
         }
 
-        .action-buttons {
+        .cta-buttons {
             flex-direction: column;
             align-items: center;
         }
 
-        .action-btn {
+        .btn-hero {
             width: 100%;
             max-width: 300px;
         }
@@ -576,11 +568,12 @@
             </div>
         {% else %}
             <div class="empty-state">
-                <div class="action-buttons">
-                    <a href="{{ url_for('verify_leader') }}" class="action-btn action-btn-primary">
-                        <p><i style="font-size: 20px;" class="fas fa-crown"></i> Create a Club</p>
+                <div class="cta-buttons">
+                    <a href="{{ url_for('verify_leader') }}" class="btn-hero btn-primary-hero">
+                        <i class="fas fa-crown"></i>
+                        Create a Club
                     </a>
-                    <button class="action-btn action-btn-secondary" onclick="joinClubPrompt()">
+                    <button class="btn-hero btn-secondary-hero" onclick="joinClubPrompt()">
                         <i class="fas fa-sign-in-alt"></i>
                         Join Club
                     </button>
@@ -680,7 +673,7 @@
         });
 
         // Add click animation to action buttons
-        const actionBtns = document.querySelectorAll('.action-btn');
+        const actionBtns = document.querySelectorAll('.btn-hero');
         actionBtns.forEach(btn => {
             btn.addEventListener('click', function(e) {
                 // Create ripple effect
