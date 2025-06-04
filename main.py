@@ -69,6 +69,7 @@ class User(db.Model):
     is_suspended = db.Column(db.Boolean, default=False)
     hackatime_api_key = db.Column(db.String(255))
     slack_user_id = db.Column(db.String(255), unique=True)
+    remember_token = db.Column(db.String(255), unique=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -87,6 +88,15 @@ class User(db.Model):
 
     def get_id(self):
         return str(self.id)
+    
+    def generate_remember_token(self):
+        """Generate a secure remember token"""
+        self.remember_token = secrets.token_urlsafe(32)
+        return self.remember_token
+    
+    def verify_remember_token(self, token):
+        """Verify a remember token"""
+        return self.remember_token == token
 
 class Club(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -179,8 +189,35 @@ class ClubProject(db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     if not db_available:
+        # Try to load from remember token when DB is down
+        remember_token = request.cookies.get('remember_token')
+        if remember_token:
+            try:
+                # Store user data in session when DB comes back up
+                user_data = session.get('user_cache')
+                if user_data and user_data.get('id') == int(user_id):
+                    # Create a temporary user object
+                    temp_user = type('TempUser', (), {
+                        'id': user_data['id'],
+                        'username': user_data['username'],
+                        'email': user_data['email'],
+                        'first_name': user_data.get('first_name'),
+                        'last_name': user_data.get('last_name'),
+                        'is_admin': user_data.get('is_admin', False),
+                        'is_suspended': user_data.get('is_suspended', False),
+                        'is_authenticated': lambda: True,
+                        'is_active': lambda: not user_data.get('is_suspended', False),
+                        'is_anonymous': lambda: False,
+                        'get_id': lambda: str(user_data['id'])
+                    })()
+                    return temp_user
+            except:
+                pass
         return None
-    return db.session.get(User, int(user_id))
+    try:
+        return db.session.get(User, int(user_id))
+    except:
+        return None
 
 # Airtable Service for Pizza Grants
 class AirtableService:
@@ -543,11 +580,33 @@ def slack_callback():
 
     if user:
         # User exists, log them in
-        login_user(user)
+        remember_token = user.generate_remember_token()
         user.last_login = datetime.utcnow()
         db.session.commit()
+        
+        login_user(user, remember=True)
+        
+        # Cache user data in session for when DB is down
+        session['user_cache'] = {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'is_admin': user.is_admin,
+            'is_suspended': user.is_suspended
+        }
+        
+        # Set remember token cookie (5 days)
+        resp = redirect(url_for('dashboard'))
+        resp.set_cookie('remember_token', remember_token, 
+                      max_age=5*24*60*60,  # 5 days
+                      secure=False,  # Set to True in production with HTTPS
+                      httponly=True,
+                      samesite='Lax')
+        
         flash(f'Welcome back, {user.username}!', 'success')
-        return redirect(url_for('dashboard'))
+        return resp
     else:
         # New user, store Slack data in session and show completion modal
         session['slack_signup_data'] = {
@@ -728,13 +787,31 @@ def complete_slack_signup():
 
             db.session.commit()
 
+            # Generate remember token
+            remember_token = user.generate_remember_token()
+            
             # Clear Slack signup data and log user in
             session.pop('slack_signup_data', None)
-            login_user(user)
+            login_user(user, remember=True)
             user.last_login = datetime.utcnow()
             db.session.commit()
+            
+            # Cache user data in session for when DB is down
+            session['user_cache'] = {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'is_admin': user.is_admin,
+                'is_suspended': user.is_suspended
+            }
 
-            return jsonify({'success': True, 'message': 'Account created successfully!'})
+            return jsonify({
+                'success': True, 
+                'message': 'Account created successfully!',
+                'remember_token': remember_token
+            })
 
         except Exception as e:
             db.session.rollback()
@@ -767,11 +844,35 @@ def login():
         try:
             user = User.query.filter_by(email=email).first()
             if user and user.check_password(password):
-                login_user(user)
+                # Generate remember token for persistent login
+                remember_token = user.generate_remember_token()
                 user.last_login = datetime.utcnow()
                 db.session.commit()
+                
+                # Login user
+                login_user(user, remember=True)
+                
+                # Cache user data in session for when DB is down
+                session['user_cache'] = {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'is_admin': user.is_admin,
+                    'is_suspended': user.is_suspended
+                }
+                
+                # Set remember token cookie (5 days)
+                resp = redirect(url_for('dashboard'))
+                resp.set_cookie('remember_token', remember_token, 
+                              max_age=5*24*60*60,  # 5 days
+                              secure=False,  # Set to True in production with HTTPS
+                              httponly=True,
+                              samesite='Lax')
+                
                 flash(f'Welcome back, {user.username}!', 'success')
-                return redirect(url_for('dashboard'))
+                return resp
 
             flash('Invalid email or password', 'error')
         except Exception as e:
@@ -843,15 +944,55 @@ def require_database(f):
 
 @app.route('/logout')
 @login_required
-@require_database
 def logout():
+    # Clear remember token from database if available
+    if db_available and current_user.is_authenticated:
+        try:
+            if hasattr(current_user, 'id'):
+                user = User.query.get(current_user.id)
+                if user:
+                    user.remember_token = None
+                    db.session.commit()
+        except:
+            pass
+    
+    # Clear session cache
+    session.pop('user_cache', None)
+    
     logout_user()
+    
+    # Clear remember token cookie
+    resp = redirect(url_for('index'))
+    resp.set_cookie('remember_token', '', expires=0)
+    
     flash('You have been logged out.', 'success')
-    return redirect(url_for('index'))
+    return resp
+
+@app.before_request
+def validate_remember_token():
+    """Validate remember token and sync with database when available"""
+    if db_available and not current_user.is_authenticated:
+        remember_token = request.cookies.get('remember_token')
+        if remember_token:
+            try:
+                user = User.query.filter_by(remember_token=remember_token).first()
+                if user and not user.is_suspended:
+                    login_user(user, remember=True)
+                    # Update cached user data
+                    session['user_cache'] = {
+                        'id': user.id,
+                        'username': user.username,
+                        'email': user.email,
+                        'first_name': user.first_name,
+                        'last_name': user.last_name,
+                        'is_admin': user.is_admin,
+                        'is_suspended': user.is_suspended
+                    }
+            except:
+                pass
 
 @app.route('/dashboard')
 @login_required
-@require_database
 def dashboard():
     # Get user's club memberships
     memberships = ClubMembership.query.filter_by(user_id=current_user.id).all()
