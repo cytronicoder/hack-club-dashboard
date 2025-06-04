@@ -7,8 +7,8 @@
 <style>
     :root {
         --primary-gradient: linear-gradient(135deg, #ec3750 0%, #ff6b7a 50%, #ff8c82 100%);
-        --secondary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        --accent-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --secondary-gradient: linear-gradient(135deg, #ec3750 0%, #d63146 100%);
+        --accent-gradient: linear-gradient(135deg, #ff8c82 0%, #ff6b7a 100%);
         --glass-bg: rgba(255, 255, 255, 0.1);
         --glass-border: rgba(255, 255, 255, 0.2);
         --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.1);
@@ -62,7 +62,7 @@
 
     .dashboard-container {
         min-height: 100vh;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #ec3750 0%, #d63146 100%);
         position: relative;
         overflow: hidden;
         padding: 0;
@@ -250,15 +250,15 @@
     }
 
     .club-avatar {
-        width: 100px;
-        height: 100px;
+        width: 80px;
+        height: 80px;
         background: var(--primary-gradient);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         margin: 0 auto 1.5rem;
-        font-size: 2.5rem;
+        font-size: 1.5rem;
         color: white;
         box-shadow: 0 15px 35px rgba(236, 55, 80, 0.4);
         position: relative;
@@ -363,21 +363,25 @@
     }
 
     .action-btn {
-        padding: 1.25rem 2.5rem;
-        font-size: 1.1rem;
-        font-weight: 700;
-        border-radius: 50px;
+        padding: 1rem 2rem;
+        font-size: 1rem;
+        font-weight: 600;
+        border-radius: 12px;
         text-decoration: none;
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        transition: all 0.3s ease;
         display: inline-flex;
         align-items: center;
-        gap: 0.75rem;
-        min-width: 220px;
+        gap: 0.5rem;
+        min-width: 200px;
         justify-content: center;
         position: relative;
         overflow: hidden;
         backdrop-filter: blur(20px);
         border: 2px solid transparent;
+    }
+
+    .action-btn i {
+        font-size: 1rem;
     }
 
     .action-btn::before {
@@ -513,7 +517,7 @@
                 <i class="fas fa-rocket"></i>
                 <span>Welcome to your dashboard!</span>
             </div>
-            <h1 class="dashboard-title">Hey there, {{ current_user.username }}! 👋</h1>
+            <h1 class="dashboard-title">Hey there, {{ current_user.username }}!</h1>
             <p class="dashboard-subtitle">Ready to build something amazing? Choose a club to manage or create your own coding community!</p>
         </div>
 
@@ -626,13 +630,80 @@
     </div>
 </div>
 
+<!-- Join Club Modal -->
+<div id="joinClubModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 16px; padding: 2rem; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+            <h3 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.5rem; font-weight: 700;">Join a Club</h3>
+            <p style="margin: 0; color: #718096;">Enter the join code from your club leader</p>
+        </div>
+        <div style="margin-bottom: 1.5rem;">
+            <input 
+                type="text" 
+                id="joinCodeInput" 
+                placeholder="Enter join code" 
+                style="width: 100%; padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem; text-align: center; letter-spacing: 1px; font-weight: 600;"
+            >
+        </div>
+        <div style="display: flex; gap: 1rem;">
+            <button 
+                onclick="closeJoinModal()" 
+                style="flex: 1; padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #4a5568; font-weight: 600; cursor: pointer; transition: all 0.2s ease;"
+            >
+                Cancel
+            </button>
+            <button 
+                onclick="submitJoinCode()" 
+                style="flex: 1; padding: 0.75rem; border: none; border-radius: 8px; background: linear-gradient(135deg, #ec3750, #d63146); color: white; font-weight: 600; cursor: pointer; transition: all 0.2s ease;"
+            >
+                Join Club
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
     function joinClubPrompt() {
-        const result = prompt('🚀 Enter your club join code:', '');
-        if (result && result.trim()) {
-            window.location.href = `/join-club?code=${encodeURIComponent(result.trim())}`;
+        const modal = document.getElementById('joinClubModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            document.getElementById('joinCodeInput').focus();
         }
     }
+
+    function closeJoinModal() {
+        const modal = document.getElementById('joinClubModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.getElementById('joinCodeInput').value = '';
+        }
+    }
+
+    function submitJoinCode() {
+        const joinCode = document.getElementById('joinCodeInput').value.trim();
+        if (joinCode) {
+            window.location.href = `/join-club?code=${encodeURIComponent(joinCode)}`;
+        }
+    }
+
+    // Handle Enter key in join code input
+    document.addEventListener('DOMContentLoaded', function() {
+        const joinCodeInput = document.getElementById('joinCodeInput');
+        if (joinCodeInput) {
+            joinCodeInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    submitJoinCode();
+                }
+            });
+        }
+    });
+
+    // Close modal when clicking backdrop
+    document.getElementById('joinClubModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeJoinModal();
+        }
+    });
 
     // Add some dynamic interactions
     document.addEventListener('DOMContentLoaded', function() {
