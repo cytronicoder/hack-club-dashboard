@@ -77,12 +77,15 @@ class User(db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    @property
     def is_authenticated(self):
         return True
 
+    @property
     def is_active(self):
         return not self.is_suspended
 
+    @property
     def is_anonymous(self):
         return False
 
@@ -193,19 +196,32 @@ def load_user(user_id):
         user_data = session.get('user_cache')
         if user_data and user_data.get('id') == int(user_id):
             # Create a temporary user object
-            temp_user = type('TempUser', (), {
-                'id': user_data['id'],
-                'username': user_data['username'],
-                'email': user_data['email'],
-                'first_name': user_data.get('first_name'),
-                'last_name': user_data.get('last_name'),
-                'is_admin': user_data.get('is_admin', False),
-                'is_suspended': user_data.get('is_suspended', False),
-                'is_authenticated': lambda: True,
-                'is_active': lambda: not user_data.get('is_suspended', False),
-                'is_anonymous': lambda: False,
-                'get_id': lambda: str(user_data['id'])
-            })()
+            class TempUser:
+                def __init__(self, data):
+                    self.id = data['id']
+                    self.username = data['username']
+                    self.email = data['email']
+                    self.first_name = data.get('first_name')
+                    self.last_name = data.get('last_name')
+                    self.is_admin = data.get('is_admin', False)
+                    self.is_suspended = data.get('is_suspended', False)
+
+                @property
+                def is_authenticated(self):
+                    return True
+
+                @property
+                def is_active(self):
+                    return not self.is_suspended
+
+                @property
+                def is_anonymous(self):
+                    return False
+
+                def get_id(self):
+                    return str(self.id)
+
+            temp_user = TempUser(user_data)
             return temp_user
         return None
 
@@ -755,7 +771,8 @@ def complete_slack_signup():
             return jsonify({'error': 'Username must be at least 3 characters long'}), 400
 
         if not email:
-            return jsonify({'error': 'Email is required'}), 400
+            return jsonify({'error': 'Email is required'}),```python
+ 400
 
         if not first_name:
             return jsonify({'error': 'First name is required'}), 400
@@ -871,7 +888,7 @@ def login():
                 remember_token = user.generate_remember_token()
                 user.last_login = datetime.utcnow()
                 db.session.commit()
-                
+
                 print(f"DEBUG: Generated remember token for {user.username}")
 
                 # Cache user data in session for when DB is down
@@ -1002,13 +1019,13 @@ def validate_remember_token():
     # Skip validation for auth routes to avoid conflicts
     auth_routes = ['login', 'logout', 'signup', 'slack_login', 'slack_callback', 
                    'complete_slack_signup', 'verify_leader', 'complete_leader_signup', 'static']
-    
+
     # Skip for static files and auth routes
     if request.endpoint in auth_routes or (request.endpoint and request.endpoint.startswith('static')):
         return
-    
+
     print(f"DEBUG: before_request for endpoint: {request.endpoint}, authenticated: {current_user.is_authenticated}")
-    
+
     remember_token = request.cookies.get('remember_token')
 
     if db_available and remember_token:
@@ -1052,19 +1069,32 @@ def validate_remember_token():
         user_data = session.get('user_cache')
         if user_data:
             # Create a temporary user object from cached data
-            temp_user = type('TempUser', (), {
-                'id': user_data['id'],
-                'username': user_data['username'],
-                'email': user_data['email'],
-                'first_name': user_data.get('first_name'),
-                'last_name': user_data.get('last_name'),
-                'is_admin': user_data.get('is_admin', False),
-                'is_suspended': user_data.get('is_suspended', False),
-                'is_authenticated': lambda: True,
-                'is_active': lambda: not user_data.get('is_suspended', False),
-                'is_anonymous': lambda: False,
-                'get_id': lambda: str(user_data['id'])
-            })()
+            class TempUser:
+                def __init__(self, data):
+                    self.id = data['id']
+                    self.username = data['username']
+                    self.email = data['email']
+                    self.first_name = data.get('first_name')
+                    self.last_name = data.get('last_name')
+                    self.is_admin = data.get('is_admin', False)
+                    self.is_suspended = data.get('is_suspended', False)
+
+                @property
+                def is_authenticated(self):
+                    return True
+
+                @property
+                def is_active(self):
+                    return not self.is_suspended
+
+                @property
+                def is_anonymous(self):
+                    return False
+
+                def get_id(self):
+                    return str(self.id)
+
+            temp_user = TempUser(user_data)
             # Set the current user manually for this request
             from flask_login import _login_user
             _login_user(temp_user, remember=True, fresh=False)
@@ -1077,7 +1107,7 @@ def dashboard():
         print(f"DEBUG: Current user: {current_user.username} (ID: {current_user.id})")
     else:
         print("DEBUG: User not authenticated, should be redirected by @login_required")
-    
+
     # Get user's club memberships
     memberships = ClubMembership.query.filter_by(user_id=current_user.id).all()
     led_clubs = Club.query.filter_by(leader_id=current_user.id).all()
