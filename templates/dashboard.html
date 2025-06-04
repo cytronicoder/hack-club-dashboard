@@ -1,112 +1,324 @@
 
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Hack Clubs Dash{% endblock %}
+{% block title %}Dashboard - Hack Club{% endblock %}
 
-{% block extra_head %}
+{% block extra_styles %}
 <style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #ec3750 0%, #ff6b7a 50%, #ff8c82 100%);
+        --secondary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --accent-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --glass-bg: rgba(255, 255, 255, 0.1);
+        --glass-border: rgba(255, 255, 255, 0.2);
+        --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.1);
+        --shadow-strong: 0 20px 60px rgba(0, 0, 0, 0.15);
+        --text-light: rgba(255, 255, 255, 0.9);
+        --text-dim: rgba(255, 255, 255, 0.7);
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes slideInLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-100px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(100px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
     .dashboard-container {
-        padding: 3rem 0;
-        min-height: calc(100vh - 200px);
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        position: relative;
+        overflow: hidden;
+        padding: 0;
+    }
+
+    .dashboard-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 40% 40%, rgba(234, 88, 12, 0.1) 0%, transparent 50%);
+        z-index: 1;
+    }
+
+    .floating-shapes {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+        z-index: 2;
+    }
+
+    .floating-shape {
+        position: absolute;
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        border-radius: 50%;
+        animation: float 6s ease-in-out infinite;
+    }
+
+    .floating-shape:nth-child(1) {
+        width: 140px;
+        height: 140px;
+        top: 10%;
+        left: 10%;
+        animation-delay: 0s;
+    }
+
+    .floating-shape:nth-child(2) {
+        width: 100px;
+        height: 100px;
+        top: 20%;
+        right: 15%;
+        animation-delay: 2s;
+    }
+
+    .floating-shape:nth-child(3) {
+        width: 180px;
+        height: 180px;
+        bottom: 20%;
+        left: 20%;
+        animation-delay: 4s;
+    }
+
+    .floating-shape:nth-child(4) {
+        width: 120px;
+        height: 120px;
+        bottom: 10%;
+        right: 10%;
+        animation-delay: 1s;
+    }
+
+    .dashboard-content {
+        position: relative;
+        z-index: 10;
+        padding: 4rem 2rem;
+        max-width: 1400px;
+        margin: 0 auto;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
 
     .dashboard-header {
         text-align: center;
-        margin-bottom: 3rem;
+        margin-bottom: 4rem;
+        animation: fadeInUp 1s ease-out;
     }
 
-    .dashboard-header h1 {
-        font-size: 3rem;
-        font-weight: 700;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
+    .welcome-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        padding: 0.75rem 1.5rem;
+        border-radius: 50px;
+        margin-bottom: 2rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-light);
+        animation: pulse 3s ease-in-out infinite;
+    }
+
+    .dashboard-title {
+        font-size: clamp(3rem, 8vw, 5rem);
+        font-weight: 900;
+        margin-bottom: 1rem;
+        color: white;
+        line-height: 1.1;
+        text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        margin-bottom: 1rem;
+        background-clip: text;
     }
 
-    .dashboard-header p {
-        font-size: 1.25rem;
-        color: var(--text-secondary);
+    .dashboard-subtitle {
+        font-size: clamp(1.1rem, 3vw, 1.4rem);
+        margin-bottom: 3rem;
+        color: var(--text-dim);
         max-width: 600px;
-        margin: 0 auto;
+        margin-left: auto;
+        margin-right: auto;
+        line-height: 1.6;
+    }
+
+    .clubs-section {
+        animation: fadeInUp 1s ease-out 0.2s both;
     }
 
     .clubs-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
         gap: 2rem;
-        margin-top: 2rem;
+        margin-bottom: 3rem;
     }
 
     .club-card {
-        background: var(--surface);
-        border-radius: 16px;
-        box-shadow: var(--shadow);
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 24px;
         overflow: hidden;
-        transition: var(--transition);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         cursor: pointer;
-        border: 2px solid transparent;
+        position: relative;
+    }
+
+    .club-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: var(--primary-gradient);
+        transform: scaleX(0);
+        transition: transform 0.4s ease;
     }
 
     .club-card:hover {
-        transform: translateY(-5px);
-        box-shadow: var(--shadow-hover);
-        border-color: var(--primary);
+        transform: translateY(-10px) scale(1.02);
+        box-shadow: var(--shadow-strong);
+        border-color: rgba(255, 255, 255, 0.4);
+    }
+
+    .club-card:hover::before {
+        transform: scaleX(1);
+    }
+
+    .club-card:nth-child(odd) {
+        animation: slideInLeft 1s ease-out both;
+    }
+
+    .club-card:nth-child(even) {
+        animation: slideInRight 1s ease-out both;
     }
 
     .club-card-header {
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        color: white;
-        padding: 2rem;
+        padding: 2.5rem 2rem;
         text-align: center;
+        position: relative;
+        background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
     }
 
     .club-avatar {
-        width: 80px;
-        height: 80px;
-        background: rgba(255, 255, 255, 0.2);
+        width: 100px;
+        height: 100px;
+        background: var(--primary-gradient);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 auto 1rem;
-        font-size: 2rem;
+        margin: 0 auto 1.5rem;
+        font-size: 2.5rem;
+        color: white;
+        box-shadow: 0 15px 35px rgba(236, 55, 80, 0.4);
+        position: relative;
+        transition: all 0.4s ease;
     }
 
-    .club-card h3 {
-        margin: 0;
+    .club-card:hover .club-avatar {
+        transform: scale(1.1) rotate(5deg);
+        box-shadow: 0 20px 40px rgba(236, 55, 80, 0.6);
+    }
+
+    .club-avatar::after {
+        content: '';
+        position: absolute;
+        top: -15px;
+        left: -15px;
+        right: -15px;
+        bottom: -15px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        animation: pulse 3s ease-in-out infinite;
+    }
+
+    .club-name {
         font-size: 1.5rem;
         font-weight: 700;
+        color: white;
+        margin-bottom: 0.5rem;
     }
 
     .club-role {
-        background: rgba(255, 255, 255, 0.2);
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
+        background: var(--accent-gradient);
+        color: white;
+        padding: 0.5rem 1.5rem;
+        border-radius: 25px;
         font-size: 0.875rem;
-        font-weight: 500;
-        margin-top: 0.5rem;
+        font-weight: 600;
         display: inline-block;
+        box-shadow: 0 4px 15px rgba(240, 147, 251, 0.3);
     }
 
     .club-card-body {
         padding: 2rem;
+        color: var(--text-light);
     }
 
     .club-description {
-        color: var(--text-secondary);
         margin-bottom: 1.5rem;
+        opacity: 0.9;
+        line-height: 1.6;
     }
 
     .club-meta {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        color: var(--text-secondary);
         font-size: 0.875rem;
+        opacity: 0.8;
     }
 
-    .club-meta span {
+    .club-meta-item {
         display: flex;
         align-items: center;
         gap: 0.5rem;
@@ -115,124 +327,365 @@
     .empty-state {
         text-align: center;
         padding: 4rem 2rem;
-        max-width: 500px;
-        margin: 0 auto;
+        animation: fadeInUp 1s ease-out 0.4s both;
     }
 
     .empty-state-icon {
-        font-size: 4rem;
-        color: var(--text-secondary);
+        font-size: 5rem;
+        color: var(--text-dim);
         margin-bottom: 2rem;
-        opacity: 0.5;
+        animation: float 4s ease-in-out infinite;
     }
 
-    .empty-state h2 {
-        color: var(--text);
+    .empty-state-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: white;
         margin-bottom: 1rem;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.3);
     }
 
-    .empty-state p {
-        color: var(--text-secondary);
-        margin-bottom: 2rem;
+    .empty-state-description {
+        font-size: 1.25rem;
+        color: var(--text-dim);
+        margin-bottom: 3rem;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
         line-height: 1.6;
     }
 
-    .empty-actions {
+    .action-buttons {
         display: flex;
-        gap: 1rem;
+        gap: 1.5rem;
         justify-content: center;
         flex-wrap: wrap;
     }
 
+    .action-btn {
+        padding: 1.25rem 2.5rem;
+        font-size: 1.1rem;
+        font-weight: 700;
+        border-radius: 50px;
+        text-decoration: none;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-width: 220px;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(20px);
+        border: 2px solid transparent;
+    }
+
+    .action-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s;
+    }
+
+    .action-btn:hover::before {
+        left: 100%;
+    }
+
+    .action-btn-primary {
+        background: var(--primary-gradient);
+        color: white;
+        box-shadow: var(--shadow-soft);
+    }
+
+    .action-btn-primary:hover {
+        transform: translateY(-5px) scale(1.05);
+        box-shadow: var(--shadow-strong);
+    }
+
+    .action-btn-secondary {
+        background: var(--glass-bg);
+        color: white;
+        border-color: var(--glass-border);
+        box-shadow: var(--shadow-soft);
+    }
+
+    .action-btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: translateY(-5px) scale(1.05);
+        box-shadow: var(--shadow-strong);
+        border-color: rgba(255, 255, 255, 0.4);
+    }
+
+    .quick-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-top: 3rem;
+        animation: fadeInUp 1s ease-out 0.6s both;
+    }
+
+    .stat-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 900;
+        background: var(--primary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        color: var(--text-dim);
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+
     @media (max-width: 768px) {
-        .clubs-grid {
-            grid-template-columns: 1fr;
+        .dashboard-content {
+            padding: 2rem 1rem;
         }
 
-        .empty-actions {
+        .dashboard-title {
+            font-size: 2.5rem;
+        }
+
+        .clubs-grid {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .action-buttons {
             flex-direction: column;
             align-items: center;
         }
 
-        .dashboard-header h1 {
-            font-size: 2rem;
+        .action-btn {
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .quick-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 480px) {
+        .quick-stats {
+            grid-template-columns: 1fr;
         }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container dashboard-container">
-    <div class="dashboard-header">
-        <h1>Welcome, {{ current_user.username }}!</h1>
-        <p>Choose a club to manage or join a new one</p>
+<div class="dashboard-container">
+    <div class="floating-shapes">
+        <div class="floating-shape"></div>
+        <div class="floating-shape"></div>
+        <div class="floating-shape"></div>
+        <div class="floating-shape"></div>
     </div>
 
-    {% if led_clubs or memberships %}
-        <div class="clubs-grid">
-            {% for club in led_clubs %}
-                <div class="club-card" onclick="window.location.href='{{ url_for('club_dashboard', club_id=club.id) }}'">
-                    <div class="club-card-header">
-                        <div class="club-avatar">
-                            <i class="fas fa-crown"></i>
-                        </div>
-                        <h3>{{ club.name }}</h3>
-                        <span class="club-role">Club Leader</span>
-                    </div>
-                    <div class="club-card-body">
-                        <p class="club-description">{{ club.description or 'No description available' }}</p>
-                        <div class="club-meta">
-                            <span><i class="fas fa-map-marker-alt"></i> {{ club.location or 'No location' }}</span>
-                            <span><i class="fas fa-users"></i> {{ club.members|length + 1 }} members</span>
-                        </div>
-                    </div>
-                </div>
-            {% endfor %}
+    <div class="dashboard-content">
+        <div class="dashboard-header">
+            <div class="welcome-badge">
+                <i class="fas fa-rocket"></i>
+                <span>Welcome to your dashboard!</span>
+            </div>
+            <h1 class="dashboard-title">Hey there, {{ current_user.username }}! 👋</h1>
+            <p class="dashboard-subtitle">Ready to build something amazing? Choose a club to manage or create your own coding community!</p>
+        </div>
 
-            {% for membership in memberships %}
-                <div class="club-card" onclick="window.location.href='{{ url_for('club_dashboard', club_id=membership.club.id) }}'">
-                    <div class="club-card-header">
-                        <div class="club-avatar">
-                            <i class="fas fa-users"></i>
+        {% if led_clubs or memberships %}
+            <div class="clubs-section">
+                <div class="clubs-grid">
+                    {% for club in led_clubs %}
+                        <div class="club-card" onclick="window.location.href='{{ url_for('club_dashboard', club_id=club.id) }}'">
+                            <div class="club-card-header">
+                                <div class="club-avatar">
+                                    <i class="fas fa-crown"></i>
+                                </div>
+                                <h3 class="club-name">{{ club.name }}</h3>
+                                <span class="club-role">Club Leader</span>
+                            </div>
+                            <div class="club-card-body">
+                                <p class="club-description">{{ club.description or 'Leading the way in innovation and collaboration!' }}</p>
+                                <div class="club-meta">
+                                    <div class="club-meta-item">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        <span>{{ club.location or 'Remote' }}</span>
+                                    </div>
+                                    <div class="club-meta-item">
+                                        <i class="fas fa-users"></i>
+                                        <span>{{ club.members|length + 1 }} members</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <h3>{{ membership.club.name }}</h3>
-                        <span class="club-role">{{ membership.role|title }}</span>
+                    {% endfor %}
+
+                    {% for membership in memberships %}
+                        <div class="club-card" onclick="window.location.href='{{ url_for('club_dashboard', club_id=membership.club.id) }}'">
+                            <div class="club-card-header">
+                                <div class="club-avatar">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <h3 class="club-name">{{ membership.club.name }}</h3>
+                                <span class="club-role">{{ membership.role.title() }}</span>
+                            </div>
+                            <div class="club-card-body">
+                                <p class="club-description">{{ membership.club.description or 'Part of an amazing coding community!' }}</p>
+                                <div class="club-meta">
+                                    <div class="club-meta-item">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        <span>{{ membership.club.location or 'Remote' }}</span>
+                                    </div>
+                                    <div class="club-meta-item">
+                                        <i class="fas fa-users"></i>
+                                        <span>{{ membership.club.members|length + 1 }} members</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="quick-stats">
+                    <div class="stat-card">
+                        <div class="stat-number">{{ led_clubs|length }}</div>
+                        <div class="stat-label">Clubs Leading</div>
                     </div>
-                    <div class="club-card-body">
-                        <p class="club-description">{{ membership.club.description or 'No description available' }}</p>
-                        <div class="club-meta">
-                            <span><i class="fas fa-map-marker-alt"></i> {{ membership.club.location or 'No location' }}</span>
-                            <span><i class="fas fa-users"></i> {{ membership.club.members|length + 1 }} members</span>
-                        </div>
+                    <div class="stat-card">
+                        <div class="stat-number">{{ memberships|length }}</div>
+                        <div class="stat-label">Clubs Joined</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">{{ (led_clubs|length + memberships|length) }}</div>
+                        <div class="stat-label">Total Clubs</div>
                     </div>
                 </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <div class="empty-state">
-            <div class="empty-state-icon">
-                <i class="fas fa-users-slash"></i>
             </div>
-            <h2>You haven't joined any clubs yet</h2>
-            <p>Get started by creating your own club or joining an existing one with a join code!</p>
-            <div class="empty-actions">
-                <a href="{{ url_for('signup') }}?is_leader=true" class="btn btn-primary">
-                    <i class="fas fa-crown"></i> Create a Club
-                </a>
-                <button class="btn btn-secondary" onclick="joinClubPrompt()">
-                    <i class="fas fa-sign-in-alt"></i> Join Club
-                </button>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <h2 class="empty-state-title">Ready to start your journey?</h2>
+                <p class="empty-state-description">
+                    You haven't joined any clubs yet! Create your own club to lead a community of passionate hackers, or join an existing club with a join code.
+                </p>
+                
+                <div class="action-buttons">
+                    <a href="{{ url_for('verify_leader') }}" class="action-btn action-btn-primary">
+                        <i class="fas fa-crown"></i>
+                        Create a Club
+                    </a>
+                    <button class="action-btn action-btn-secondary" onclick="joinClubPrompt()">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Join Club
+                    </button>
+                </div>
+
+                <div class="quick-stats">
+                    <div class="stat-card">
+                        <div class="stat-number">1000+</div>
+                        <div class="stat-label">Global Clubs</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">50K+</div>
+                        <div class="stat-label">Active Hackers</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">100K+</div>
+                        <div class="stat-label">Projects Built</div>
+                    </div>
+                </div>
             </div>
-        </div>
-    {% endif %}
+        {% endif %}
+    </div>
 </div>
 
 <script>
     function joinClubPrompt() {
-        const joinCode = prompt('Enter the club join code:');
-        if (joinCode) {
-            window.location.href = `/join-club?code=${joinCode}`;
+        const result = prompt('🚀 Enter your club join code:', '');
+        if (result && result.trim()) {
+            window.location.href = `/join-club?code=${encodeURIComponent(result.trim())}`;
         }
     }
+
+    // Add some dynamic interactions
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add hover effects to club cards
+        const clubCards = document.querySelectorAll('.club-card');
+        clubCards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-10px) scale(1.02)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+
+        // Add click animation to action buttons
+        const actionBtns = document.querySelectorAll('.action-btn');
+        actionBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                // Create ripple effect
+                const ripple = document.createElement('span');
+                ripple.style.position = 'absolute';
+                ripple.style.background = 'rgba(255,255,255,0.6)';
+                ripple.style.borderRadius = '50%';
+                ripple.style.transform = 'scale(0)';
+                ripple.style.animation = 'ripple 0.6s linear';
+                ripple.style.pointerEvents = 'none';
+                
+                const rect = this.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                ripple.style.width = ripple.style.height = size + 'px';
+                ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+                ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+                
+                this.appendChild(ripple);
+                
+                setTimeout(() => {
+                    ripple.remove();
+                }, 600);
+            });
+        });
+    });
+
+    // Add CSS for ripple animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+    `;
+    document.head.appendChild(style);
 </script>
 {% endblock %}

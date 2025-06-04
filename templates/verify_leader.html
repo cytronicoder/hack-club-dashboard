@@ -245,7 +245,11 @@
         </form>
 
         <div class="auth-footer">
-            <p>Not a club leader? <a href="{{ url_for('signup') }}">Go back to regular signup</a></p>
+            {% if current_user.is_authenticated %}
+                <p>Changed your mind? <a href="{{ url_for('dashboard') }}">Back to dashboard</a></p>
+            {% else %}
+                <p>Not a club leader? <a href="{{ url_for('signup') }}">Go back to regular signup</a></p>
+            {% endif %}
         </div>
     </div>
 </div>
