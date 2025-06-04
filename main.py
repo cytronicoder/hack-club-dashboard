@@ -760,6 +760,7 @@ def complete_slack_signup():
         if not first_name:
             return jsonify({'error': 'First name is required'}), 400
 
+```python
         # Check if username or email is already taken
         if User.query.filter_by(username=username).first():
             return jsonify({'error': 'Username already taken'}), 400
@@ -798,11 +799,16 @@ def complete_slack_signup():
             # Generate remember token
             remember_token = user.generate_remember_token()
 
-            # Clear Slack signup data and log user in
-            session.pop('slack_signup_data', None)
+            # Log user in first
             login_user(user, remember=True)
-            user.last_login = datetime.utcnow()
-            db.session.commit()
+
+            # Set remember token cookie (5 days)
+            resp = redirect(url_for('dashboard'))
+            resp.set_cookie('remember_token', remember_token, 
+                          max_age=5*24*60*60,  # 5 days
+                          secure=False,  # Set to True in production with HTTPS
+                          httponly=True,
+                          samesite='Lax')
 
             # Cache user data in session for when DB is down
             session['user_cache'] = {
@@ -816,6 +822,9 @@ def complete_slack_signup():
                 'remember_token': remember_token
             }
             session.permanent = True
+
+            # Clear Slack signup data after successful login
+            session.pop('slack_signup_data', None)
 
             return jsonify({
                 'success': True, 
