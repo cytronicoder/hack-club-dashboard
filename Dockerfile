@@ -10,7 +10,6 @@ RUN pip install --no-cache-dir uv
 RUN uv pip install --system --no-cache flask flask-login flask-sqlalchemy requests psycopg2-binary werkzeug flask-limiter flask-session python-dotenv gunicorn
 
 COPY . .
-COPY .env .env
 
 EXPOSE 5000
 
