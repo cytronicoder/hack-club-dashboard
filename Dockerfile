@@ -21,4 +21,4 @@ EXPOSE 5000
 ENV FLASK_ENV=production
 ENV PYTHONUNBUFFERED=1
 
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 4 --timeout 120 main:app"]
+CMD ["sh", "-c", "gunicorn --config gunicorn.conf.py main:app"]
