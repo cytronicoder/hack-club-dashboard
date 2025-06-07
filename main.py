@@ -47,11 +47,12 @@ app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Session configuration for better stability
-app.config['SESSION_COOKIE_SECURE'] = True
+# Only require secure cookies in production (HTTPS)
+app.config['SESSION_COOKIE_SECURE'] = os.getenv('FLASK_ENV') == 'production'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
-app.config['SESSION_REFRESH_EACH_REQUEST'] = True
+app.config['SESSION_REFRESH_EACH_REQUEST'] = False  # Prevent session conflicts
 
 SLACK_CLIENT_ID = os.getenv('SLACK_CLIENT_ID')
 SLACK_CLIENT_SECRET = os.getenv('SLACK_CLIENT_SECRET')
@@ -81,9 +82,9 @@ if db_available:
         login_manager = LoginManager()
         login_manager.init_app(app)
         login_manager.login_view = 'login'
-        login_manager.session_protection = "strong"
+        login_manager.session_protection = "basic"  # Use basic instead of strong for better compatibility
         login_manager.remember_cookie_duration = timedelta(days=30)
-        login_manager.remember_cookie_secure = True
+        login_manager.remember_cookie_secure = os.getenv('FLASK_ENV') == 'production'  # Only secure in production
         login_manager.remember_cookie_httponly = True
 
         # Initialize rate limiter
@@ -619,14 +620,11 @@ def slack_callback():
 
     if user:
         # User exists, log them in
-        # Clear any existing session data to prevent conflicts
-        session.clear()
-        
         login_user(user, remember=True, duration=timedelta(days=30))
         user.last_login = datetime.utcnow()
         db.session.commit()
         
-        # Regenerate session ID for security
+        # Set session as permanent
         session.permanent = True
         
         flash(f'Welcome back, {user.username}!', 'success')
@@ -818,7 +816,7 @@ def complete_slack_signup():
             user.last_login = datetime.utcnow()
             db.session.commit()
             
-            # Regenerate session ID for security
+            # Set session as permanent
             session.permanent = True
 
             return jsonify({'success': True, 'message': 'Account created successfully!'})
@@ -855,15 +853,12 @@ def login():
         try:
             user = User.query.filter_by(email=email).first()
             if user and user.check_password(password):
-                # Clear any existing session data to prevent conflicts
-                session.clear()
-                
                 login_user(user, remember=remember_me, duration=timedelta(days=30))
                 user.last_login = datetime.utcnow()
                 db.session.commit()
                 
-                # Regenerate session ID for security
-                session.permanent = True
+                # Set session as permanent for remember functionality
+                session.permanent = remember_me
                 
                 flash(f'Welcome back, {user.username}!', 'success')
                 
