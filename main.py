@@ -1,12 +1,13 @@
+
 import os
 import time
 import json
 import hashlib
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import Flask, render_template, redirect, flash, request, jsonify, url_for, abort, session, Response
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 # Import psycopg2 with better error handling
 try:
     import psycopg2
@@ -39,23 +40,19 @@ def get_database_url():
         url = url.replace('postgres://', 'postgresql://', 1)
     return url
 
-
-
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(16))
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(32))
 app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Enhanced session configuration for production reliability
-is_production = os.getenv('REPLIT_DEPLOYMENT') == '1' or 'repl.co' in os.getenv('REPL_SLUG', '') or os.getenv('ENVIRONMENT') == 'production'
-app.config['SESSION_COOKIE_SECURE'] = False  # Set to False for broader compatibility unless using HTTPS
+# Robust session configuration for production
+app.config['SESSION_COOKIE_SECURE'] = False  # Keep False for HTTP compatibility
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_NAME'] = "hackclub_session"  # Simplified session name
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)  # Longer session lifetime
-app.config['SESSION_REFRESH_EACH_REQUEST'] = True  # Refresh sessions to prevent timeout
-app.config['SESSION_COOKIE_DOMAIN'] = None  # Let Flask handle domain automatically
-app.config['SESSION_TYPE'] = 'filesystem'  # Use filesystem sessions for reliability
+app.config['SESSION_COOKIE_NAME'] = "hc_session"
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+app.config['SESSION_REFRESH_EACH_REQUEST'] = False  # Only refresh when needed
+app.config['SESSION_COOKIE_DOMAIN'] = None
 
 SLACK_CLIENT_ID = os.getenv('SLACK_CLIENT_ID')
 SLACK_CLIENT_SECRET = os.getenv('SLACK_CLIENT_SECRET')
@@ -66,7 +63,6 @@ db = None
 db_available = False
 
 try:
-    # Check if we have psycopg2 available
     import psycopg2
     from flask_sqlalchemy import SQLAlchemy
     db = SQLAlchemy(app)
@@ -85,32 +81,33 @@ if db_available:
         login_manager = LoginManager()
         login_manager.init_app(app)
         login_manager.login_view = 'login'
-        login_manager.session_protection = None  # Disable built-in session protection to avoid conflicts
-        login_manager.remember_cookie_duration = timedelta(days=30)
-        login_manager.remember_cookie_secure = False  # Set to False for broader compatibility
+        login_manager.session_protection = 'strong'  # Enable strong session protection
+        login_manager.remember_cookie_duration = timedelta(days=7)
+        login_manager.remember_cookie_secure = False
         login_manager.remember_cookie_httponly = True
-        login_manager.remember_cookie_name = "hackclub_remember"
+        login_manager.remember_cookie_name = "hc_remember"
         login_manager.remember_cookie_domain = None
 
         # Initialize rate limiter
         limiter = Limiter(
             key_func=get_remote_address,
             app=app,
-            default_limits=["5000 per hour", "500 per minute"],
+            default_limits=["2000 per hour", "200 per minute"],
             storage_uri="memory://",
             strategy="fixed-window"
         )
         
-        # Simplified session validation middleware
+        # Enhanced session validation middleware
         @app.before_request
         def validate_session():
             # Skip validation for static files and auth endpoints
             if request.endpoint in ['static', 'login', 'signup', 'slack_login', 'slack_callback', 'index']:
                 return
             
+            # Clear invalid sessions
             if current_user.is_authenticated:
-                # Basic user validation only
-                if current_user.is_suspended:
+                # Check if user still exists and is active
+                if hasattr(current_user, 'is_suspended') and current_user.is_suspended:
                     logout_user()
                     session.clear()
                     if request.is_json:
@@ -118,16 +115,34 @@ if db_available:
                     flash('Your account has been suspended.', 'error')
                     return redirect(url_for('login'))
                 
-                # Update last login occasionally (not every request)
-                if not session.get('last_activity_update') or \
-                   (datetime.utcnow() - datetime.fromisoformat(session.get('last_activity_update', '2000-01-01T00:00:00'))).total_seconds() > 3600:
+                # Validate session integrity
+                session_user_id = session.get('_user_id')
+                if session_user_id and str(session_user_id) != str(current_user.id):
+                    # Session user ID mismatch - force logout
+                    logout_user()
+                    session.clear()
+                    if request.is_json:
+                        return jsonify({'error': 'Session invalid'}), 401
+                    flash('Session expired. Please log in again.', 'warning')
+                    return redirect(url_for('login'))
+                
+                # Update last activity periodically (every 30 minutes)
+                last_activity = session.get('last_activity')
+                now = datetime.now(timezone.utc)
+                if not last_activity or (now - datetime.fromisoformat(last_activity)).total_seconds() > 1800:
                     try:
-                        current_user.last_login = datetime.utcnow()
+                        current_user.last_login = now
                         db.session.commit()
-                        session['last_activity_update'] = datetime.utcnow().isoformat()
-                    except Exception:
-                        # Don't fail on database errors for session updates
+                        session['last_activity'] = now.isoformat()
+                    except Exception as e:
+                        print(f"Failed to update user activity: {e}")
+                        # Don't fail the request for this
                         pass
+            
+            # Clear orphaned sessions
+            elif session.get('_user_id'):
+                session.clear()
+    
     except Exception as e:
         print(f"Login manager or limiter initialization failed: {e}")
         db_available = False
@@ -137,25 +152,30 @@ else:
     login_manager = None
     limiter = None
 
-# Models - only define if database is available
+# Enhanced User model with better session handling
 if db_available and db:
-    class User(db.Model):
+    class User(UserMixin, db.Model):
         id = db.Column(db.Integer, primary_key=True)
-        username = db.Column(db.String(80), unique=True, nullable=False)
-        email = db.Column(db.String(120), unique=True, nullable=False)
+        username = db.Column(db.String(80), unique=True, nullable=False, index=True)
+        email = db.Column(db.String(120), unique=True, nullable=False, index=True)
         password_hash = db.Column(db.String(255), nullable=False)
         first_name = db.Column(db.String(50))
         last_name = db.Column(db.String(50))
         birthday = db.Column(db.Date)
-        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
         last_login = db.Column(db.DateTime)
-        is_admin = db.Column(db.Boolean, default=False)
-        is_suspended = db.Column(db.Boolean, default=False)
+        is_admin = db.Column(db.Boolean, default=False, nullable=False)
+        is_suspended = db.Column(db.Boolean, default=False, nullable=False)
         hackatime_api_key = db.Column(db.String(255))
         slack_user_id = db.Column(db.String(255), unique=True)
+        # New fields for enhanced session security
+        session_token = db.Column(db.String(255))  # For session validation
+        failed_login_attempts = db.Column(db.Integer, default=0)
+        last_failed_login = db.Column(db.DateTime)
+        is_locked = db.Column(db.Boolean, default=False)
 
         def set_password(self, password):
-            self.password_hash = generate_password_hash(password)
+            self.password_hash = generate_password_hash(password, method='pbkdf2:sha256:600000')
 
         def check_password(self, password):
             return check_password_hash(self.password_hash, password)
@@ -164,13 +184,51 @@ if db_available and db:
             return True
 
         def is_active(self):
-            return not self.is_suspended
+            return not self.is_suspended and not self.is_locked
 
         def is_anonymous(self):
             return False
 
         def get_id(self):
             return str(self.id)
+        
+        def generate_session_token(self):
+            """Generate a unique session token for this user"""
+            self.session_token = secrets.token_urlsafe(32)
+            return self.session_token
+        
+        def is_account_locked(self):
+            """Check if account is temporarily locked due to failed attempts"""
+            if not self.is_locked:
+                return False
+            
+            # Auto-unlock after 30 minutes
+            if self.last_failed_login:
+                unlock_time = self.last_failed_login + timedelta(minutes=30)
+                if datetime.now(timezone.utc) > unlock_time:
+                    self.is_locked = False
+                    self.failed_login_attempts = 0
+                    db.session.commit()
+                    return False
+            
+            return True
+        
+        def record_failed_login(self):
+            """Record a failed login attempt"""
+            self.failed_login_attempts = (self.failed_login_attempts or 0) + 1
+            self.last_failed_login = datetime.now(timezone.utc)
+            
+            # Lock account after 5 failed attempts
+            if self.failed_login_attempts >= 5:
+                self.is_locked = True
+            
+            db.session.commit()
+        
+        def reset_failed_logins(self):
+            """Reset failed login counter after successful login"""
+            self.failed_login_attempts = 0
+            self.last_failed_login = None
+            self.is_locked = False
 
     class Club(db.Model):
         id = db.Column(db.Integer, primary_key=True)
@@ -178,8 +236,8 @@ if db_available and db:
         description = db.Column(db.Text)
         location = db.Column(db.String(255))
         leader_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-        join_code = db.Column(db.String(8), unique=True, nullable=False)
-        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        join_code = db.Column(db.String(8), unique=True, nullable=False, index=True)
+        created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
         balance = db.Column(db.Numeric(10, 2), default=0.00)
 
         leader = db.relationship('User', backref='led_clubs')
@@ -192,8 +250,8 @@ if db_available and db:
         id = db.Column(db.Integer, primary_key=True)
         user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
         club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
-        role = db.Column(db.String(20), default='member')  # member, co-leader
-        joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+        role = db.Column(db.String(20), default='member')
+        joined_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
         user = db.relationship('User', backref='club_memberships')
         club = db.relationship('Club', back_populates='members')
@@ -203,7 +261,7 @@ if db_available and db:
         club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
         user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
         content = db.Column(db.Text, nullable=False)
-        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
         club = db.relationship('Club', backref='posts')
         user = db.relationship('User', backref='posts')
@@ -216,7 +274,7 @@ if db_available and db:
         due_date = db.Column(db.DateTime)
         for_all_members = db.Column(db.Boolean, default=True)
         status = db.Column(db.String(20), default='active')
-        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
         club = db.relationship('Club', backref='assignments')
 
@@ -230,7 +288,7 @@ if db_available and db:
         end_time = db.Column(db.String(10))
         location = db.Column(db.String(255))
         meeting_link = db.Column(db.String(500))
-        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
         club = db.relationship('Club', backref='meetings')
 
@@ -241,7 +299,7 @@ if db_available and db:
         url = db.Column(db.String(500), nullable=False)
         description = db.Column(db.Text)
         icon = db.Column(db.String(50), default='book')
-        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
         club = db.relationship('Club', backref='resources')
 
@@ -254,8 +312,8 @@ if db_available and db:
         url = db.Column(db.String(500))
         github_url = db.Column(db.String(500))
         featured = db.Column(db.Boolean, default=False)
-        created_at = db.Column(db.DateTime, default=datetime.utcnow)
-        updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+        created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+        updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
         club = db.relationship('Club', backref='projects')
         user = db.relationship('User', backref='projects')
@@ -285,8 +343,8 @@ if login_manager:
             return None
         try:
             user = db.session.get(User, int(user_id))
-            if user and user.is_suspended:
-                return None  # Don't load suspended users
+            if user and (user.is_suspended or user.is_locked or user.is_account_locked()):
+                return None  # Don't load suspended/locked users
             return user
         except Exception as e:
             print(f"Error loading user {user_id}: {e}")
@@ -560,9 +618,61 @@ class SlackOAuthService:
 
 slack_oauth_service = SlackOAuthService()
 
+# Secure authentication helper functions
+def secure_login_user(user, remember=False):
+    """Securely log in a user with enhanced session management"""
+    if not user or not user.is_active():
+        return False
+    
+    # Clear any existing session data
+    session.clear()
+    
+    # Generate new session token
+    session_token = user.generate_session_token()
+    
+    # Login user with Flask-Login
+    login_result = login_user(user, remember=remember, duration=timedelta(days=7))
+    
+    if login_result:
+        # Update user login info
+        user.last_login = datetime.now(timezone.utc)
+        user.reset_failed_logins()
+        
+        # Set secure session data
+        session.permanent = True
+        session['user_id'] = user.id
+        session['session_token'] = session_token
+        session['login_time'] = datetime.now(timezone.utc).isoformat()
+        session['last_activity'] = datetime.now(timezone.utc).isoformat()
+        
+        try:
+            db.session.commit()
+        except Exception as e:
+            print(f"Failed to update user login info: {e}")
+            db.session.rollback()
+    
+    return login_result
+
+def secure_logout_user():
+    """Securely log out user and clear all session data"""
+    if current_user.is_authenticated:
+        # Clear session token in database
+        try:
+            current_user.session_token = None
+            db.session.commit()
+        except Exception as e:
+            print(f"Failed to clear session token: {e}")
+            db.session.rollback()
+        
+        # Logout with Flask-Login
+        logout_user()
+    
+    # Clear all session data
+    session.clear()
+
 # Slack OAuth Routes
 @app.route('/auth/slack')
-@limiter.limit("100 per minute")
+@limiter.limit("20 per minute")
 def slack_login():
     if not SLACK_CLIENT_ID or not SLACK_CLIENT_SECRET:
         flash('Slack OAuth is not configured', 'error')
@@ -573,7 +683,7 @@ def slack_login():
     return redirect(auth_url)
 
 @app.route('/auth/slack/callback')
-@limiter.limit("100 per minute")
+@limiter.limit("20 per minute")
 def slack_callback():
     if not db_available:
         flash('Database is currently unavailable. Please try again later.', 'error')
@@ -667,29 +777,16 @@ def slack_callback():
 
     if user:
         # User exists, log them in
-        if user.is_suspended:
-            flash('Your account has been suspended. Please contact support.', 'error')
+        if user.is_suspended or user.is_account_locked():
+            flash('Your account has been suspended or locked. Please contact support.', 'error')
             return redirect(url_for('login'))
         
-        # Clear existing session data
-        session.clear()
-        
-        # Login the user with extended duration
-        login_result = login_user(user, remember=True, duration=timedelta(days=30))
+        # Use secure login
+        login_result = secure_login_user(user, remember=True)
         
         if not login_result:
             flash('Login failed. Please try again.', 'error')
             return redirect(url_for('login'))
-        
-        user.last_login = datetime.utcnow()
-        db.session.commit()
-        
-        # Set session properties with simplified tracking
-        session.permanent = True
-        session['user_authenticated'] = True
-        session['login_time'] = datetime.utcnow().isoformat()
-        session['slack_login'] = True
-        session['last_activity_update'] = datetime.utcnow().isoformat()
         
         flash(f'Welcome back, {user.username}!', 'success')
         return redirect(url_for('dashboard'))
@@ -709,7 +806,7 @@ def slack_callback():
         return redirect(url_for('complete_slack_signup'))
 
 @app.route('/verify-leader', methods=['GET', 'POST'])
-@limiter.limit("50 per minute")
+@limiter.limit("10 per minute")
 def verify_leader():
     if not db_available:
         flash('Database is currently unavailable. Please try again later.', 'error')
@@ -732,7 +829,8 @@ def verify_leader():
             session['leader_verification'] = {
                 'email': email,
                 'club_name': club_name,
-                'verified': True
+                'verified': True,
+                'timestamp': datetime.now(timezone.utc).isoformat()
             }
             return jsonify({'success': True, 'message': 'Leader verification successful!'})
         else:
@@ -741,7 +839,7 @@ def verify_leader():
     return render_template('verify_leader.html')
 
 @app.route('/complete-leader-signup', methods=['GET', 'POST'])
-@limiter.limit("50 per minute")
+@limiter.limit("10 per minute")
 def complete_leader_signup():
     if not db_available:
         flash('Database is currently unavailable. Please try again later.', 'error')
@@ -752,6 +850,14 @@ def complete_leader_signup():
     if not leader_verification or not leader_verification.get('verified'):
         flash('Invalid verification session. Please start over.', 'error')
         return redirect(url_for('dashboard'))
+
+    # Check if verification is not too old (1 hour max)
+    if 'timestamp' in leader_verification:
+        verification_time = datetime.fromisoformat(leader_verification['timestamp'])
+        if (datetime.now(timezone.utc) - verification_time).total_seconds() > 3600:
+            session.pop('leader_verification', None)
+            flash('Verification expired. Please start over.', 'error')
+            return redirect(url_for('verify_leader'))
 
     try:
         # Check if this is for an existing user or new signup
@@ -808,7 +914,7 @@ def complete_leader_signup():
         return redirect(url_for('dashboard'))
 
 @app.route('/complete-slack-signup', methods=['GET', 'POST'])
-@limiter.limit("50 per minute")
+@limiter.limit("10 per minute")
 def complete_slack_signup():
     if not db_available:
         flash('Database is currently unavailable. Please try again later.', 'error')
@@ -877,21 +983,11 @@ def complete_slack_signup():
             # Clear Slack signup data
             session.pop('slack_signup_data', None)
             
-            # Login user after account creation
-            login_result = login_user(user, remember=True, duration=timedelta(days=30))
+            # Use secure login
+            login_result = secure_login_user(user, remember=True)
             
             if not login_result:
                 return jsonify({'error': 'Failed to log in after account creation'}), 500
-            
-            user.last_login = datetime.utcnow()
-            db.session.commit()
-            
-            # Set session properties with simplified tracking
-            session.permanent = True
-            session['user_authenticated'] = True
-            session['login_time'] = datetime.utcnow().isoformat()
-            session['slack_signup'] = True
-            session['last_activity_update'] = datetime.utcnow().isoformat()
 
             return jsonify({'success': True, 'message': 'Account created successfully!'})
 
@@ -909,24 +1005,17 @@ def index():
         return redirect(url_for('dashboard'))
     return render_template('index.html')
 
-def validate_user_session(user):
-    """Validate that the user session is consistent"""
-    if not user or user.is_suspended:
-        return False
-    return True
-
 @app.route('/login', methods=['GET', 'POST'])
-@limiter.limit("100 per minute")
+@limiter.limit("20 per minute")
 def login():
     if not db_available:
         flash('Database is currently unavailable. Please try again later.', 'error')
         return render_template('login.html')
 
-    # Force logout if user is already authenticated but session is invalid
+    # Force logout if user is already authenticated but invalid
     if current_user.is_authenticated:
-        if not validate_user_session(current_user):
-            logout_user()
-            session.clear()
+        if current_user.is_suspended or current_user.is_account_locked():
+            secure_logout_user()
         else:
             return redirect(url_for('dashboard'))
 
@@ -942,41 +1031,41 @@ def login():
         try:
             user = User.query.filter_by(email=email).first()
             
-            if user and user.check_password(password):
-                if user.is_suspended:
-                    flash('Your account has been suspended. Please contact support.', 'error')
+            if user:
+                # Check if account is locked
+                if user.is_account_locked():
+                    flash('Account temporarily locked due to too many failed login attempts. Try again in 30 minutes.', 'error')
                     return render_template('login.html')
                 
-                # Clear any existing session data first
-                session.clear()
-                
-                # Login the user with remember option
-                login_result = login_user(user, remember=remember_me, duration=timedelta(days=30))
-                
-                if not login_result:
-                    flash('Login failed. Please try again.', 'error')
-                    return render_template('login.html')
-                
-                # Update user login time
-                user.last_login = datetime.utcnow()
-                db.session.commit()
-                
-                # Set session properties with simplified tracking
-                session.permanent = True  # Always use permanent sessions
-                session['user_authenticated'] = True
-                session['login_time'] = datetime.utcnow().isoformat()
-                session['last_activity_update'] = datetime.utcnow().isoformat()
-                
-                flash(f'Welcome back, {user.username}!', 'success')
-                
-                # Check for pending join code
-                pending_join_code = session.get('pending_join_code')
-                if pending_join_code:
-                    session.pop('pending_join_code', None)
-                    return redirect(url_for('join_club_redirect') + f'?code={pending_join_code}')
-                
-                return redirect(url_for('dashboard'))
+                # Check password
+                if user.check_password(password):
+                    if user.is_suspended:
+                        flash('Your account has been suspended. Please contact support.', 'error')
+                        return render_template('login.html')
+                    
+                    # Use secure login
+                    login_result = secure_login_user(user, remember=remember_me)
+                    
+                    if not login_result:
+                        flash('Login failed. Please try again.', 'error')
+                        return render_template('login.html')
+                    
+                    flash(f'Welcome back, {user.username}!', 'success')
+                    
+                    # Check for pending join code
+                    pending_join_code = session.get('pending_join_code')
+                    if pending_join_code:
+                        session.pop('pending_join_code', None)
+                        return redirect(url_for('join_club_redirect') + f'?code={pending_join_code}')
+                    
+                    return redirect(url_for('dashboard'))
+                else:
+                    # Record failed login attempt
+                    user.record_failed_login()
+                    flash('Invalid email or password', 'error')
             else:
+                # Simulate password check even for non-existent users to prevent timing attacks
+                generate_password_hash('dummy_password')
                 flash('Invalid email or password', 'error')
                 
         except Exception as e:
@@ -987,7 +1076,7 @@ def login():
     return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
-@limiter.limit("50 per minute")
+@limiter.limit("10 per minute")
 def signup():
     if not db_available:
         flash('Database is currently unavailable. Please try again later.', 'error')
@@ -997,13 +1086,26 @@ def signup():
         return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
-        password = request.form.get('password')
-        first_name = request.form.get('first_name')
-        last_name = request.form.get('last_name')
-        birthday = request.form.get('birthday')
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        first_name = request.form.get('first_name', '').strip()
+        last_name = request.form.get('last_name', '').strip()
+        birthday = request.form.get('birthday', '')
         is_leader = request.form.get('is_leader') == 'on'
+
+        # Validation
+        if not username or len(username) < 3:
+            flash('Username must be at least 3 characters long', 'error')
+            return render_template('signup.html')
+        
+        if not email:
+            flash('Email is required', 'error')
+            return render_template('signup.html')
+        
+        if not password or len(password) < 6:
+            flash('Password must be at least 6 characters long', 'error')
+            return render_template('signup.html')
 
         try:
             if User.query.filter_by(email=email).first():
@@ -1027,7 +1129,13 @@ def signup():
                 }
                 return redirect(url_for('verify_leader'))
 
-            user = User(username=username, email=email, first_name=first_name, last_name=last_name, birthday=datetime.strptime(birthday, '%Y-%m-%d').date() if birthday else None)
+            user = User(
+                username=username, 
+                email=email, 
+                first_name=first_name, 
+                last_name=last_name, 
+                birthday=datetime.strptime(birthday, '%Y-%m-%d').date() if birthday else None
+            )
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
@@ -1035,6 +1143,7 @@ def signup():
             flash('Account created successfully! Please log in.', 'success')
             return redirect(url_for('login'))
         except Exception as e:
+            db.session.rollback()
             flash('Database error. Please try again later.', 'error')
 
     return render_template('signup.html')
@@ -1051,24 +1160,9 @@ def require_database(f):
 @app.route('/logout')
 @require_database
 def logout():
-    if current_user.is_authenticated:
-        logout_user()
-    
-    # Clear all session data
-    session.clear()
-    
-    # Create a new response with cleared cookies
-    response = redirect(url_for('index'))
-    
-    # Clear authentication cookies manually
-    cookie_name = app.config.get('SESSION_COOKIE_NAME', 'session')
-    remember_cookie_name = f"hackclub_remember_{os.getenv('REPL_SLUG', 'dev')}"
-    
-    response.set_cookie(cookie_name, '', expires=0, path='/')
-    response.set_cookie(remember_cookie_name, '', expires=0, path='/')
-    
+    secure_logout_user()
     flash('You have been logged out.', 'success')
-    return response
+    return redirect(url_for('index'))
 
 @app.route('/dashboard')
 @login_required
@@ -1148,10 +1242,10 @@ def join_club_redirect():
         flash('Please log in or sign up to join the club', 'info')
         return redirect(url_for('login'))
 
-# API Routes
+# API Routes - keeping existing API routes but with enhanced security
 @app.route('/api/clubs/<int:club_id>/join-code', methods=['POST'])
 @login_required
-@limiter.limit("200 per hour")
+@limiter.limit("50 per hour")
 def generate_club_join_code(club_id):
     club = Club.query.get_or_404(club_id)
 
@@ -1168,7 +1262,7 @@ def generate_club_join_code(club_id):
 
 @app.route('/api/clubs/<int:club_id>/posts', methods=['GET', 'POST'])
 @login_required
-@limiter.limit("2000 per hour")
+@limiter.limit("500 per hour")
 def club_posts(club_id):
     club = Club.query.get_or_404(club_id)
 
@@ -1212,7 +1306,7 @@ def club_posts(club_id):
 
 @app.route('/api/clubs/<int:club_id>/assignments', methods=['GET', 'POST'])
 @login_required
-@limiter.limit("500 per hour")
+@limiter.limit("100 per hour")
 def club_assignments(club_id):
     club = Club.query.get_or_404(club_id)
 
@@ -1260,7 +1354,7 @@ def club_assignments(club_id):
 
 @app.route('/api/clubs/<int:club_id>/meetings', methods=['GET', 'POST'])
 @login_required
-@limiter.limit("500 per hour")
+@limiter.limit("100 per hour")
 def club_meetings(club_id):
     club = Club.query.get_or_404(club_id)
 
@@ -1313,7 +1407,7 @@ def club_meetings(club_id):
 
 @app.route('/api/clubs/<int:club_id>/meetings/<int:meeting_id>', methods=['PUT', 'DELETE'])
 @login_required
-@limiter.limit("200 per hour")
+@limiter.limit("50 per hour")
 def manage_meeting(club_id, meeting_id):
     club = Club.query.get_or_404(club_id)
     meeting = ClubMeeting.query.get_or_404(meeting_id)
@@ -1349,7 +1443,7 @@ def manage_meeting(club_id, meeting_id):
 
 @app.route('/api/clubs/<int:club_id>/resources', methods=['GET', 'POST'])
 @login_required
-@limiter.limit("500 per hour")
+@limiter.limit("100 per hour")
 def club_resources(club_id):
     club = Club.query.get_or_404(club_id)
 
@@ -1396,7 +1490,7 @@ def club_resources(club_id):
 
 @app.route('/api/clubs/<int:club_id>/resources/<int:resource_id>', methods=['PUT', 'DELETE'])
 @login_required
-@limiter.limit("200 per hour")
+@limiter.limit("50 per hour")
 def manage_resource(club_id, resource_id):
     club = Club.query.get_or_404(club_id)
     resource = ClubResource.query.get_or_404(resource_id)
@@ -1448,14 +1542,14 @@ def club_projects(club_id):
         'description': 'A sample project for the club',
         'owner': {'username': current_user.username},
         'featured': False,
-        'updated_at': datetime.utcnow().isoformat()
+        'updated_at': datetime.now(timezone.utc).isoformat()
     }]
 
     return jsonify({'projects': projects_data})
 
 @app.route('/api/clubs/<int:club_id>/pizza-grants', methods=['GET', 'POST'])
 @login_required
-@limiter.limit("100 per hour")
+@limiter.limit("20 per hour")
 def pizza_grants(club_id):
     club = Club.query.get_or_404(club_id)
 
@@ -1586,7 +1680,7 @@ def get_user_data(user_id):
 
 @app.route('/api/user/update', methods=['PUT'])
 @login_required
-@limiter.limit("100 per hour")
+@limiter.limit("20 per hour")
 def update_user():
     data = request.get_json()
 
@@ -1673,7 +1767,7 @@ def admin_dashboard():
 @app.route('/api/admin/users', methods=['GET'])
 @login_required
 @require_admin
-@limiter.limit("500 per hour")
+@limiter.limit("100 per hour")
 def admin_get_users():
     users = User.query.all()
     users_data = [{
@@ -1682,6 +1776,8 @@ def admin_get_users():
         'email': user.email,
         'is_admin': user.is_admin,
         'is_suspended': user.is_suspended,
+        'is_locked': user.is_locked,
+        'failed_login_attempts': user.failed_login_attempts,
         'created_at': user.created_at.isoformat() if user.created_at else None,
         'last_login': user.last_login.isoformat() if user.last_login else None,
         'clubs_led': len(user.led_clubs),
@@ -1748,6 +1844,12 @@ def admin_manage_user(user_id):
         if data.get('email'):
             user.email = data.get('email')
 
+        # Allow unlocking accounts
+        if 'is_locked' in data:
+            user.is_locked = data.get('is_locked', False)
+            if not user.is_locked:
+                user.failed_login_attempts = 0
+
         db.session.commit()
         return jsonify({'message': 'User updated successfully'})
 
@@ -1778,7 +1880,7 @@ def admin_manage_club(club_id):
 @require_admin
 def admin_get_stats():
     # Get user registration stats (last 30 days)
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     recent_users = User.query.filter(User.created_at >= thirty_days_ago).count()
 
     # Get club creation stats (last 30 days)
@@ -1794,7 +1896,8 @@ def admin_get_stats():
         'total_users': User.query.count(),
         'total_clubs': Club.query.count(),
         'total_posts': ClubPost.query.count(),
-        'suspended_users': User.query.filter_by(is_suspended=True).count()
+        'suspended_users': User.query.filter_by(is_suspended=True).count(),
+        'locked_users': User.query.filter_by(is_locked=True).count()
     })
 
 @app.route('/api/admin/login-as-user/<int:user_id>', methods=['POST'])
@@ -1804,20 +1907,21 @@ def admin_login_as_user(user_id):
     user = User.query.get_or_404(user_id)
 
     # Don't allow logging in as suspended users
-    if user.is_suspended:
-        return jsonify({'error': 'Cannot login as suspended user'}), 400
+    if user.is_suspended or user.is_account_locked():
+        return jsonify({'error': 'Cannot login as suspended or locked user'}), 400
 
     # Log out current admin user and log in as the target user
-    logout_user()
-    login_user(user)
-    user.last_login = datetime.utcnow()
-    db.session.commit()
+    secure_logout_user()
+    login_result = secure_login_user(user)
+    
+    if not login_result:
+        return jsonify({'error': 'Failed to login as user'}), 500
 
     return jsonify({'message': f'Successfully logged in as {user.username}'})
 
 @app.route('/api/upload-screenshot', methods=['POST'])
 @login_required
-@limiter.limit("50 per hour")
+@limiter.limit("10 per hour")
 def upload_screenshot():
     if 'screenshot' not in request.files:
         return jsonify({'success': False, 'error': 'No screenshot file provided'}), 400
@@ -1924,6 +2028,10 @@ def admin_reset_password(user_id):
         return jsonify({'error': 'Cannot reset your own password via admin panel'}), 400
 
     user.set_password(new_password)
+    # Reset any lock status
+    user.is_locked = False
+    user.failed_login_attempts = 0
+    user.last_failed_login = None
     db.session.commit()
 
     return jsonify({'message': f'Password reset successfully for {user.username}'})
@@ -2007,10 +2115,14 @@ def debug_session_info():
         'is_authenticated': current_user.is_authenticated,
         'is_active': current_user.is_active(),
         'is_suspended': current_user.is_suspended,
+        'is_locked': current_user.is_locked,
+        'failed_login_attempts': current_user.failed_login_attempts,
         'session_keys': list(session.keys()),
         'session_permanent': session.permanent,
-        'auth_time': session.get('auth_time'),
-        'user_authenticated': session.get('user_authenticated'),
+        'session_user_id': session.get('user_id'),
+        'session_token': session.get('session_token'),
+        'login_time': session.get('login_time'),
+        'last_activity': session.get('last_activity'),
         'environment': os.getenv('REPL_SLUG', 'dev'),
         'is_production': os.getenv('REPLIT_DEPLOYMENT') == '1',
         'cookie_config': {
@@ -2100,15 +2212,22 @@ if __name__ == '__main__':
                     super_admin = User(
                         username='ethan',
                         email='ethan@hackclub.com',
+                        first_name='Ethan',
+                        last_name='Davidson',
                         is_admin=True
                     )
                     super_admin.set_password('hackclub2024')  # Default password
                     db.session.add(super_admin)
                     db.session.commit()
+                    print("Created super admin account: ethan@hackclub.com / hackclub2024")
                 else:
-                    # Ensure admin status
+                    # Ensure admin status and unlock if needed
                     super_admin.is_admin = True
+                    super_admin.is_suspended = False
+                    super_admin.is_locked = False
+                    super_admin.failed_login_attempts = 0
                     db.session.commit()
+                    print("Super admin account exists and is active")
 
         except Exception as e:
             print(f"Database connection failed: {e}")
@@ -2123,7 +2242,6 @@ if __name__ == '__main__':
         print("WARNING: Application will run with limited functionality!")
         print("Database features will not be available.")
         print("Please check your PostgreSQL connection and psycopg2 installation.")
-
 
     port = int(os.getenv('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
