@@ -28,11 +28,12 @@ app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Session configuration for multiple servers
-app.config['SESSION_COOKIE_SECURE'] = False
+app.config['SESSION_COOKIE_SECURE'] = True if os.getenv('FLASK_ENV') == 'production' else False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_DOMAIN'] = None
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+app.config['SESSION_TYPE'] = 'filesystem'
 
 SLACK_CLIENT_ID = os.getenv('SLACK_CLIENT_ID')
 SLACK_CLIENT_SECRET = os.getenv('SLACK_CLIENT_SECRET')
@@ -162,15 +163,29 @@ class ClubProject(db.Model):
 # Authentication helpers
 def get_current_user():
     user_id = session.get('user_id')
-    if not user_id:
+    logged_in = session.get('logged_in')
+    
+    if not user_id or not logged_in:
         return None
+    
     try:
-        return db.session.get(User, int(user_id))
+        user = db.session.get(User, int(user_id))
+        if not user:
+            # Clear invalid session
+            session.clear()
+            return None
+        return user
     except Exception as e:
+        app.logger.error(f"Error getting current user: {e}")
         try:
             db.session.rollback()
-            return db.session.get(User, int(user_id))
-        except:
+            user = db.session.get(User, int(user_id))
+            if not user:
+                session.clear()
+            return user
+        except Exception as e2:
+            app.logger.error(f"Error on retry getting current user: {e2}")
+            session.clear()
             return None
 
 def login_user(user, remember=False):
@@ -195,7 +210,13 @@ def is_authenticated():
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not is_authenticated():
+        authenticated = is_authenticated()
+        current_user = get_current_user()
+        
+        app.logger.debug(f"Auth check for {request.endpoint}: authenticated={authenticated}, user_id={session.get('user_id')}, logged_in={session.get('logged_in')}, current_user={current_user.username if current_user else None}")
+        
+        if not authenticated or not current_user:
+            app.logger.warning(f"Authentication failed for {request.endpoint}: user_id={session.get('user_id')}, logged_in={session.get('logged_in')}")
             if request.is_json:
                 return jsonify({'error': 'Authentication required'}), 401
             flash('Please log in to access this page.', 'info')
@@ -429,7 +450,9 @@ def login():
                 return render_template('login.html')
 
         if user and user.check_password(password):
+            app.logger.info(f"User {user.username} (ID: {user.id}) logging in from IP: {request.remote_addr}")
             login_user(user, remember=remember_me)
+            app.logger.info(f"Session created for user {user.username}: session_id={session.get('user_id')}, logged_in={session.get('logged_in')}")
             flash(f'Welcome back, {user.username}!', 'success')
 
             # Check for pending join code
@@ -779,8 +802,17 @@ def slack_callback():
             return redirect(url_for('login'))
 
     if user:
+        app.logger.info(f"Slack OAuth: User {user.username} (ID: {user.id}) logging in from IP: {request.remote_addr}")
         login_user(user, remember=True)
+        app.logger.info(f"Slack OAuth: Session created for user {user.username}: session_id={session.get('user_id')}, logged_in={session.get('logged_in')}")
         flash(f'Welcome back, {user.username}!', 'success')
+        
+        # Check for pending join code
+        pending_join_code = session.get('pending_join_code')
+        if pending_join_code:
+            session.pop('pending_join_code', None)
+            return redirect(url_for('join_club_redirect') + f'?code={pending_join_code}')
+            
         return redirect(url_for('dashboard'))
     else:
         session.clear()
@@ -1449,6 +1481,20 @@ def admin_get_users():
     return jsonify({'users': users_data})
 
 if __name__ == '__main__':
+    import logging
+    
+    # Configure logging for production
+    if os.getenv('FLASK_ENV') == 'production':
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s %(levelname)s %(name)s %(message)s',
+            handlers=[logging.StreamHandler()]
+        )
+        app.logger.setLevel(logging.INFO)
+    else:
+        logging.basicConfig(level=logging.DEBUG)
+        app.logger.setLevel(logging.DEBUG)
+    
     try:
         with app.app_context():
             db.create_all()
@@ -1466,14 +1512,15 @@ if __name__ == '__main__':
                 super_admin.set_password('hackclub2024')
                 db.session.add(super_admin)
                 db.session.commit()
-                print("Created super admin account: ethan@hackclub.com / hackclub2024")
+                app.logger.info("Created super admin account: ethan@hackclub.com / hackclub2024")
             else:
                 super_admin.is_admin = True
                 db.session.commit()
-                print("Super admin account exists and is active")
+                app.logger.info("Super admin account exists and is active")
 
     except Exception as e:
-        print(f"Database setup error: {e}")
+        app.logger.error(f"Database setup error: {e}")
 
     port = int(os.getenv('PORT', 5000))
+    app.logger.info(f"Starting server on port {port}")
     app.run(host='0.0.0.0', port=port, debug=False)
