@@ -517,6 +517,10 @@ def logout():
 @login_required
 def dashboard():
     current_user = get_current_user()
+    if not current_user:
+        flash('Please log in to access your dashboard.', 'info')
+        return redirect(url_for('login'))
+        
     memberships = ClubMembership.query.filter_by(user_id=current_user.id).all()
     led_clubs = Club.query.filter_by(leader_id=current_user.id).all()
 
@@ -531,6 +535,10 @@ def dashboard():
 @login_required
 def club_dashboard(club_id=None):
     current_user = get_current_user()
+    if not current_user:
+        flash('Please log in to access the club dashboard.', 'info')
+        return redirect(url_for('login'))
+        
     if club_id:
         club = Club.query.get_or_404(club_id)
         is_leader = club.leader_id == current_user.id
@@ -1000,6 +1008,423 @@ def admin_dashboard():
                          recent_users=recent_users,
                          recent_clubs=recent_clubs,
                          recent_posts=recent_posts)
+
+@app.route('/api/clubs/<int:club_id>/assignments', methods=['GET', 'POST'])
+@login_required
+@limiter.limit("500 per hour")
+def club_assignments(club_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    is_leader = club.leader_id == current_user.id
+    is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
+
+    if not is_leader and not is_member:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    if request.method == 'POST':
+        if not is_leader:
+            return jsonify({'error': 'Only club leaders can create assignments'}), 403
+
+        data = request.get_json()
+        title = data.get('title')
+        description = data.get('description')
+        due_date = data.get('due_date')
+        for_all_members = data.get('for_all_members', True)
+
+        if not title or not description:
+            return jsonify({'error': 'Title and description are required'}), 400
+
+        assignment = ClubAssignment(
+            club_id=club_id,
+            title=title,
+            description=description,
+            due_date=datetime.fromisoformat(due_date) if due_date else None,
+            for_all_members=for_all_members
+        )
+        db.session.add(assignment)
+        db.session.commit()
+
+        return jsonify({'message': 'Assignment created successfully'})
+
+    assignments = ClubAssignment.query.filter_by(club_id=club_id).order_by(ClubAssignment.created_at.desc()).all()
+    assignments_data = [{
+        'id': assignment.id,
+        'title': assignment.title,
+        'description': assignment.description,
+        'due_date': assignment.due_date.isoformat() if assignment.due_date else None,
+        'for_all_members': assignment.for_all_members,
+        'status': assignment.status,
+        'created_at': assignment.created_at.isoformat()
+    } for assignment in assignments]
+
+    return jsonify({'assignments': assignments_data})
+
+@app.route('/api/clubs/<int:club_id>/meetings', methods=['GET', 'POST'])
+@login_required
+@limiter.limit("500 per hour")
+def club_meetings(club_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    is_leader = club.leader_id == current_user.id
+    is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
+
+    if not is_leader and not is_member:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    if request.method == 'POST':
+        if not is_leader:
+            return jsonify({'error': 'Only club leaders can schedule meetings'}), 403
+
+        data = request.get_json()
+        title = data.get('title')
+        description = data.get('description')
+        meeting_date = data.get('meeting_date')
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+        location = data.get('location')
+        meeting_link = data.get('meeting_link')
+
+        if not title or not meeting_date or not start_time:
+            return jsonify({'error': 'Title, date, and start time are required'}), 400
+
+        meeting = ClubMeeting(
+            club_id=club_id,
+            title=title,
+            description=description,
+            meeting_date=datetime.strptime(meeting_date, '%Y-%m-%d').date(),
+            start_time=start_time,
+            end_time=end_time,
+            location=location,
+            meeting_link=meeting_link
+        )
+        db.session.add(meeting)
+        db.session.commit()
+
+        return jsonify({'message': 'Meeting scheduled successfully'})
+
+    meetings = ClubMeeting.query.filter_by(club_id=club_id).order_by(ClubMeeting.meeting_date.desc()).all()
+    meetings_data = [{
+        'id': meeting.id,
+        'title': meeting.title,
+        'description': meeting.description,
+        'meeting_date': meeting.meeting_date.isoformat(),
+        'start_time': meeting.start_time,
+        'end_time': meeting.end_time,
+        'location': meeting.location,
+        'meeting_link': meeting.meeting_link,
+        'created_at': meeting.created_at.isoformat()
+    } for meeting in meetings]
+
+    return jsonify({'meetings': meetings_data})
+
+@app.route('/api/clubs/<int:club_id>/meetings/<int:meeting_id>', methods=['PUT', 'DELETE'])
+@login_required
+@limiter.limit("200 per hour")
+def club_meeting_detail(club_id, meeting_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+    meeting = ClubMeeting.query.get_or_404(meeting_id)
+
+    if club.leader_id != current_user.id:
+        return jsonify({'error': 'Only club leaders can manage meetings'}), 403
+
+    if meeting.club_id != club_id:
+        return jsonify({'error': 'Meeting does not belong to this club'}), 404
+
+    if request.method == 'DELETE':
+        db.session.delete(meeting)
+        db.session.commit()
+        return jsonify({'message': 'Meeting deleted successfully'})
+
+    if request.method == 'PUT':
+        data = request.get_json()
+        meeting.title = data.get('title', meeting.title)
+        meeting.description = data.get('description', meeting.description)
+        if data.get('meeting_date'):
+            meeting.meeting_date = datetime.strptime(data['meeting_date'], '%Y-%m-%d').date()
+        meeting.start_time = data.get('start_time', meeting.start_time)
+        meeting.end_time = data.get('end_time', meeting.end_time)
+        meeting.location = data.get('location', meeting.location)
+        meeting.meeting_link = data.get('meeting_link', meeting.meeting_link)
+
+        db.session.commit()
+        return jsonify({'message': 'Meeting updated successfully'})
+
+@app.route('/api/clubs/<int:club_id>/projects', methods=['GET'])
+@login_required
+@limiter.limit("500 per hour")
+def club_projects(club_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    is_leader = club.leader_id == current_user.id
+    is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
+
+    if not is_leader and not is_member:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    projects = ClubProject.query.filter_by(club_id=club_id).order_by(ClubProject.updated_at.desc()).all()
+    projects_data = [{
+        'id': project.id,
+        'name': project.name,
+        'description': project.description,
+        'url': project.url,
+        'github_url': project.github_url,
+        'featured': project.featured,
+        'created_at': project.created_at.isoformat(),
+        'updated_at': project.updated_at.isoformat(),
+        'owner': {
+            'id': project.user.id,
+            'username': project.user.username
+        }
+    } for project in projects]
+
+    return jsonify({'projects': projects_data})
+
+@app.route('/api/clubs/<int:club_id>/resources', methods=['GET', 'POST'])
+@login_required
+@limiter.limit("500 per hour")
+def club_resources(club_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    is_leader = club.leader_id == current_user.id
+    is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
+
+    if not is_leader and not is_member:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    if request.method == 'POST':
+        if not is_leader:
+            return jsonify({'error': 'Only club leaders can add resources'}), 403
+
+        data = request.get_json()
+        title = data.get('title')
+        url = data.get('url')
+        description = data.get('description')
+        icon = data.get('icon', 'book')
+
+        if not title or not url:
+            return jsonify({'error': 'Title and URL are required'}), 400
+
+        resource = ClubResource(
+            club_id=club_id,
+            title=title,
+            url=url,
+            description=description,
+            icon=icon
+        )
+        db.session.add(resource)
+        db.session.commit()
+
+        return jsonify({'message': 'Resource added successfully'})
+
+    resources = ClubResource.query.filter_by(club_id=club_id).order_by(ClubResource.created_at.desc()).all()
+    resources_data = [{
+        'id': resource.id,
+        'title': resource.title,
+        'url': resource.url,
+        'description': resource.description,
+        'icon': resource.icon,
+        'created_at': resource.created_at.isoformat()
+    } for resource in resources]
+
+    return jsonify({'resources': resources_data})
+
+@app.route('/api/clubs/<int:club_id>/resources/<int:resource_id>', methods=['PUT', 'DELETE'])
+@login_required
+@limiter.limit("200 per hour")
+def club_resource_detail(club_id, resource_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+    resource = ClubResource.query.get_or_404(resource_id)
+
+    if club.leader_id != current_user.id:
+        return jsonify({'error': 'Only club leaders can manage resources'}), 403
+
+    if resource.club_id != club_id:
+        return jsonify({'error': 'Resource does not belong to this club'}), 404
+
+    if request.method == 'DELETE':
+        db.session.delete(resource)
+        db.session.commit()
+        return jsonify({'message': 'Resource deleted successfully'})
+
+    if request.method == 'PUT':
+        data = request.get_json()
+        resource.title = data.get('title', resource.title)
+        resource.url = data.get('url', resource.url)
+        resource.description = data.get('description', resource.description)
+        resource.icon = data.get('icon', resource.icon)
+
+        db.session.commit()
+        return jsonify({'message': 'Resource updated successfully'})
+
+@app.route('/api/clubs/<int:club_id>/members/<int:user_id>', methods=['DELETE'])
+@login_required
+@limiter.limit("100 per hour")
+def remove_club_member(club_id, user_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    if club.leader_id != current_user.id:
+        return jsonify({'error': 'Only club leaders can remove members'}), 403
+
+    if user_id == club.leader_id:
+        return jsonify({'error': 'Cannot remove club leader'}), 400
+
+    membership = ClubMembership.query.filter_by(club_id=club_id, user_id=user_id).first()
+    if not membership:
+        return jsonify({'error': 'User is not a member of this club'}), 404
+
+    db.session.delete(membership)
+    db.session.commit()
+
+    return jsonify({'success': True, 'message': 'Member removed successfully'})
+
+@app.route('/api/clubs/<int:club_id>/pizza-grants', methods=['POST'])
+@login_required
+@limiter.limit("10 per hour")
+def submit_pizza_grant(club_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    is_leader = club.leader_id == current_user.id
+    is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
+
+    if not is_leader and not is_member:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    data = request.get_json()
+    member_id = data.get('member_id')
+
+    # Only leaders can submit on behalf of others
+    if member_id != str(current_user.id) and not is_leader:
+        return jsonify({'error': 'You can only submit grants for yourself'}), 403
+
+    # Get member info
+    member = User.query.get(member_id)
+    if not member:
+        return jsonify({'error': 'Member not found'}), 404
+
+    # Prepare submission data for Airtable
+    submission_data = {
+        'project_name': data.get('project_name', ''),
+        'project_hours': data.get('project_hours', '0'),
+        'first_name': data.get('first_name', ''),
+        'last_name': data.get('last_name', ''),
+        'username': member.username,
+        'email': data.get('email', ''),
+        'birthday': data.get('birthday', ''),
+        'project_description': data.get('project_description', ''),
+        'github_url': data.get('github_url', ''),
+        'live_url': data.get('live_url', ''),
+        'learning': data.get('learning', ''),
+        'doing_well': data.get('doing_well', ''),
+        'improve': data.get('improve', ''),
+        'address_1': data.get('address_1', ''),
+        'address_2': data.get('address_2', ''),
+        'city': data.get('city', ''),
+        'state': data.get('state', ''),
+        'zip': data.get('zip', ''),
+        'country': data.get('country', ''),
+        'screenshot_url': data.get('screenshot_url', ''),
+        'club_name': club.name,
+        'leader_email': club.leader.email
+    }
+
+    # Submit to Airtable
+    result = airtable_service.log_pizza_grant(submission_data)
+    if result:
+        return jsonify({'message': 'Pizza grant submitted successfully!'})
+    else:
+        return jsonify({'error': 'Failed to submit pizza grant. Please try again.'}), 500
+
+@app.route('/api/upload-screenshot', methods=['POST'])
+@login_required
+@limiter.limit("20 per hour")
+def upload_screenshot():
+    if 'screenshot' not in request.files:
+        return jsonify({'success': False, 'error': 'No file uploaded'}), 400
+
+    file = request.files['screenshot']
+    if file.filename == '':
+        return jsonify({'success': False, 'error': 'No file selected'}), 400
+
+    if not file.content_type.startswith('image/'):
+        return jsonify({'success': False, 'error': 'File must be an image'}), 400
+
+    try:
+        # For now, return a placeholder URL since we don't have CDN setup
+        # In production, this would upload to Hack Club CDN or another service
+        placeholder_url = f"https://cdn.hackclub.com/screenshots/{file.filename}"
+        return jsonify({'success': True, 'url': placeholder_url})
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Upload failed'}), 500
+
+@app.route('/api/user/<int:user_id>', methods=['GET'])
+@login_required
+@limiter.limit("100 per hour")
+def get_user_info(user_id):
+    current_user = get_current_user()
+    
+    # Only allow users to access their own info or club leaders to access member info
+    if user_id != current_user.id:
+        # Check if current user is a leader of any club where this user is a member
+        is_leader = False
+        led_clubs = Club.query.filter_by(leader_id=current_user.id).all()
+        for club in led_clubs:
+            membership = ClubMembership.query.filter_by(club_id=club.id, user_id=user_id).first()
+            if membership or club.leader_id == user_id:
+                is_leader = True
+                break
+        
+        if not is_leader:
+            return jsonify({'error': 'Unauthorized'}), 403
+
+    user = User.query.get_or_404(user_id)
+    
+    return jsonify({
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'birthday': user.birthday.isoformat() if user.birthday else None
+    })
+
+@app.route('/api/hackatime/projects/<int:user_id>', methods=['GET'])
+@login_required
+@limiter.limit("100 per hour")
+def get_hackatime_projects(user_id):
+    current_user = get_current_user()
+    
+    # Only allow users to access their own data or club leaders to access member data
+    if user_id != current_user.id:
+        is_leader = False
+        led_clubs = Club.query.filter_by(leader_id=current_user.id).all()
+        for club in led_clubs:
+            membership = ClubMembership.query.filter_by(club_id=club.id, user_id=user_id).first()
+            if membership or club.leader_id == user_id:
+                is_leader = True
+                break
+        
+        if not is_leader:
+            return jsonify({'error': 'Unauthorized'}), 403
+
+    user = User.query.get_or_404(user_id)
+    
+    if not user.hackatime_api_key:
+        return jsonify({'error': 'User has not configured Hackatime API key'}), 400
+
+    projects = hackatime_service.get_user_projects(user.hackatime_api_key)
+    
+    return jsonify({
+        'username': user.username,
+        'projects': projects
+    })
 
 @app.route('/api/admin/users', methods=['GET'])
 @login_required
