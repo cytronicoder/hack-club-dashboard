@@ -74,7 +74,7 @@ if db_available:
         login_manager = LoginManager()
         login_manager.init_app(app)
         login_manager.login_view = 'login'
-        
+
         # Initialize rate limiter
         limiter = Limiter(
             key_func=get_remote_address,
@@ -271,9 +271,9 @@ class AirtableService:
             params = {
                 'filterByFormula': f'AND(FIND("{email}", {{Current Leaders\' Emails}}) > 0, FIND("{club_name}", {{Venue}}) > 0)'
             }
-            
+
             response = requests.get(leaders_url, headers=self.headers, params=params)
-            
+
             if response.status_code == 200:
                 data = response.json()
                 records = data.get('records', [])
@@ -629,16 +629,16 @@ def verify_leader():
 
     if request.method == 'POST':
         data = request.get_json()
-        
+
         email = data.get('email', '').strip()
         club_name = data.get('club_name', '').strip()
-        
+
         if not email or not club_name:
             return jsonify({'error': 'Email and club name are required'}), 400
-        
+
         # Verify with Airtable
         is_verified = airtable_service.verify_club_leader(email, club_name)
-        
+
         if is_verified:
             # Store verification data in session
             session['leader_verification'] = {
@@ -649,7 +649,7 @@ def verify_leader():
             return jsonify({'success': True, 'message': 'Leader verification successful!'})
         else:
             return jsonify({'error': 'Club leader verification failed. Please check your email and club name.'}), 400
-    
+
     return render_template('verify_leader.html')
 
 @app.route('/complete-leader-signup', methods=['GET', 'POST'])
@@ -660,7 +660,7 @@ def complete_leader_signup():
         return redirect(url_for('dashboard'))
 
     leader_verification = session.get('leader_verification')
-    
+
     if not leader_verification or not leader_verification.get('verified'):
         flash('Invalid verification session. Please start over.', 'error')
         return redirect(url_for('dashboard'))
@@ -668,7 +668,7 @@ def complete_leader_signup():
     try:
         # Check if this is for an existing user or new signup
         signup_data = session.get('signup_data')
-        
+
         if signup_data:
             # New user signup flow
             user = User(
@@ -681,10 +681,10 @@ def complete_leader_signup():
             user.set_password(signup_data['password'])
             db.session.add(user)
             db.session.flush()
-            
+
             # Clear signup session data
             session.pop('signup_data', None)
-            
+
             flash_message = f'Account created successfully! Welcome to {leader_verification["club_name"]}!'
             redirect_route = 'login'
         else:
@@ -708,7 +708,7 @@ def complete_leader_signup():
         session.pop('leader_verification', None)
 
         flash(flash_message, 'success')
-        
+
         if redirect_route == 'club_dashboard':
             return redirect(url_for('club_dashboard', club_id=club.id))
         else:
@@ -787,8 +787,9 @@ def complete_slack_signup():
             db.session.commit()
 
             # Clear Slack signup data and log user in
+            session.clear()
             session.pop('slack_signup_data', None)
-            login_user(user)
+            login_user(user, remember=True)
             user.last_login = datetime.utcnow()
             db.session.commit()
 
@@ -825,7 +826,7 @@ def login():
         try:
             user = User.query.filter_by(email=email).first()
             if user and user.check_password(password):
-                login_user(user)
+                login_user(user, remember=True)
                 user.last_login = datetime.utcnow()
                 db.session.commit()
                 flash(f'Welcome back, {user.username}!', 'success')
@@ -882,7 +883,7 @@ def signup():
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
-            
+
             flash('Account created successfully! Please log in.', 'success')
             return redirect(url_for('login'))
         except Exception as e:
@@ -1896,7 +1897,7 @@ def test_airtable_connection():
         return jsonify({'error': f'Error testing Airtable: {str(e)}'}), 500
 
 if __name__ == '__main__':
-        
+
     if db_available:
         try:
             with app.app_context():
@@ -1924,7 +1925,7 @@ if __name__ == '__main__':
             db_available = False
     else:
         print("Starting app without database functionality...")
-        
+
     # Print database connection status
     print(f"Database available: {db_available}")
     if not db_available:
