@@ -44,6 +44,9 @@ db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+login_manager.login_message = 'Please log in to access this page.'
+login_manager.login_message_category = 'info'
+login_manager.session_protection = 'strong'
 
 # Initialize rate limiter
 limiter = Limiter(
@@ -371,7 +374,8 @@ slack_oauth_service = SlackOAuthService()
 # Routes
 @app.route('/')
 def index():
-    if current_user.is_authenticated:
+    # Force check if user is actually authenticated
+    if current_user.is_authenticated and current_user.is_active:
         return redirect(url_for('dashboard'))
     return render_template('index.html')
 
@@ -481,7 +485,11 @@ def logout():
     logout_user()
     session.clear()
     flash('You have been logged out.', 'success')
-    return redirect(url_for('index'))
+    response = redirect(url_for('index'))
+    # Clear any persistent login cookies
+    response.set_cookie('remember_token', '', expires=0)
+    response.set_cookie('session', '', expires=0)
+    return response
 
 @app.route('/dashboard')
 @login_required
