@@ -1472,6 +1472,7 @@ def admin_get_users():
         'username': user.username,
         'email': user.email,
         'is_admin': user.is_admin,
+        'is_suspended': False,  # Add suspended field when implemented
         'created_at': user.created_at.isoformat() if user.created_at else None,
         'last_login': user.last_login.isoformat() if user.last_login else None,
         'clubs_led': len(user.led_clubs),
@@ -1479,6 +1480,230 @@ def admin_get_users():
     } for user in users]
 
     return jsonify({'users': users_data})
+
+@app.route('/api/admin/clubs', methods=['GET'])
+@login_required
+@limiter.limit("100 per hour")
+def admin_get_clubs():
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    clubs = Club.query.all()
+    clubs_data = [{
+        'id': club.id,
+        'name': club.name,
+        'description': club.description,
+        'location': club.location,
+        'leader': club.leader.username,
+        'leader_email': club.leader.email,
+        'member_count': len(club.members) + 1,  # +1 for leader
+        'balance': float(club.balance),
+        'created_at': club.created_at.isoformat() if club.created_at else None,
+        'join_code': club.join_code
+    } for club in clubs]
+
+    return jsonify({'clubs': clubs_data})
+
+@app.route('/api/admin/administrators', methods=['GET'])
+@login_required
+@limiter.limit("100 per hour")
+def admin_get_administrators():
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    admins = User.query.filter_by(is_admin=True).all()
+    admins_data = [{
+        'id': admin.id,
+        'username': admin.username,
+        'email': admin.email,
+        'is_admin': admin.is_admin,
+        'is_super_admin': admin.email == 'ethan@hackclub.com',  # Super admin check
+        'is_suspended': False,  # Add suspended field when implemented
+        'created_at': admin.created_at.isoformat() if admin.created_at else None,
+        'last_login': admin.last_login.isoformat() if admin.last_login else None,
+        'clubs_led': len(admin.led_clubs)
+    } for admin in admins]
+
+    return jsonify({'admins': admins_data})
+
+@app.route('/api/admin/users/<int:user_id>', methods=['PUT', 'DELETE'])
+@login_required
+@limiter.limit("50 per hour")
+def admin_manage_user(user_id):
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    user = User.query.get_or_404(user_id)
+    
+    if request.method == 'DELETE':
+        # Don't allow deleting super admin
+        if user.email == 'ethan@hackclub.com':
+            return jsonify({'error': 'Cannot delete super admin'}), 400
+        
+        # Delete user's memberships first
+        ClubMembership.query.filter_by(user_id=user_id).delete()
+        
+        # Transfer leadership of clubs or delete clubs if needed
+        led_clubs = Club.query.filter_by(leader_id=user_id).all()
+        for club in led_clubs:
+            db.session.delete(club)
+        
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({'message': 'User deleted successfully'})
+    
+    if request.method == 'PUT':
+        data = request.get_json()
+        
+        if 'username' in data:
+            existing_user = User.query.filter_by(username=data['username']).first()
+            if existing_user and existing_user.id != user_id:
+                return jsonify({'error': 'Username already taken'}), 400
+            user.username = data['username']
+        
+        if 'email' in data:
+            existing_user = User.query.filter_by(email=data['email']).first()
+            if existing_user and existing_user.id != user_id:
+                return jsonify({'error': 'Email already registered'}), 400
+            user.email = data['email']
+        
+        if 'is_admin' in data:
+            # Don't allow removing super admin privileges
+            if user.email == 'ethan@hackclub.com' and not data['is_admin']:
+                return jsonify({'error': 'Cannot remove super admin privileges'}), 400
+            user.is_admin = data['is_admin']
+        
+        db.session.commit()
+        return jsonify({'message': 'User updated successfully'})
+
+@app.route('/api/admin/clubs/<int:club_id>', methods=['PUT', 'DELETE'])
+@login_required
+@limiter.limit("50 per hour")
+def admin_manage_club(club_id):
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    club = Club.query.get_or_404(club_id)
+    
+    if request.method == 'DELETE':
+        # Delete all memberships first
+        ClubMembership.query.filter_by(club_id=club_id).delete()
+        
+        # Delete all related data
+        ClubPost.query.filter_by(club_id=club_id).delete()
+        ClubAssignment.query.filter_by(club_id=club_id).delete()
+        ClubMeeting.query.filter_by(club_id=club_id).delete()
+        ClubResource.query.filter_by(club_id=club_id).delete()
+        ClubProject.query.filter_by(club_id=club_id).delete()
+        
+        db.session.delete(club)
+        db.session.commit()
+        return jsonify({'message': 'Club deleted successfully'})
+    
+    if request.method == 'PUT':
+        data = request.get_json()
+        
+        if 'name' in data:
+            club.name = data['name']
+        if 'description' in data:
+            club.description = data['description']
+        if 'location' in data:
+            club.location = data['location']
+        if 'balance' in data:
+            club.balance = data['balance']
+        
+        db.session.commit()
+        return jsonify({'message': 'Club updated successfully'})
+
+@app.route('/api/admin/administrators', methods=['POST'])
+@login_required
+@limiter.limit("20 per hour")
+def admin_add_administrator():
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    data = request.get_json()
+    email = data.get('email', '').strip().lower()
+    
+    if not email:
+        return jsonify({'error': 'Email is required'}), 400
+    
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({'error': 'User not found with this email'}), 404
+    
+    if user.is_admin:
+        return jsonify({'error': 'User is already an administrator'}), 400
+    
+    user.is_admin = True
+    db.session.commit()
+    
+    return jsonify({'message': 'Administrator added successfully'})
+
+@app.route('/api/admin/administrators/<int:admin_id>', methods=['DELETE'])
+@login_required
+@limiter.limit("20 per hour")
+def admin_remove_administrator(admin_id):
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    admin = User.query.get_or_404(admin_id)
+    
+    # Don't allow removing super admin
+    if admin.email == 'ethan@hackclub.com':
+        return jsonify({'error': 'Cannot remove super admin privileges'}), 400
+    
+    admin.is_admin = False
+    db.session.commit()
+    
+    return jsonify({'message': 'Administrator privileges removed successfully'})
+
+@app.route('/api/admin/login-as-user/<int:user_id>', methods=['POST'])
+@login_required
+@limiter.limit("10 per hour")
+def admin_login_as_user(user_id):
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    user = User.query.get_or_404(user_id)
+    
+    # Log the admin action
+    app.logger.info(f"Admin {current_user.username} (ID: {current_user.id}) logging in as user {user.username} (ID: {user.id}) from IP: {request.remote_addr}")
+    
+    # Switch session to the target user
+    login_user(user, remember=False)
+    
+    return jsonify({'message': f'Successfully logged in as {user.username}'})
+
+@app.route('/api/admin/reset-password/<int:user_id>', methods=['POST'])
+@login_required
+@limiter.limit("10 per hour")
+def admin_reset_password(user_id):
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    data = request.get_json()
+    new_password = data.get('new_password')
+    
+    if not new_password or len(new_password) < 6:
+        return jsonify({'error': 'Password must be at least 6 characters long'}), 400
+
+    user = User.query.get_or_404(user_id)
+    user.set_password(new_password)
+    db.session.commit()
+    
+    # Log the admin action
+    app.logger.info(f"Admin {current_user.username} (ID: {current_user.id}) reset password for user {user.username} (ID: {user.id}) from IP: {request.remote_addr}")
+    
+    return jsonify({'message': 'Password reset successfully'})
 
 if __name__ == '__main__':
     import logging
