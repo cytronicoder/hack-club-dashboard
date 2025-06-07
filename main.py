@@ -47,14 +47,15 @@ app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Enhanced session configuration for production reliability
-is_production = os.getenv('REPLIT_DEPLOYMENT') == '1' or 'repl.co' in os.getenv('REPL_SLUG', '')
-app.config['SESSION_COOKIE_SECURE'] = is_production
+is_production = os.getenv('REPLIT_DEPLOYMENT') == '1' or 'repl.co' in os.getenv('REPL_SLUG', '') or os.getenv('ENVIRONMENT') == 'production'
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to False for broader compatibility unless using HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_NAME'] = f"hackclub_session_{os.getenv('REPL_SLUG', 'dev')}"  # Environment-specific sessions
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Shorter session lifetime
-app.config['SESSION_REFRESH_EACH_REQUEST'] = False
+app.config['SESSION_COOKIE_NAME'] = "hackclub_session"  # Simplified session name
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)  # Longer session lifetime
+app.config['SESSION_REFRESH_EACH_REQUEST'] = True  # Refresh sessions to prevent timeout
 app.config['SESSION_COOKIE_DOMAIN'] = None  # Let Flask handle domain automatically
+app.config['SESSION_TYPE'] = 'filesystem'  # Use filesystem sessions for reliability
 
 SLACK_CLIENT_ID = os.getenv('SLACK_CLIENT_ID')
 SLACK_CLIENT_SECRET = os.getenv('SLACK_CLIENT_SECRET')
@@ -85,10 +86,10 @@ if db_available:
         login_manager.init_app(app)
         login_manager.login_view = 'login'
         login_manager.session_protection = None  # Disable built-in session protection to avoid conflicts
-        login_manager.remember_cookie_duration = timedelta(days=7)
-        login_manager.remember_cookie_secure = is_production
+        login_manager.remember_cookie_duration = timedelta(days=30)
+        login_manager.remember_cookie_secure = False  # Set to False for broader compatibility
         login_manager.remember_cookie_httponly = True
-        login_manager.remember_cookie_name = f"hackclub_remember_{os.getenv('REPL_SLUG', 'dev')}"
+        login_manager.remember_cookie_name = "hackclub_remember"
         login_manager.remember_cookie_domain = None
 
         # Initialize rate limiter
@@ -100,43 +101,33 @@ if db_available:
             strategy="fixed-window"
         )
         
-        # Add session validation middleware
+        # Simplified session validation middleware
         @app.before_request
         def validate_session():
             # Skip validation for static files and auth endpoints
-            if request.endpoint in ['static', 'login', 'signup', 'slack_login', 'slack_callback']:
+            if request.endpoint in ['static', 'login', 'signup', 'slack_login', 'slack_callback', 'index']:
                 return
             
             if current_user.is_authenticated:
-                # Validate session consistency
-                if not validate_user_session(current_user):
+                # Basic user validation only
+                if current_user.is_suspended:
                     logout_user()
                     session.clear()
                     if request.is_json:
-                        return jsonify({'error': 'Session expired, please log in again'}), 401
-                    flash('Your session has expired. Please log in again.', 'warning')
+                        return jsonify({'error': 'Account suspended'}), 401
+                    flash('Your account has been suspended.', 'error')
                     return redirect(url_for('login'))
                 
-                # Check if session is too old (security measure)
-                auth_time = session.get('auth_time')
-                if auth_time:
+                # Update last login occasionally (not every request)
+                if not session.get('last_activity_update') or \
+                   (datetime.utcnow() - datetime.fromisoformat(session.get('last_activity_update', '2000-01-01T00:00:00'))).total_seconds() > 3600:
                     try:
-                        auth_datetime = datetime.fromisoformat(auth_time)
-                        if datetime.utcnow() - auth_datetime > timedelta(days=7):
-                            logout_user()
-                            session.clear()
-                            if request.is_json:
-                                return jsonify({'error': 'Session expired, please log in again'}), 401
-                            flash('Your session has expired. Please log in again.', 'warning')
-                            return redirect(url_for('login'))
-                    except (ValueError, TypeError):
-                        # Invalid auth_time format, clear session
-                        logout_user()
-                        session.clear()
-                        if request.is_json:
-                            return jsonify({'error': 'Invalid session, please log in again'}), 401
-                        flash('Invalid session. Please log in again.', 'warning')
-                        return redirect(url_for('login'))
+                        current_user.last_login = datetime.utcnow()
+                        db.session.commit()
+                        session['last_activity_update'] = datetime.utcnow().isoformat()
+                    except Exception:
+                        # Don't fail on database errors for session updates
+                        pass
     except Exception as e:
         print(f"Login manager or limiter initialization failed: {e}")
         db_available = False
@@ -682,10 +673,9 @@ def slack_callback():
         
         # Clear existing session data
         session.clear()
-        clean_user_session()
         
-        # Login the user
-        login_result = login_user(user, remember=True, duration=timedelta(days=7))
+        # Login the user with extended duration
+        login_result = login_user(user, remember=True, duration=timedelta(days=30))
         
         if not login_result:
             flash('Login failed. Please try again.', 'error')
@@ -694,11 +684,12 @@ def slack_callback():
         user.last_login = datetime.utcnow()
         db.session.commit()
         
-        # Set session properties
+        # Set session properties with simplified tracking
         session.permanent = True
         session['user_authenticated'] = True
-        session['auth_time'] = datetime.utcnow().isoformat()
+        session['login_time'] = datetime.utcnow().isoformat()
         session['slack_login'] = True
+        session['last_activity_update'] = datetime.utcnow().isoformat()
         
         flash(f'Welcome back, {user.username}!', 'success')
         return redirect(url_for('dashboard'))
@@ -886,9 +877,8 @@ def complete_slack_signup():
             # Clear Slack signup data
             session.pop('slack_signup_data', None)
             
-            # Clean session and login user
-            clean_user_session()
-            login_result = login_user(user, remember=True, duration=timedelta(days=7))
+            # Login user after account creation
+            login_result = login_user(user, remember=True, duration=timedelta(days=30))
             
             if not login_result:
                 return jsonify({'error': 'Failed to log in after account creation'}), 500
@@ -896,11 +886,12 @@ def complete_slack_signup():
             user.last_login = datetime.utcnow()
             db.session.commit()
             
-            # Set session properties
+            # Set session properties with simplified tracking
             session.permanent = True
             session['user_authenticated'] = True
-            session['auth_time'] = datetime.utcnow().isoformat()
+            session['login_time'] = datetime.utcnow().isoformat()
             session['slack_signup'] = True
+            session['last_activity_update'] = datetime.utcnow().isoformat()
 
             return jsonify({'success': True, 'message': 'Account created successfully!'})
 
@@ -917,15 +908,6 @@ def index():
     if db_available and current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     return render_template('index.html')
-
-def clean_user_session():
-    """Clean up any conflicting session data"""
-    keys_to_remove = []
-    for key in session:
-        if key.startswith('_') and key != '_user_id':
-            keys_to_remove.append(key)
-    for key in keys_to_remove:
-        session.pop(key, None)
 
 def validate_user_session(user):
     """Validate that the user session is consistent"""
@@ -967,10 +949,9 @@ def login():
                 
                 # Clear any existing session data first
                 session.clear()
-                clean_user_session()
                 
-                # Login the user
-                login_result = login_user(user, remember=remember_me, duration=timedelta(days=7))
+                # Login the user with remember option
+                login_result = login_user(user, remember=remember_me, duration=timedelta(days=30))
                 
                 if not login_result:
                     flash('Login failed. Please try again.', 'error')
@@ -980,10 +961,11 @@ def login():
                 user.last_login = datetime.utcnow()
                 db.session.commit()
                 
-                # Set session properties
-                session.permanent = remember_me
+                # Set session properties with simplified tracking
+                session.permanent = True  # Always use permanent sessions
                 session['user_authenticated'] = True
-                session['auth_time'] = datetime.utcnow().isoformat()
+                session['login_time'] = datetime.utcnow().isoformat()
+                session['last_activity_update'] = datetime.utcnow().isoformat()
                 
                 flash(f'Welcome back, {user.username}!', 'success')
                 
