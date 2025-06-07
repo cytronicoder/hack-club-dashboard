@@ -46,13 +46,15 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(16))
 app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Session configuration for better stability
-# Only require secure cookies in production (HTTPS)
-app.config['SESSION_COOKIE_SECURE'] = os.getenv('FLASK_ENV') == 'production'
+# Enhanced session configuration for production reliability
+is_production = os.getenv('REPLIT_DEPLOYMENT') == '1' or 'repl.co' in os.getenv('REPL_SLUG', '')
+app.config['SESSION_COOKIE_SECURE'] = is_production
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
-app.config['SESSION_REFRESH_EACH_REQUEST'] = False  # Prevent session conflicts
+app.config['SESSION_COOKIE_NAME'] = f"hackclub_session_{os.getenv('REPL_SLUG', 'dev')}"  # Environment-specific sessions
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Shorter session lifetime
+app.config['SESSION_REFRESH_EACH_REQUEST'] = False
+app.config['SESSION_COOKIE_DOMAIN'] = None  # Let Flask handle domain automatically
 
 SLACK_CLIENT_ID = os.getenv('SLACK_CLIENT_ID')
 SLACK_CLIENT_SECRET = os.getenv('SLACK_CLIENT_SECRET')
@@ -82,10 +84,12 @@ if db_available:
         login_manager = LoginManager()
         login_manager.init_app(app)
         login_manager.login_view = 'login'
-        login_manager.session_protection = "basic"  # Use basic instead of strong for better compatibility
-        login_manager.remember_cookie_duration = timedelta(days=30)
-        login_manager.remember_cookie_secure = os.getenv('FLASK_ENV') == 'production'  # Only secure in production
+        login_manager.session_protection = None  # Disable built-in session protection to avoid conflicts
+        login_manager.remember_cookie_duration = timedelta(days=7)
+        login_manager.remember_cookie_secure = is_production
         login_manager.remember_cookie_httponly = True
+        login_manager.remember_cookie_name = f"hackclub_remember_{os.getenv('REPL_SLUG', 'dev')}"
+        login_manager.remember_cookie_domain = None
 
         # Initialize rate limiter
         limiter = Limiter(
@@ -95,6 +99,44 @@ if db_available:
             storage_uri="memory://",
             strategy="fixed-window"
         )
+        
+        # Add session validation middleware
+        @app.before_request
+        def validate_session():
+            # Skip validation for static files and auth endpoints
+            if request.endpoint in ['static', 'login', 'signup', 'slack_login', 'slack_callback']:
+                return
+            
+            if current_user.is_authenticated:
+                # Validate session consistency
+                if not validate_user_session(current_user):
+                    logout_user()
+                    session.clear()
+                    if request.is_json:
+                        return jsonify({'error': 'Session expired, please log in again'}), 401
+                    flash('Your session has expired. Please log in again.', 'warning')
+                    return redirect(url_for('login'))
+                
+                # Check if session is too old (security measure)
+                auth_time = session.get('auth_time')
+                if auth_time:
+                    try:
+                        auth_datetime = datetime.fromisoformat(auth_time)
+                        if datetime.utcnow() - auth_datetime > timedelta(days=7):
+                            logout_user()
+                            session.clear()
+                            if request.is_json:
+                                return jsonify({'error': 'Session expired, please log in again'}), 401
+                            flash('Your session has expired. Please log in again.', 'warning')
+                            return redirect(url_for('login'))
+                    except (ValueError, TypeError):
+                        # Invalid auth_time format, clear session
+                        logout_user()
+                        session.clear()
+                        if request.is_json:
+                            return jsonify({'error': 'Invalid session, please log in again'}), 401
+                        flash('Invalid session. Please log in again.', 'warning')
+                        return redirect(url_for('login'))
     except Exception as e:
         print(f"Login manager or limiter initialization failed: {e}")
         db_available = False
@@ -250,7 +292,21 @@ if login_manager:
     def load_user(user_id):
         if not db_available:
             return None
-        return db.session.get(User, int(user_id))
+        try:
+            user = db.session.get(User, int(user_id))
+            if user and user.is_suspended:
+                return None  # Don't load suspended users
+            return user
+        except Exception as e:
+            print(f"Error loading user {user_id}: {e}")
+            return None
+
+    @login_manager.unauthorized_handler
+    def unauthorized():
+        if request.is_json:
+            return jsonify({'error': 'Authentication required'}), 401
+        flash('Please log in to access this page.', 'info')
+        return redirect(url_for('login'))
 
 # Airtable Service for Pizza Grants
 class AirtableService:
@@ -620,17 +676,35 @@ def slack_callback():
 
     if user:
         # User exists, log them in
-        login_user(user, remember=True, duration=timedelta(days=30))
+        if user.is_suspended:
+            flash('Your account has been suspended. Please contact support.', 'error')
+            return redirect(url_for('login'))
+        
+        # Clear existing session data
+        session.clear()
+        clean_user_session()
+        
+        # Login the user
+        login_result = login_user(user, remember=True, duration=timedelta(days=7))
+        
+        if not login_result:
+            flash('Login failed. Please try again.', 'error')
+            return redirect(url_for('login'))
+        
         user.last_login = datetime.utcnow()
         db.session.commit()
         
-        # Set session as permanent
+        # Set session properties
         session.permanent = True
+        session['user_authenticated'] = True
+        session['auth_time'] = datetime.utcnow().isoformat()
+        session['slack_login'] = True
         
         flash(f'Welcome back, {user.username}!', 'success')
         return redirect(url_for('dashboard'))
     else:
         # New user, store Slack data in session and show completion modal
+        session.clear()  # Clear any existing session data
         session['slack_signup_data'] = {
             'slack_user_id': slack_user_id,
             'email': email or '',
@@ -809,15 +883,24 @@ def complete_slack_signup():
 
             db.session.commit()
 
-            # Clear Slack signup data and log user in
+            # Clear Slack signup data
             session.pop('slack_signup_data', None)
             
-            login_user(user, remember=True, duration=timedelta(days=30))
+            # Clean session and login user
+            clean_user_session()
+            login_result = login_user(user, remember=True, duration=timedelta(days=7))
+            
+            if not login_result:
+                return jsonify({'error': 'Failed to log in after account creation'}), 500
+            
             user.last_login = datetime.utcnow()
             db.session.commit()
             
-            # Set session as permanent
+            # Set session properties
             session.permanent = True
+            session['user_authenticated'] = True
+            session['auth_time'] = datetime.utcnow().isoformat()
+            session['slack_signup'] = True
 
             return jsonify({'success': True, 'message': 'Account created successfully!'})
 
@@ -835,6 +918,21 @@ def index():
         return redirect(url_for('dashboard'))
     return render_template('index.html')
 
+def clean_user_session():
+    """Clean up any conflicting session data"""
+    keys_to_remove = []
+    for key in session:
+        if key.startswith('_') and key != '_user_id':
+            keys_to_remove.append(key)
+    for key in keys_to_remove:
+        session.pop(key, None)
+
+def validate_user_session(user):
+    """Validate that the user session is consistent"""
+    if not user or user.is_suspended:
+        return False
+    return True
+
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("100 per minute")
 def login():
@@ -842,23 +940,50 @@ def login():
         flash('Database is currently unavailable. Please try again later.', 'error')
         return render_template('login.html')
 
+    # Force logout if user is already authenticated but session is invalid
     if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
+        if not validate_user_session(current_user):
+            logout_user()
+            session.clear()
+        else:
+            return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
         remember_me = request.form.get('remember_me') == 'on'
+
+        if not email or not password:
+            flash('Email and password are required', 'error')
+            return render_template('login.html')
 
         try:
             user = User.query.filter_by(email=email).first()
+            
             if user and user.check_password(password):
-                login_user(user, remember=remember_me, duration=timedelta(days=30))
+                if user.is_suspended:
+                    flash('Your account has been suspended. Please contact support.', 'error')
+                    return render_template('login.html')
+                
+                # Clear any existing session data first
+                session.clear()
+                clean_user_session()
+                
+                # Login the user
+                login_result = login_user(user, remember=remember_me, duration=timedelta(days=7))
+                
+                if not login_result:
+                    flash('Login failed. Please try again.', 'error')
+                    return render_template('login.html')
+                
+                # Update user login time
                 user.last_login = datetime.utcnow()
                 db.session.commit()
                 
-                # Set session as permanent for remember functionality
+                # Set session properties
                 session.permanent = remember_me
+                session['user_authenticated'] = True
+                session['auth_time'] = datetime.utcnow().isoformat()
                 
                 flash(f'Welcome back, {user.username}!', 'success')
                 
@@ -869,10 +994,13 @@ def login():
                     return redirect(url_for('join_club_redirect') + f'?code={pending_join_code}')
                 
                 return redirect(url_for('dashboard'))
-
-            flash('Invalid email or password', 'error')
+            else:
+                flash('Invalid email or password', 'error')
+                
         except Exception as e:
-            flash('Database error. Please try again later.', 'error')
+            print(f"Login error: {e}")
+            db.session.rollback()
+            flash('Login failed. Please try again.', 'error')
 
     return render_template('login.html')
 
@@ -939,12 +1067,26 @@ def require_database(f):
     return decorated_function
 
 @app.route('/logout')
-@login_required
 @require_database
 def logout():
-    logout_user()
+    if current_user.is_authenticated:
+        logout_user()
+    
+    # Clear all session data
+    session.clear()
+    
+    # Create a new response with cleared cookies
+    response = redirect(url_for('index'))
+    
+    # Clear authentication cookies manually
+    cookie_name = app.config.get('SESSION_COOKIE_NAME', 'session')
+    remember_cookie_name = f"hackclub_remember_{os.getenv('REPL_SLUG', 'dev')}"
+    
+    response.set_cookie(cookie_name, '', expires=0, path='/')
+    response.set_cookie(remember_cookie_name, '', expires=0, path='/')
+    
     flash('You have been logged out.', 'success')
-    return redirect(url_for('index'))
+    return response
 
 @app.route('/dashboard')
 @login_required
@@ -1869,6 +2011,35 @@ def admin_remove_administrator(admin_id):
     db.session.commit()
 
     return jsonify({'message': f'Administrator privileges removed from {admin.username}'})
+
+@app.route('/api/debug/session-info', methods=['GET'])
+@login_required
+def debug_session_info():
+    """Debug endpoint to check session state"""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    session_info = {
+        'user_id': current_user.id,
+        'username': current_user.username,
+        'is_authenticated': current_user.is_authenticated,
+        'is_active': current_user.is_active(),
+        'is_suspended': current_user.is_suspended,
+        'session_keys': list(session.keys()),
+        'session_permanent': session.permanent,
+        'auth_time': session.get('auth_time'),
+        'user_authenticated': session.get('user_authenticated'),
+        'environment': os.getenv('REPL_SLUG', 'dev'),
+        'is_production': os.getenv('REPLIT_DEPLOYMENT') == '1',
+        'cookie_config': {
+            'secure': app.config['SESSION_COOKIE_SECURE'],
+            'httponly': app.config['SESSION_COOKIE_HTTPONLY'],
+            'name': app.config['SESSION_COOKIE_NAME'],
+            'samesite': app.config['SESSION_COOKIE_SAMESITE']
+        }
+    }
+    
+    return jsonify(session_info)
 
 @app.route('/api/debug/airtable-test', methods=['GET'])
 @login_required
