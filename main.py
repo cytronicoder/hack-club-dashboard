@@ -27,11 +27,13 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(32))
 app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Simple session configuration
+# Session configuration for multiple servers
 app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+app.config['SESSION_COOKIE_SAMESITE'] = 'None' if os.getenv('ENVIRONMENT') == 'production' else 'Lax'
+app.config['SESSION_COOKIE_DOMAIN'] = None  # Allow sessions across subdomains
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=30)
 
 SLACK_CLIENT_ID = os.getenv('SLACK_CLIENT_ID')
 SLACK_CLIENT_SECRET = os.getenv('SLACK_CLIENT_SECRET')
@@ -46,7 +48,7 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
 login_manager.login_message_category = 'info'
-login_manager.session_protection = 'strong'
+login_manager.session_protection = 'basic'
 
 # Initialize rate limiter
 limiter = Limiter(
@@ -173,8 +175,13 @@ class ClubProject(db.Model):
 def load_user(user_id):
     try:
         return db.session.get(User, int(user_id))
-    except:
-        return None
+    except Exception as e:
+        # Handle database connection issues
+        try:
+            db.session.rollback()
+            return db.session.get(User, int(user_id))
+        except:
+            return None
 
 @login_manager.unauthorized_handler
 def unauthorized():
@@ -394,13 +401,26 @@ def login():
             flash('Email and password are required', 'error')
             return render_template('login.html')
 
-        user = User.query.filter_by(email=email).first()
+        try:
+            user = User.query.filter_by(email=email).first()
+        except Exception as e:
+            # Handle database connection issues
+            try:
+                db.session.rollback()
+                user = User.query.filter_by(email=email).first()
+            except:
+                flash('Database connection error. Please try again.', 'error')
+                return render_template('login.html')
 
         if user and user.check_password(password):
-            user.last_login = datetime.now(timezone.utc)
-            db.session.commit()
+            try:
+                user.last_login = datetime.now(timezone.utc)
+                db.session.commit()
+            except:
+                # Don't fail login if we can't update last_login
+                db.session.rollback()
 
-            login_user(user, remember=remember_me, duration=timedelta(days=7))
+            login_user(user, remember=remember_me, duration=timedelta(days=30))
             session.permanent = True
 
             flash(f'Welcome back, {user.username}!', 'success')
@@ -485,11 +505,7 @@ def logout():
     logout_user()
     session.clear()
     flash('You have been logged out.', 'success')
-    response = redirect(url_for('index'))
-    # Clear any persistent login cookies
-    response.set_cookie('remember_token', '', expires=0)
-    response.set_cookie('session', '', expires=0)
-    return response
+    return redirect(url_for('index'))
 
 @app.route('/dashboard')
 @login_required
@@ -725,14 +741,26 @@ def slack_callback():
     profile = slack_user.get('profile', {})
 
     user = None
-    if slack_user_id:
-        user = User.query.filter_by(slack_user_id=slack_user_id).first()
+    try:
+        if slack_user_id:
+            user = User.query.filter_by(slack_user_id=slack_user_id).first()
 
-    if not user and email:
-        user = User.query.filter_by(email=email).first()
-        if user:
-            user.slack_user_id = slack_user_id
-            db.session.commit()
+        if not user and email:
+            user = User.query.filter_by(email=email).first()
+            if user:
+                user.slack_user_id = slack_user_id
+                db.session.commit()
+    except Exception as e:
+        # Handle database connection issues
+        try:
+            db.session.rollback()
+            if slack_user_id:
+                user = User.query.filter_by(slack_user_id=slack_user_id).first()
+            if not user and email:
+                user = User.query.filter_by(email=email).first()
+        except Exception as e2:
+            flash('Database connection error. Please try again.', 'error')
+            return redirect(url_for('login'))
 
     if user:
         user.last_login = datetime.now(timezone.utc)
