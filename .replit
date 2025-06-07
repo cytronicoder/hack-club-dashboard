@@ -2,7 +2,7 @@ run = "python main.py"
 modules = ["python-3.11"]
 [nix]
 channel = "stable-24_05"
-packages = ["python312Packages.gunicorn", "unzipNLS"]
+packages = ["python312Packages.gunicorn", "unzipNLS", "postgresql_12"]
 
 [deployment]
 run = ["sh", "-c", "gunicorn --bind 0.0.0.0:$PORT --workers 4 --timeout 120 main:app"]
