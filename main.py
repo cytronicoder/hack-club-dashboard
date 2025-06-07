@@ -46,6 +46,13 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(16))
 app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Session configuration for better stability
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+app.config['SESSION_REFRESH_EACH_REQUEST'] = True
+
 SLACK_CLIENT_ID = os.getenv('SLACK_CLIENT_ID')
 SLACK_CLIENT_SECRET = os.getenv('SLACK_CLIENT_SECRET')
 SLACK_SIGNING_SECRET = os.getenv('SLACK_SIGNING_SECRET')
@@ -74,6 +81,10 @@ if db_available:
         login_manager = LoginManager()
         login_manager.init_app(app)
         login_manager.login_view = 'login'
+        login_manager.session_protection = "strong"
+        login_manager.remember_cookie_duration = timedelta(days=30)
+        login_manager.remember_cookie_secure = True
+        login_manager.remember_cookie_httponly = True
 
         # Initialize rate limiter
         limiter = Limiter(
@@ -521,9 +532,16 @@ def slack_callback():
         return redirect(url_for('login'))
 
     # Verify state parameter
-    if request.args.get('state') != session.get('oauth_state'):
-        flash('Invalid OAuth state parameter', 'error')
+    stored_state = session.get('oauth_state')
+    received_state = request.args.get('state')
+    
+    if not stored_state or received_state != stored_state:
+        session.clear()  # Clear potentially corrupted session
+        flash('Invalid OAuth state parameter. Please try again.', 'error')
         return redirect(url_for('login'))
+
+    # Clear the state from session after verification
+    session.pop('oauth_state', None)
 
     code = request.args.get('code')
     if not code:
@@ -601,9 +619,16 @@ def slack_callback():
 
     if user:
         # User exists, log them in
-        login_user(user)
+        # Clear any existing session data to prevent conflicts
+        session.clear()
+        
+        login_user(user, remember=True, duration=timedelta(days=30))
         user.last_login = datetime.utcnow()
         db.session.commit()
+        
+        # Regenerate session ID for security
+        session.permanent = True
+        
         flash(f'Welcome back, {user.username}!', 'success')
         return redirect(url_for('dashboard'))
     else:
@@ -787,11 +812,14 @@ def complete_slack_signup():
             db.session.commit()
 
             # Clear Slack signup data and log user in
-            session.clear()
             session.pop('slack_signup_data', None)
-            login_user(user, remember=True)
+            
+            login_user(user, remember=True, duration=timedelta(days=30))
             user.last_login = datetime.utcnow()
             db.session.commit()
+            
+            # Regenerate session ID for security
+            session.permanent = True
 
             return jsonify({'success': True, 'message': 'Account created successfully!'})
 
@@ -822,14 +850,29 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
+        remember_me = request.form.get('remember_me') == 'on'
 
         try:
             user = User.query.filter_by(email=email).first()
             if user and user.check_password(password):
-                login_user(user, remember=True)
+                # Clear any existing session data to prevent conflicts
+                session.clear()
+                
+                login_user(user, remember=remember_me, duration=timedelta(days=30))
                 user.last_login = datetime.utcnow()
                 db.session.commit()
+                
+                # Regenerate session ID for security
+                session.permanent = True
+                
                 flash(f'Welcome back, {user.username}!', 'success')
+                
+                # Check for pending join code
+                pending_join_code = session.get('pending_join_code')
+                if pending_join_code:
+                    session.pop('pending_join_code', None)
+                    return redirect(url_for('join_club_redirect') + f'?code={pending_join_code}')
+                
                 return redirect(url_for('dashboard'))
 
             flash('Invalid email or password', 'error')
