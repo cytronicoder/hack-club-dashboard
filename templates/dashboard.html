@@ -493,7 +493,7 @@
                 <i class="fas fa-rocket"></i>
                 <span>Welcome to your dashboard!</span>
             </div>
-            <h1 class="dashboard-title">Hey there, {{ current_user.username }}!</h1>
+            <h1 class="dashboard-title">Hey there, {{ current_user.username if current_user else 'User' }}!</h1>
             <p class="dashboard-subtitle">Ready to build something amazing? Choose a club!</p>
         </div>
 

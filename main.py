@@ -1,3 +1,4 @@
+
 import os
 import time
 import json
@@ -6,7 +7,6 @@ import requests
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import Flask, render_template, redirect, flash, request, jsonify, url_for, abort, session, Response
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 import psycopg2
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -30,10 +30,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Session configuration for multiple servers
 app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'None' if os.getenv('ENVIRONMENT') == 'production' else 'Lax'
-app.config['SESSION_COOKIE_DOMAIN'] = None  # Allow sessions across subdomains
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_DOMAIN'] = None
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
-app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=30)
 
 SLACK_CLIENT_ID = os.getenv('SLACK_CLIENT_ID')
 SLACK_CLIENT_SECRET = os.getenv('SLACK_CLIENT_SECRET')
@@ -41,14 +40,6 @@ SLACK_SIGNING_SECRET = os.getenv('SLACK_SIGNING_SECRET')
 
 # Initialize database
 db = SQLAlchemy(app)
-
-# Initialize login manager
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-login_manager.login_message = 'Please log in to access this page.'
-login_manager.login_message_category = 'info'
-login_manager.session_protection = 'basic'
 
 # Initialize rate limiter
 limiter = Limiter(
@@ -60,7 +51,7 @@ limiter = Limiter(
 )
 
 # Simple User model
-class User(UserMixin, db.Model):
+class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
@@ -79,9 +70,6 @@ class User(UserMixin, db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-
-    def get_id(self):
-        return str(self.id)
 
 class Club(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -171,24 +159,54 @@ class ClubProject(db.Model):
     club = db.relationship('Club', backref='projects')
     user = db.relationship('User', backref='projects')
 
-@login_manager.user_loader
-def load_user(user_id):
+# Authentication helpers
+def get_current_user():
+    user_id = session.get('user_id')
+    if not user_id:
+        return None
     try:
         return db.session.get(User, int(user_id))
     except Exception as e:
-        # Handle database connection issues
         try:
             db.session.rollback()
             return db.session.get(User, int(user_id))
         except:
             return None
 
-@login_manager.unauthorized_handler
-def unauthorized():
-    if request.is_json:
-        return jsonify({'error': 'Authentication required'}), 401
-    flash('Please log in to access this page.', 'info')
-    return redirect(url_for('login'))
+def login_user(user, remember=False):
+    session['user_id'] = user.id
+    session['logged_in'] = True
+    if remember:
+        session.permanent = True
+    user.last_login = datetime.now(timezone.utc)
+    try:
+        db.session.commit()
+    except:
+        db.session.rollback()
+
+def logout_user():
+    session.pop('user_id', None)
+    session.pop('logged_in', None)
+    session.clear()
+
+def is_authenticated():
+    return session.get('logged_in') and session.get('user_id')
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not is_authenticated():
+            if request.is_json:
+                return jsonify({'error': 'Authentication required'}), 401
+            flash('Please log in to access this page.', 'info')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Make current_user available in templates
+@app.context_processor
+def inject_user():
+    return dict(current_user=get_current_user())
 
 # Airtable Service for Pizza Grants
 class AirtableService:
@@ -381,15 +399,14 @@ slack_oauth_service = SlackOAuthService()
 # Routes
 @app.route('/')
 def index():
-    # Force check if user is actually authenticated
-    if current_user.is_authenticated and current_user.is_active:
+    if is_authenticated():
         return redirect(url_for('dashboard'))
     return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def login():
-    if current_user.is_authenticated:
+    if is_authenticated():
         return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
@@ -404,7 +421,6 @@ def login():
         try:
             user = User.query.filter_by(email=email).first()
         except Exception as e:
-            # Handle database connection issues
             try:
                 db.session.rollback()
                 user = User.query.filter_by(email=email).first()
@@ -413,16 +429,7 @@ def login():
                 return render_template('login.html')
 
         if user and user.check_password(password):
-            try:
-                user.last_login = datetime.now(timezone.utc)
-                db.session.commit()
-            except:
-                # Don't fail login if we can't update last_login
-                db.session.rollback()
-
-            login_user(user, remember=remember_me, duration=timedelta(days=30))
-            session.permanent = True
-
+            login_user(user, remember=remember_me)
             flash(f'Welcome back, {user.username}!', 'success')
 
             # Check for pending join code
@@ -440,7 +447,7 @@ def login():
 @app.route('/signup', methods=['GET', 'POST'])
 @limiter.limit("5 per minute")
 def signup():
-    if current_user.is_authenticated:
+    if is_authenticated():
         return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
@@ -503,13 +510,13 @@ def signup():
 @app.route('/logout')
 def logout():
     logout_user()
-    session.clear()
     flash('You have been logged out.', 'success')
     return redirect(url_for('index'))
 
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    current_user = get_current_user()
     memberships = ClubMembership.query.filter_by(user_id=current_user.id).all()
     led_clubs = Club.query.filter_by(leader_id=current_user.id).all()
 
@@ -523,6 +530,7 @@ def dashboard():
 @app.route('/club-dashboard/<int:club_id>')
 @login_required
 def club_dashboard(club_id=None):
+    current_user = get_current_user()
     if club_id:
         club = Club.query.get_or_404(club_id)
         is_leader = club.leader_id == current_user.id
@@ -605,7 +613,7 @@ def complete_leader_signup():
             flash_message = f'Account created successfully! Welcome to {leader_verification["club_name"]}!'
             redirect_route = 'login'
         else:
-            user = current_user
+            user = get_current_user()
             flash_message = f'Club created successfully! Welcome to {leader_verification["club_name"]}!'
             redirect_route = 'club_dashboard'
 
@@ -638,7 +646,8 @@ def join_club_redirect():
         flash('Invalid join code', 'error')
         return redirect(url_for('dashboard'))
 
-    if current_user.is_authenticated:
+    if is_authenticated():
+        current_user = get_current_user()
         club = Club.query.filter_by(join_code=join_code).first()
         if not club:
             flash('Invalid join code', 'error')
@@ -751,7 +760,6 @@ def slack_callback():
                 user.slack_user_id = slack_user_id
                 db.session.commit()
     except Exception as e:
-        # Handle database connection issues
         try:
             db.session.rollback()
             if slack_user_id:
@@ -763,12 +771,7 @@ def slack_callback():
             return redirect(url_for('login'))
 
     if user:
-        user.last_login = datetime.now(timezone.utc)
-        db.session.commit()
-
-        login_user(user, remember=True, duration=timedelta(days=7))
-        session.permanent = True
-
+        login_user(user, remember=True)
         flash(f'Welcome back, {user.username}!', 'success')
         return redirect(url_for('dashboard'))
     else:
@@ -845,11 +848,7 @@ def complete_slack_signup():
 
             session.pop('slack_signup_data', None)
 
-            user.last_login = datetime.now(timezone.utc)
-            db.session.commit()
-
-            login_user(user, remember=True, duration=timedelta(days=7))
-            session.permanent = True
+            login_user(user, remember=True)
 
             return jsonify({'success': True, 'message': 'Account created successfully!'})
 
@@ -869,6 +868,7 @@ def account():
 @login_required
 @limiter.limit("50 per hour")
 def generate_club_join_code(club_id):
+    current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
     if club.leader_id != current_user.id:
@@ -886,6 +886,7 @@ def generate_club_join_code(club_id):
 @login_required
 @limiter.limit("500 per hour")
 def club_posts(club_id):
+    current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
     is_leader = club.leader_id == current_user.id
@@ -928,6 +929,7 @@ def club_posts(club_id):
 @login_required
 @limiter.limit("20 per hour")
 def update_user():
+    current_user = get_current_user()
     data = request.get_json()
 
     username = data.get('username')
@@ -976,6 +978,7 @@ def update_user():
 @app.route('/admin')
 @login_required
 def admin_dashboard():
+    current_user = get_current_user()
     if not current_user.is_admin:
         flash('Admin access required', 'error')
         return redirect(url_for('index'))
@@ -1002,6 +1005,7 @@ def admin_dashboard():
 @login_required
 @limiter.limit("100 per hour")
 def admin_get_users():
+    current_user = get_current_user()
     if not current_user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
