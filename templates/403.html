@@ -1,0 +1,26 @@
+
+{% extends "base.html" %}
+
+{% block title %}Access Forbidden - Hack Club Dashboard{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="text-align: center; padding: 4rem 2rem; min-height: 60vh; display: flex; flex-direction: column; justify-content: center;">
+        <div style="font-size: 6rem; font-weight: 900; color: #f59e0b; margin-bottom: 1rem;">403</div>
+        <h1 style="font-size: 2rem; color: #1a202c; margin-bottom: 1rem;">Access Forbidden</h1>
+        <p style="color: #64748b; margin-bottom: 2rem; font-size: 1.1rem;">
+            You don't have permission to access this resource.
+        </p>
+        <div>
+            <a href="{{ url_for('index') }}" class="btn btn-primary" style="margin-right: 1rem;">
+                <i class="fas fa-home"></i> Go Home
+            </a>
+            {% if current_user and current_user.id %}
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-dashboard"></i> Dashboard
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

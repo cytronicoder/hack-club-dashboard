@@ -1705,6 +1705,408 @@ def admin_reset_password(user_id):
     
     return jsonify({'message': 'Password reset successfully'})
 
+@app.route('/api/clubs/<int:club_id>/info', methods=['GET', 'PUT'])
+@login_required
+@limiter.limit("200 per hour")
+def club_info(club_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    is_leader = club.leader_id == current_user.id
+    is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
+
+    if not is_leader and not is_member:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    if request.method == 'GET':
+        members = []
+        # Add leader
+        members.append({
+            'id': club.leader.id,
+            'username': club.leader.username,
+            'email': club.leader.email,
+            'role': 'leader',
+            'joined_at': club.created_at.isoformat() if club.created_at else None
+        })
+        # Add members
+        for membership in club.members:
+            members.append({
+                'id': membership.user.id,
+                'username': membership.user.username,
+                'email': membership.user.email,
+                'role': membership.role,
+                'joined_at': membership.joined_at.isoformat() if membership.joined_at else None
+            })
+
+        return jsonify({
+            'id': club.id,
+            'name': club.name,
+            'description': club.description,
+            'location': club.location,
+            'join_code': club.join_code if is_leader else None,
+            'balance': float(club.balance),
+            'created_at': club.created_at.isoformat() if club.created_at else None,
+            'members': members,
+            'is_leader': is_leader
+        })
+
+    if request.method == 'PUT':
+        if not is_leader:
+            return jsonify({'error': 'Only club leaders can update club info'}), 403
+
+        data = request.get_json()
+        if 'name' in data:
+            club.name = data['name']
+        if 'description' in data:
+            club.description = data['description']
+        if 'location' in data:
+            club.location = data['location']
+
+        db.session.commit()
+        return jsonify({'message': 'Club updated successfully'})
+
+@app.route('/api/clubs/<int:club_id>/assignments/<int:assignment_id>', methods=['PUT', 'DELETE'])
+@login_required
+@limiter.limit("200 per hour")
+def club_assignment_detail(club_id, assignment_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+    assignment = ClubAssignment.query.get_or_404(assignment_id)
+
+    if club.leader_id != current_user.id:
+        return jsonify({'error': 'Only club leaders can manage assignments'}), 403
+
+    if assignment.club_id != club_id:
+        return jsonify({'error': 'Assignment does not belong to this club'}), 404
+
+    if request.method == 'DELETE':
+        db.session.delete(assignment)
+        db.session.commit()
+        return jsonify({'message': 'Assignment deleted successfully'})
+
+    if request.method == 'PUT':
+        data = request.get_json()
+        assignment.title = data.get('title', assignment.title)
+        assignment.description = data.get('description', assignment.description)
+        if data.get('due_date'):
+            assignment.due_date = datetime.fromisoformat(data['due_date'])
+        assignment.for_all_members = data.get('for_all_members', assignment.for_all_members)
+        assignment.status = data.get('status', assignment.status)
+
+        db.session.commit()
+        return jsonify({'message': 'Assignment updated successfully'})
+
+@app.route('/api/clubs/<int:club_id>/posts/<int:post_id>', methods=['PUT', 'DELETE'])
+@login_required
+@limiter.limit("200 per hour")
+def club_post_detail(club_id, post_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+    post = ClubPost.query.get_or_404(post_id)
+
+    is_leader = club.leader_id == current_user.id
+    is_author = post.user_id == current_user.id
+
+    if not is_leader and not is_author:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    if post.club_id != club_id:
+        return jsonify({'error': 'Post does not belong to this club'}), 404
+
+    if request.method == 'DELETE':
+        db.session.delete(post)
+        db.session.commit()
+        return jsonify({'message': 'Post deleted successfully'})
+
+    if request.method == 'PUT':
+        if not is_author:
+            return jsonify({'error': 'Only the author can edit this post'}), 403
+        
+        data = request.get_json()
+        content = data.get('content')
+        if not content:
+            return jsonify({'error': 'Content is required'}), 400
+
+        post.content = content
+        db.session.commit()
+        return jsonify({'message': 'Post updated successfully'})
+
+@app.route('/api/clubs/<int:club_id>/projects', methods=['POST'])
+@login_required
+@limiter.limit("50 per hour")
+def create_club_project(club_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    is_leader = club.leader_id == current_user.id
+    is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
+
+    if not is_leader and not is_member:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    data = request.get_json()
+    name = data.get('name')
+    description = data.get('description')
+    url = data.get('url')
+    github_url = data.get('github_url')
+
+    if not name:
+        return jsonify({'error': 'Project name is required'}), 400
+
+    project = ClubProject(
+        club_id=club_id,
+        user_id=current_user.id,
+        name=name,
+        description=description,
+        url=url,
+        github_url=github_url
+    )
+    db.session.add(project)
+    db.session.commit()
+
+    return jsonify({'message': 'Project created successfully'})
+
+@app.route('/api/clubs/<int:club_id>/projects/<int:project_id>', methods=['PUT', 'DELETE'])
+@login_required
+@limiter.limit("200 per hour")
+def club_project_detail(club_id, project_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+    project = ClubProject.query.get_or_404(project_id)
+
+    is_leader = club.leader_id == current_user.id
+    is_author = project.user_id == current_user.id
+
+    if not is_leader and not is_author:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    if project.club_id != club_id:
+        return jsonify({'error': 'Project does not belong to this club'}), 404
+
+    if request.method == 'DELETE':
+        db.session.delete(project)
+        db.session.commit()
+        return jsonify({'message': 'Project deleted successfully'})
+
+    if request.method == 'PUT':
+        data = request.get_json()
+        project.name = data.get('name', project.name)
+        project.description = data.get('description', project.description)
+        project.url = data.get('url', project.url)
+        project.github_url = data.get('github_url', project.github_url)
+        
+        if is_leader and 'featured' in data:
+            project.featured = data['featured']
+
+        project.updated_at = datetime.now(timezone.utc)
+        db.session.commit()
+        return jsonify({'message': 'Project updated successfully'})
+
+@app.route('/api/admin/stats', methods=['GET'])
+@login_required
+@limiter.limit("100 per hour")
+def admin_get_stats():
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    # Basic stats
+    total_users = User.query.count()
+    total_clubs = Club.query.count()
+    total_posts = ClubPost.query.count()
+    total_assignments = ClubAssignment.query.count()
+    total_meetings = ClubMeeting.query.count()
+    total_projects = ClubProject.query.count()
+    total_resources = ClubResource.query.count()
+    
+    # Growth stats (last 30 days)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    new_users_30d = User.query.filter(User.created_at >= thirty_days_ago).count()
+    new_clubs_30d = Club.query.filter(Club.created_at >= thirty_days_ago).count()
+    
+    # Active users (logged in within last 30 days)
+    active_users = User.query.filter(User.last_login >= thirty_days_ago).count()
+    
+    return jsonify({
+        'total_users': total_users,
+        'total_clubs': total_clubs,
+        'total_posts': total_posts,
+        'total_assignments': total_assignments,
+        'total_meetings': total_meetings,
+        'total_projects': total_projects,
+        'total_resources': total_resources,
+        'new_users_30d': new_users_30d,
+        'new_clubs_30d': new_clubs_30d,
+        'active_users': active_users
+    })
+
+@app.route('/api/user/delete-account', methods=['DELETE'])
+@login_required
+@limiter.limit("5 per hour")
+def delete_user_account():
+    current_user = get_current_user()
+    
+    # Don't allow super admin to delete their account
+    if current_user.email == 'ethan@hackclub.com':
+        return jsonify({'error': 'Cannot delete super admin account'}), 400
+    
+    # Transfer or delete clubs led by this user
+    led_clubs = Club.query.filter_by(leader_id=current_user.id).all()
+    for club in led_clubs:
+        # Find another admin member to transfer leadership to
+        admin_member = ClubMembership.query.filter_by(club_id=club.id, role='co-leader').first()
+        if admin_member:
+            club.leader_id = admin_member.user_id
+        else:
+            # Delete the club if no co-leader exists
+            db.session.delete(club)
+    
+    # Delete user's memberships
+    ClubMembership.query.filter_by(user_id=current_user.id).delete()
+    
+    # Delete user's posts, assignments, meetings, etc.
+    ClubPost.query.filter_by(user_id=current_user.id).delete()
+    ClubProject.query.filter_by(user_id=current_user.id).delete()
+    
+    # Delete the user
+    db.session.delete(current_user)
+    db.session.commit()
+    
+    # Log out the user
+    logout_user()
+    
+    return jsonify({'message': 'Account deleted successfully'})
+
+@app.route('/settings')
+@login_required
+def settings():
+    return render_template('account.html')
+
+@app.route('/privacy')
+def privacy():
+    return render_template('privacy.html')
+
+@app.route('/terms')
+def terms():
+    return render_template('terms.html')
+
+@app.route('/contact')
+def contact():
+    return render_template('contact.html')
+
+@app.route('/help')
+def help_page():
+    return render_template('help.html')
+
+@app.route('/api/search', methods=['GET'])
+@login_required
+@limiter.limit("200 per hour")
+def search():
+    current_user = get_current_user()
+    query = request.args.get('q', '').strip()
+    
+    if not query or len(query) < 2:
+        return jsonify({'results': []})
+    
+    # Get user's clubs
+    user_club_ids = []
+    led_clubs = Club.query.filter_by(leader_id=current_user.id).all()
+    user_club_ids.extend([club.id for club in led_clubs])
+    
+    memberships = ClubMembership.query.filter_by(user_id=current_user.id).all()
+    user_club_ids.extend([membership.club_id for membership in memberships])
+    
+    results = {
+        'clubs': [],
+        'users': [],
+        'posts': [],
+        'projects': []
+    }
+    
+    # Search clubs user has access to
+    clubs = Club.query.filter(
+        Club.id.in_(user_club_ids),
+        Club.name.ilike(f'%{query}%')
+    ).limit(10).all()
+    
+    results['clubs'] = [{
+        'id': club.id,
+        'name': club.name,
+        'description': club.description,
+        'type': 'club'
+    } for club in clubs]
+    
+    # Search users in user's clubs
+    if user_club_ids:
+        user_ids = set()
+        for club_id in user_club_ids:
+            club = Club.query.get(club_id)
+            if club:
+                user_ids.add(club.leader_id)
+                for membership in club.members:
+                    user_ids.add(membership.user_id)
+        
+        users = User.query.filter(
+            User.id.in_(user_ids),
+            User.username.ilike(f'%{query}%')
+        ).limit(10).all()
+        
+        results['users'] = [{
+            'id': user.id,
+            'username': user.username,
+            'type': 'user'
+        } for user in users]
+    
+    # Search posts in user's clubs
+    posts = ClubPost.query.filter(
+        ClubPost.club_id.in_(user_club_ids),
+        ClubPost.content.ilike(f'%{query}%')
+    ).limit(10).all()
+    
+    results['posts'] = [{
+        'id': post.id,
+        'content': post.content[:100] + '...' if len(post.content) > 100 else post.content,
+        'club_name': post.club.name,
+        'author': post.user.username,
+        'type': 'post'
+    } for post in posts]
+    
+    # Search projects in user's clubs
+    projects = ClubProject.query.filter(
+        ClubProject.club_id.in_(user_club_ids),
+        ClubProject.name.ilike(f'%{query}%')
+    ).limit(10).all()
+    
+    results['projects'] = [{
+        'id': project.id,
+        'name': project.name,
+        'description': project.description,
+        'club_name': project.club.name,
+        'author': project.user.username,
+        'type': 'project'
+    } for project in projects]
+    
+    return jsonify({'results': results})
+
+@app.errorhandler(404)
+def not_found(error):
+    if request.is_json:
+        return jsonify({'error': 'Not found'}), 404
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    if request.is_json:
+        return jsonify({'error': 'Internal server error'}), 500
+    return render_template('500.html'), 500
+
+@app.errorhandler(403)
+def forbidden(error):
+    if request.is_json:
+        return jsonify({'error': 'Forbidden'}), 403
+    return render_template('403.html'), 403
+
 if __name__ == '__main__':
     import logging
     
