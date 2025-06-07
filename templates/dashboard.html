@@ -1,14 +1,14 @@
 
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Hack Club Dashboard{% endblock %}
+{% block title %}Dashboard - Hack Club{% endblock %}
 
-{% block extra_head %}
+{% block extra_styles %}
 <style>
     :root {
         --primary-gradient: linear-gradient(135deg, #ec3750 0%, #ff6b7a 50%, #ff8c82 100%);
-        --secondary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        --accent-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --secondary-gradient: linear-gradient(135deg, #ec3750 0%, #d63146 100%);
+        --accent-gradient: linear-gradient(135deg, #ff8c82 0%, #ff6b7a 100%);
         --glass-bg: rgba(255, 255, 255, 0.1);
         --glass-border: rgba(255, 255, 255, 0.2);
         --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.1);
@@ -60,16 +60,15 @@
         50% { transform: scale(1.05); }
     }
 
-    .dashboard-hero {
-        background: linear-gradient(135deg, #ec3750 0%, #ff6b7a 100%);
-        padding: 6rem 0 4rem;
-        text-align: center;
-        color: white;
+    .dashboard-container {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #ec3750 0%, #d63146 100%);
         position: relative;
         overflow: hidden;
+        padding: 0;
     }
 
-    .dashboard-hero::before {
+    .dashboard-container::before {
         content: '';
         position: absolute;
         top: 0;
@@ -77,8 +76,10 @@
         right: 0;
         bottom: 0;
         background: 
-            radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
-            radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+            radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 40% 40%, rgba(234, 88, 12, 0.1) 0%, transparent 50%);
+        z-index: 1;
     }
 
     .floating-shapes {
@@ -88,10 +89,10 @@
         right: 0;
         bottom: 0;
         pointer-events: none;
-        overflow: hidden;
+        z-index: 2;
     }
 
-    .shape {
+    .floating-shape {
         position: absolute;
         background: var(--glass-bg);
         backdrop-filter: blur(10px);
@@ -100,89 +101,57 @@
         animation: float 6s ease-in-out infinite;
     }
 
-    .shape:nth-child(1) {
-        width: 120px;
-        height: 120px;
-        top: 15%;
-        left: 8%;
+    .floating-shape:nth-child(1) {
+        width: 140px;
+        height: 140px;
+        top: 10%;
+        left: 10%;
         animation-delay: 0s;
     }
 
-    .shape:nth-child(2) {
-        width: 80px;
-        height: 80px;
-        top: 25%;
-        right: 12%;
+    .floating-shape:nth-child(2) {
+        width: 100px;
+        height: 100px;
+        top: 20%;
+        right: 15%;
         animation-delay: 2s;
     }
 
-    .shape:nth-child(3) {
-        width: 100px;
-        height: 100px;
-        bottom: 25%;
+    .floating-shape:nth-child(3) {
+        width: 180px;
+        height: 180px;
+        bottom: 20%;
         left: 20%;
         animation-delay: 4s;
     }
 
-    .shape:nth-child(4) {
-        width: 90px;
-        height: 90px;
-        bottom: 15%;
-        right: 8%;
+    .floating-shape:nth-child(4) {
+        width: 120px;
+        height: 120px;
+        bottom: 10%;
+        right: 10%;
         animation-delay: 1s;
     }
 
-    .floating-sticker {
-        position: absolute;
-        z-index: 1;
-        opacity: 0.4;
-        transition: all 0.3s ease;
-        animation: float 8s ease-in-out infinite;
-        pointer-events: none;
-    }
-
-    .sticker-1 {
-        top: 8%;
-        left: 5%;
-        width: 80px;
-        animation-delay: 0s;
-        transform: rotate(-15deg);
-    }
-
-    .sticker-2 {
-        top: 5%;
-        right: 5%;
-        width: 85px;
-        animation-delay: 2s;
-        transform: rotate(20deg);
-    }
-
-    .sticker-3 {
-        bottom: 35%;
-        left: 3%;
-        width: 90px;
-        animation-delay: 1s;
-        transform: rotate(-10deg);
-    }
-
-    .sticker-4 {
-        bottom: 8%;
-        right: 30%;
-        width: 75px;
-        animation-delay: 3s;
-        transform: rotate(15deg);
-    }
-
-    .dashboard-hero-content {
+    .dashboard-content {
         position: relative;
         z-index: 10;
-        max-width: 800px;
+        padding: 4rem 2rem;
+        max-width: 1400px;
         margin: 0 auto;
-        padding: 0 2rem;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .dashboard-header {
+        text-align: center;
+        margin-bottom: 4rem;
         animation: fadeInUp 1s ease-out;
     }
 
-    .hero-badge {
+    .welcome-badge {
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
@@ -194,53 +163,51 @@
         margin-bottom: 2rem;
         font-size: 0.9rem;
         font-weight: 600;
+        color: var(--text-light);
         animation: pulse 3s ease-in-out infinite;
     }
 
-    .hero-title {
-        font-size: clamp(2.5rem, 6vw, 4rem);
+    .dashboard-title {
+        font-size: clamp(3rem, 8vw, 5rem);
         font-weight: 900;
         margin-bottom: 1rem;
         color: white;
         line-height: 1.1;
-        text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
 
-    .hero-subtitle {
+    .dashboard-subtitle {
         font-size: clamp(1.1rem, 3vw, 1.4rem);
-        margin-bottom: 2rem;
-        color: rgba(255, 255, 255, 0.9);
-        font-weight: 400;
+        margin-bottom: 1.5rem;
+        color: var(--text-dim);
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
         line-height: 1.6;
     }
 
-    .dashboard-container {
-        padding: 4rem 0;
-        background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-        min-height: calc(100vh - 300px);
-        position: relative;
-    }
-
-    .container {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 0 2rem;
+    .clubs-section {
+        animation: fadeInUp 1s ease-out 0.2s both;
     }
 
     .clubs-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-        gap: 2.5rem;
-        margin-top: 2rem;
+        grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+        gap: 2rem;
+        margin-bottom: 3rem;
     }
 
     .club-card {
-        background: white;
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
         border-radius: 24px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.08);
         overflow: hidden;
         transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        border: 1px solid #f1f5f9;
         cursor: pointer;
         position: relative;
     }
@@ -258,9 +225,9 @@
     }
 
     .club-card:hover {
-        transform: translateY(-10px);
-        box-shadow: 0 25px 60px rgba(0,0,0,0.15);
-        border-color: #ec3750;
+        transform: translateY(-10px) scale(1.02);
+        box-shadow: var(--shadow-strong);
+        border-color: rgba(255, 255, 255, 0.4);
     }
 
     .club-card:hover::before {
@@ -275,167 +242,104 @@
         animation: slideInRight 1s ease-out both;
     }
 
-    .club-card:nth-child(1) { animation-delay: 0.1s; }
-    .club-card:nth-child(2) { animation-delay: 0.2s; }
-    .club-card:nth-child(3) { animation-delay: 0.3s; }
-    .club-card:nth-child(4) { animation-delay: 0.4s; }
-    .club-card:nth-child(5) { animation-delay: 0.5s; }
-    .club-card:nth-child(6) { animation-delay: 0.6s; }
-
     .club-card-header {
-        background: var(--primary-gradient);
-        color: white;
-        padding: 3rem 2rem;
+        padding: 2.5rem 2rem;
         text-align: center;
         position: relative;
-        overflow: hidden;
-    }
-
-    .club-card-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: 
-            radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+        background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
     }
 
     .club-avatar {
-        width: 100px;
-        height: 100px;
-        background: rgba(255, 255, 255, 0.2);
-        backdrop-filter: blur(10px);
-        border: 2px solid rgba(255, 255, 255, 0.3);
+        width: 80px;
+        height: 80px;
+        background: var(--primary-gradient);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         margin: 0 auto 1.5rem;
-        font-size: 2.5rem;
+        font-size: 1.5rem;
         color: white;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        transition: all 0.4s ease;
+        box-shadow: 0 15px 35px rgba(236, 55, 80, 0.4);
         position: relative;
-        z-index: 2;
+        transition: all 0.4s ease;
     }
 
     .club-card:hover .club-avatar {
         transform: scale(1.1) rotate(5deg);
-        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 20px 40px rgba(236, 55, 80, 0.6);
     }
 
     .club-avatar::after {
         content: '';
         position: absolute;
-        top: -10px;
-        left: -10px;
-        right: -10px;
-        bottom: -10px;
+        top: -15px;
+        left: -15px;
+        right: -15px;
+        bottom: -15px;
         border-radius: 50%;
         border: 2px solid rgba(255, 255, 255, 0.3);
         animation: pulse 3s ease-in-out infinite;
     }
 
-    .club-card h3 {
-        margin: 0 0 1rem 0;
-        font-size: 1.75rem;
+    .club-name {
+        font-size: 1.5rem;
         font-weight: 700;
-        position: relative;
-        z-index: 2;
+        color: white;
+        margin-bottom: 0.5rem;
     }
 
     .club-role {
-        background: rgba(255, 255, 255, 0.2);
-        backdrop-filter: blur(10px);
-        padding: 0.75rem 1.5rem;
+        background: var(--accent-gradient);
+        color: white;
+        padding: 0.5rem 1.5rem;
         border-radius: 25px;
-        font-size: 0.9rem;
+        font-size: 0.875rem;
         font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
         display: inline-block;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        position: relative;
-        z-index: 2;
+        box-shadow: 0 4px 15px rgba(240, 147, 251, 0.3);
     }
 
     .club-card-body {
-        padding: 3rem 2rem;
+        padding: 2rem;
+        color: var(--text-light);
     }
 
     .club-description {
-        color: #64748b;
-        margin-bottom: 2rem;
-        line-height: 1.7;
-        font-size: 1rem;
+        margin-bottom: 1.5rem;
+        opacity: 0.9;
+        line-height: 1.6;
     }
 
     .club-meta {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        color: #64748b;
-        font-size: 0.9rem;
-        padding-top: 1rem;
-        border-top: 1px solid #f1f5f9;
+        font-size: 0.875rem;
+        opacity: 0.8;
     }
 
-    .club-meta span {
+    .club-meta-item {
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        font-weight: 500;
-    }
-
-    .club-meta i {
-        color: #ec3750;
-        font-size: 1rem;
     }
 
     .empty-state {
         text-align: center;
-        padding: 6rem 2rem;
-        max-width: 600px;
-        margin: 0 auto;
-        animation: fadeInUp 1s ease-out 0.3s both;
+        padding: 2rem;
+        animation: fadeInUp 1s ease-out 0.4s both;
     }
 
-    .empty-state-icon {
-        font-size: 5rem;
-        color: #64748b;
-        margin-bottom: 2rem;
-        opacity: 0.6;
-        background: var(--primary-gradient);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-
-    .empty-state h2 {
-        color: #1a202c;
-        margin-bottom: 1.5rem;
-        font-size: 2.5rem;
-        font-weight: 700;
-    }
-
-    .empty-state p {
-        color: #64748b;
-        margin-bottom: 3rem;
-        line-height: 1.7;
-        font-size: 1.1rem;
-    }
-
-    .empty-actions {
+    .cta-buttons {
         display: flex;
         gap: 1.5rem;
         justify-content: center;
         flex-wrap: wrap;
+        margin-top: 2.5rem;
     }
 
     .btn-hero {
-        padding: 1rem 2rem;
+        padding: 1rem 2.5rem;
         font-size: 1.1rem;
         font-weight: 700;
         border-radius: 50px;
@@ -444,12 +348,13 @@
         display: inline-flex;
         align-items: center;
         gap: 0.75rem;
-        min-width: 200px;
+        min-width: 220px;
         justify-content: center;
         position: relative;
         overflow: hidden;
         backdrop-filter: blur(20px);
         border: 2px solid transparent;
+        cursor: pointer;
     }
 
     .btn-hero::before {
@@ -468,20 +373,23 @@
     }
 
     .btn-primary-hero {
-        background: var(--primary-gradient);
+        background: var(--glass-bg);
         color: white;
+        border-color: var(--glass-border);
         box-shadow: var(--shadow-soft);
     }
 
     .btn-primary-hero:hover {
+        background: rgba(255, 255, 255, 0.2);
         transform: translateY(-5px) scale(1.05);
         box-shadow: var(--shadow-strong);
+        border-color: rgba(255, 255, 255, 0.4);
     }
 
     .btn-secondary-hero {
         background: rgba(255, 255, 255, 0.95);
         color: #ec3750;
-        border-color: rgba(236, 55, 80, 0.3);
+        border-color: rgba(255, 255, 255, 0.3);
         box-shadow: var(--shadow-soft);
     }
 
@@ -490,48 +398,64 @@
         transform: translateY(-5px) scale(1.05);
         box-shadow: var(--shadow-strong);
         color: #d63146;
-        border-color: #ec3750;
     }
 
-    .section-sticker {
-        position: absolute;
-        opacity: 0.2;
+    .quick-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-top: 3rem;
+        animation: fadeInUp 1s ease-out 0.6s both;
+    }
+
+    .stat-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        text-align: center;
         transition: all 0.3s ease;
-        animation: float 10s ease-in-out infinite;
-        pointer-events: none;
     }
 
-    .dashboard-sticker-1 {
-        top: 5%;
-        left: 2%;
-        width: 100px;
-        animation-delay: 0s;
-        transform: rotate(-20deg);
+    .stat-card:hover {
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.15);
     }
 
-    .dashboard-sticker-2 {
-        top: 8%;
-        right: 2%;
-        width: 110px;
-        animation-delay: 3s;
-        transform: rotate(25deg);
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 900;
+        background: var(--primary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
     }
 
-    .dashboard-sticker-3 {
-        bottom: 8%;
-        left: 2%;
-        width: 95px;
-        animation-delay: 1.5s;
-        transform: rotate(-15deg);
+    .stat-label {
+        color: var(--text-dim);
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
     }
 
     @media (max-width: 768px) {
-        .clubs-grid {
-            grid-template-columns: 1fr;
-            gap: 2rem;
+        .dashboard-content {
+            padding: 2rem 1rem;
         }
 
-        .empty-actions {
+        .dashboard-title {
+            font-size: 2.5rem;
+        }
+
+        .clubs-grid {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .cta-buttons {
             flex-direction: column;
             align-items: center;
         }
@@ -541,331 +465,249 @@
             max-width: 300px;
         }
 
-        .hero-title {
-            font-size: 2.5rem;
-        }
-
-        .hero-subtitle {
-            font-size: 1.1rem;
-        }
-
-        .club-card-header {
-            padding: 2rem;
-        }
-
-        .club-card-body {
-            padding: 2rem;
-        }
-
-        .empty-state {
-            padding: 4rem 1rem;
-        }
-
-        .empty-state h2 {
-            font-size: 2rem;
+        .quick-stats {
+            grid-template-columns: repeat(2, 1fr);
         }
     }
 
     @media (max-width: 480px) {
-        .dashboard-hero-content {
-            padding: 0 1rem;
-        }
-
-        .container {
-            padding: 0 1rem;
+        .quick-stats {
+            grid-template-columns: 1fr;
         }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-hero">
-    <div class="floating-shapes">
-        <div class="shape"></div>
-        <div class="shape"></div>
-        <div class="shape"></div>
-        <div class="shape"></div>
-    </div>
-    
-    <img src="{{ url_for('static', filename='assets/orpheus-having-boba.png') }}" alt="Orpheus Boba" class="floating-sticker sticker-1">
-    <img src="{{ url_for('static', filename='assets/orpheus-skateboarding-PCB.png') }}" alt="Orpheus Skateboard" class="floating-sticker sticker-2">
-    <img src="{{ url_for('static', filename='assets/orphmoji_peefest.png') }}" alt="Orphmoji Happy" class="floating-sticker sticker-3">
-    <img src="{{ url_for('static', filename='assets/hackers,_assemble!.png') }}" alt="Hackers Assemble" class="floating-sticker sticker-4">
-    
-    <div class="dashboard-hero-content">
-        <div class="hero-badge">
-            <i class="fas fa-rocket"></i>
-            <span>My Dashboard</span>
-        </div>
-        
-        <h1 class="hero-title">
-            Welcome, {{ current_user.username }}!
-        </h1>
-        
-        <p class="hero-subtitle">
-            Choose a club to manage or join a new one to start your coding adventure
-        </p>
-    </div>
-</div>
-
 <div class="dashboard-container">
-    <img src="{{ url_for('static', filename='assets/parts.png') }}" alt="Mo Parts Mo Problems" class="section-sticker dashboard-sticker-1">
-    <img src="{{ url_for('static', filename='assets/find.png') }}" alt="Find Out" class="section-sticker dashboard-sticker-2">
-    <img src="{{ url_for('static', filename='assets/Rummage.png') }}" alt="Rummage" class="section-sticker dashboard-sticker-3">
-    
-    <div class="container">
-        {% if led_clubs or memberships %}
-            <div class="clubs-grid">
-                {% for club in led_clubs %}
-                    <div class="club-card" onclick="window.location.href='{{ url_for('club_dashboard', club_id=club.id) }}'">
-                        <div class="club-card-header">
-                            <div class="club-avatar">
-                                <i class="fas fa-crown"></i>
-                            </div>
-                            <h3>{{ club.name }}</h3>
-                            <span class="club-role">Club Leader</span>
-                        </div>
-                        <div class="club-card-body">
-                            <p class="club-description">{{ club.description or 'No description available' }}</p>
-                            <div class="club-meta">
-                                <span><i class="fas fa-map-marker-alt"></i> {{ club.location or 'No location' }}</span>
-                                <span><i class="fas fa-users"></i> {{ club.members|length + 1 }} members</span>
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
+    <div class="floating-shapes">
+        <div class="floating-shape"></div>
+        <div class="floating-shape"></div>
+        <div class="floating-shape"></div>
+        <div class="floating-shape"></div>
+    </div>
 
-                {% for membership in memberships %}
-                    <div class="club-card" onclick="window.location.href='{{ url_for('club_dashboard', club_id=membership.club.id) }}'">
-                        <div class="club-card-header">
-                            <div class="club-avatar">
-                                <i class="fas fa-users"></i>
+    <div class="dashboard-content">
+        <div class="dashboard-header">
+            <div class="welcome-badge">
+                <i class="fas fa-rocket"></i>
+                <span>Welcome to your dashboard!</span>
+            </div>
+            <h1 class="dashboard-title">Hey there, {{ current_user.username }}!</h1>
+            <p class="dashboard-subtitle">Ready to build something amazing? Choose a club!</p>
+        </div>
+
+        {% if led_clubs or memberships %}
+            <div class="clubs-section">
+                <div class="clubs-grid">
+                    {% for club in led_clubs %}
+                        <div class="club-card" onclick="window.location.href='{{ url_for('club_dashboard', club_id=club.id) }}'">
+                            <div class="club-card-header">
+                                <div class="club-avatar">
+                                    <i class="fas fa-crown"></i>
+                                </div>
+                                <h3 class="club-name">{{ club.name }}</h3>
+                                <span class="club-role">Club Leader</span>
                             </div>
-                            <h3>{{ membership.club.name }}</h3>
-                            <span class="club-role">{{ membership.role|title }}</span>
-                        </div>
-                        <div class="club-card-body">
-                            <p class="club-description">{{ membership.club.description or 'No description available' }}</p>
-                            <div class="club-meta">
-                                <span><i class="fas fa-map-marker-alt"></i> {{ membership.club.location or 'No location' }}</span>
-                                <span><i class="fas fa-users"></i> {{ membership.club.members|length + 1 }} members</span>
+                            <div class="club-card-body">
+                                <p class="club-description">{{ club.description or 'Leading the way in innovation and collaboration!' }}</p>
+                                <div class="club-meta">
+                                    <div class="club-meta-item">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        <span>{{ club.location or 'Remote' }}</span>
+                                    </div>
+                                    <div class="club-meta-item">
+                                        <i class="fas fa-users"></i>
+                                        <span>{{ club.members|length + 1 }} members</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                    {% endfor %}
+
+                    {% for membership in memberships %}
+                        <div class="club-card" onclick="window.location.href='{{ url_for('club_dashboard', club_id=membership.club.id) }}'">
+                            <div class="club-card-header">
+                                <div class="club-avatar">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <h3 class="club-name">{{ membership.club.name }}</h3>
+                                <span class="club-role">{{ membership.role.title() }}</span>
+                            </div>
+                            <div class="club-card-body">
+                                <p class="club-description">{{ membership.club.description or 'Part of an amazing coding community!' }}</p>
+                                <div class="club-meta">
+                                    <div class="club-meta-item">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        <span>{{ membership.club.location or 'Remote' }}</span>
+                                    </div>
+                                    <div class="club-meta-item">
+                                        <i class="fas fa-users"></i>
+                                        <span>{{ membership.club.members|length + 1 }} members</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="quick-stats">
+                    <div class="stat-card">
+                        <div class="stat-number">{{ led_clubs|length }}</div>
+                        <div class="stat-label">Clubs Leading</div>
                     </div>
-                {% endfor %}
+                    <div class="stat-card">
+                        <div class="stat-number">{{ memberships|length }}</div>
+                        <div class="stat-label">Clubs Joined</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">{{ (led_clubs|length + memberships|length) }}</div>
+                        <div class="stat-label">Total Clubs</div>
+                    </div>
+                </div>
             </div>
         {% else %}
             <div class="empty-state">
-                <div class="empty-state-icon">
-                    <i class="fas fa-rocket"></i>
-                </div>
-                <h2>Ready to Start Your Journey?</h2>
-                <p>Join the global movement of teenage hackers! Create your own club or join an existing one to connect with fellow builders and innovators.</p>
-                <div class="empty-actions">
-                    <button class="btn-hero btn-primary-hero" onclick="showCreateClubModal()">
+                <div class="cta-buttons">
+                    <a href="{{ url_for('verify_leader') }}" class="btn-hero btn-primary-hero">
                         Create a Club
-                    </button>
-                    <button class="btn-hero btn-secondary-hero" onclick="joinClubPrompt()">
+                    </a>
+                    <a href="#" class="btn-hero btn-secondary-hero" onclick="joinClubPrompt(); return false;">
                         Join Club
-                    </button>
+                    </a>
                 </div>
             </div>
         {% endif %}
     </div>
 </div>
 
-<!-- Create Club Modal -->
-<div id="createClubModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4);">
-    <div class="modal-content" style="background-color: #fefefe; margin: 15% auto; padding: 20px; border: none; width: 400px; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
-        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3 style="margin: 0; color: #1a202c;"><i class="fas fa-crown"></i> Create Your Club</h3>
-            <button class="close" onclick="closeCreateClubModal()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+<!-- Join Club Modal -->
+<div id="joinClubModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 16px; padding: 2rem; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+            <h3 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.5rem; font-weight: 700;">Join a Club</h3>
+            <p style="margin: 0; color: #718096;">Enter the join code from your club leader</p>
         </div>
-        <div class="modal-body">
-            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-                <h4 style="color: #856404; margin: 0 0 0.5rem 0; font-size: 0.9rem;">Leader Verification Required</h4>
-                <p style="color: #856404; margin: 0; font-size: 0.85rem;">You must be a registered Hack Club leader to create a club. We'll send a verification code to your email.</p>
-            </div>
-            
-            <div id="emailStep">
-                <div class="form-group" style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #2d3748; font-size: 0.875rem;">Leader Email (as registered with Hack Club)</label>
-                    <input type="email" id="modalLeaderEmail" style="width: 100%; padding: 0.875rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem;" placeholder="Enter your registered leader email">
-                </div>
-                
-                <div class="form-group" style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #2d3748; font-size: 0.875rem;">Club Name (as registered with Hack Club)</label>
-                    <input type="text" id="modalLeaderClubName" style="width: 100%; padding: 0.875rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem;" placeholder="Enter your club name" minlength="4">
-                    <small style="color: #6c757d; font-size: 0.8rem;">At least 4 characters must match your registered club name</small>
-                </div>
-                
-                <button onclick="sendVerificationEmail()" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 1rem; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                    <i class="fas fa-envelope"></i> Send Verification Code
-                </button>
-            </div>
-
-            <div id="verificationStep" style="display: none;">
-                <div style="background: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-                    <h4 style="color: #155724; margin: 0 0 0.5rem 0; font-size: 0.9rem;">📧 Check Your Email</h4>
-                    <p style="color: #155724; margin: 0; font-size: 0.85rem;" id="verificationMessage">We've sent a 6-digit verification code to your email.</p>
-                </div>
-
-                <div class="form-group" style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #2d3748; font-size: 0.875rem;">Verification Code</label>
-                    <input type="text" id="modalVerificationCode" style="width: 100%; padding: 0.875rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem; text-align: center; letter-spacing: 0.2rem;" placeholder="Enter 6-digit code" maxlength="6">
-                </div>
-                
-                <button onclick="createClub()" style="background: linear-gradient(135deg, #ec3750, #d63146); color: white; border: none; padding: 1rem; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                    <i class="fas fa-plus"></i> Create Club
-                </button>
-
-                <button onclick="goBackToEmailStep()" style="background: #6c757d; color: white; border: none; padding: 0.75rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; width: 100%; margin-top: 0.5rem;">
-                    ← Back to Email Step
-                </button>
-            </div>
-            
-            <div id="createClubError" style="color: #dc3545; margin-top: 1rem; display: none;"></div>
-            <div id="createClubSuccess" style="color: #28a745; margin-top: 1rem; display: none;"></div>
+        <div style="margin-bottom: 1.5rem;">
+            <input 
+                type="text" 
+                id="joinCodeInput" 
+                placeholder="Enter join code" 
+                style="width: 100%; padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem; text-align: center; letter-spacing: 1px; font-weight: 600;"
+            >
+        </div>
+        <div style="display: flex; gap: 1rem;">
+            <button 
+                onclick="closeJoinModal()" 
+                style="flex: 1; padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #4a5568; font-weight: 600; cursor: pointer; transition: all 0.2s ease;"
+            >
+                Cancel
+            </button>
+            <button 
+                onclick="submitJoinCode()" 
+                style="flex: 1; padding: 0.75rem; border: none; border-radius: 8px; background: linear-gradient(135deg, #ec3750, #d63146); color: white; font-weight: 600; cursor: pointer; transition: all 0.2s ease;"
+            >
+                Join Club
+            </button>
         </div>
     </div>
 </div>
 
 <script>
     function joinClubPrompt() {
-        const joinCode = prompt('Enter the club join code:');
+        const modal = document.getElementById('joinClubModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            document.getElementById('joinCodeInput').focus();
+        }
+    }
+
+    function closeJoinModal() {
+        const modal = document.getElementById('joinClubModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.getElementById('joinCodeInput').value = '';
+        }
+    }
+
+    function submitJoinCode() {
+        const joinCode = document.getElementById('joinCodeInput').value.trim();
         if (joinCode) {
-            window.location.href = `/join-club?code=${joinCode}`;
+            window.location.href = `/join-club?code=${encodeURIComponent(joinCode)}`;
         }
     }
 
-    function showCreateClubModal() {
-        document.getElementById('createClubModal').style.display = 'block';
-    }
-
-    function closeCreateClubModal() {
-        document.getElementById('createClubModal').style.display = 'none';
-        document.getElementById('modalLeaderEmail').value = '';
-        document.getElementById('modalLeaderClubName').value = '';
-        document.getElementById('modalVerificationCode').value = '';
-        document.getElementById('createClubError').style.display = 'none';
-        document.getElementById('createClubSuccess').style.display = 'none';
-        document.getElementById('emailStep').style.display = 'block';
-        document.getElementById('verificationStep').style.display = 'none';
-    }
-
-    function sendVerificationEmail() {
-        const email = document.getElementById('modalLeaderEmail').value;
-        const clubName = document.getElementById('modalLeaderClubName').value;
-        const errorDiv = document.getElementById('createClubError');
-        const successDiv = document.getElementById('createClubSuccess');
-
-        errorDiv.style.display = 'none';
-        successDiv.style.display = 'none';
-
-        if (!email || !clubName) {
-            errorDiv.textContent = 'Please fill in all fields';
-            errorDiv.style.display = 'block';
-            return;
+    // Handle Enter key in join code input
+    document.addEventListener('DOMContentLoaded', function() {
+        const joinCodeInput = document.getElementById('joinCodeInput');
+        if (joinCodeInput) {
+            joinCodeInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    submitJoinCode();
+                }
+            });
         }
+    });
 
-        if (clubName.length < 4) {
-            errorDiv.textContent = 'Club name must be at least 4 characters';
-            errorDiv.style.display = 'block';
-            return;
+    // Close modal when clicking backdrop
+    document.getElementById('joinClubModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeJoinModal();
         }
+    });
 
-        fetch('/api/send-verification-email', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                leader_email: email,
-                leader_club_name: clubName
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('emailStep').style.display = 'none';
-                document.getElementById('verificationStep').style.display = 'block';
-                document.getElementById('verificationMessage').textContent = data.message;
-                window.verifiedClubName = data.club_name;
-            } else {
-                errorDiv.textContent = data.error;
-                errorDiv.style.display = 'block';
-            }
-        })
-        .catch(error => {
-            errorDiv.textContent = 'Network error occurred';
-            errorDiv.style.display = 'block';
+    // Add some dynamic interactions
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add hover effects to club cards
+        const clubCards = document.querySelectorAll('.club-card');
+        clubCards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-10px) scale(1.02)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
         });
-    }
 
-    function createClub() {
-        const email = document.getElementById('modalLeaderEmail').value;
-        const verificationCode = document.getElementById('modalVerificationCode').value;
-        const errorDiv = document.getElementById('createClubError');
-        const successDiv = document.getElementById('createClubSuccess');
-
-        errorDiv.style.display = 'none';
-        successDiv.style.display = 'none';
-
-        if (!verificationCode) {
-            errorDiv.textContent = 'Please enter the verification code';
-            errorDiv.style.display = 'block';
-            return;
-        }
-
-        if (verificationCode.length !== 6) {
-            errorDiv.textContent = 'Verification code must be 6 digits';
-            errorDiv.style.display = 'block';
-            return;
-        }
-
-        fetch('/api/create-club', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                leader_email: email,
-                verification_code: verificationCode
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                successDiv.textContent = data.message;
-                successDiv.style.display = 'block';
+        // Add click animation to action buttons
+        const actionBtns = document.querySelectorAll('.btn-hero');
+        actionBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                // Create ripple effect
+                const ripple = document.createElement('span');
+                ripple.style.position = 'absolute';
+                ripple.style.background = 'rgba(255,255,255,0.6)';
+                ripple.style.borderRadius = '50%';
+                ripple.style.transform = 'scale(0)';
+                ripple.style.animation = 'ripple 0.6s linear';
+                ripple.style.pointerEvents = 'none';
+                
+                const rect = this.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                ripple.style.width = ripple.style.height = size + 'px';
+                ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+                ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+                
+                this.appendChild(ripple);
+                
                 setTimeout(() => {
-                    closeCreateClubModal();
-                    location.reload();
-                }, 2000);
-            } else {
-                errorDiv.textContent = data.error;
-                errorDiv.style.display = 'block';
-            }
-        })
-        .catch(error => {
-            errorDiv.textContent = 'Network error occurred';
-            errorDiv.style.display = 'block';
+                    ripple.remove();
+                }, 600);
+            });
         });
-    }
+    });
 
-    function goBackToEmailStep() {
-        document.getElementById('emailStep').style.display = 'block';
-        document.getElementById('verificationStep').style.display = 'none';
-        document.getElementById('createClubError').style.display = 'none';
-        document.getElementById('createClubSuccess').style.display = 'none';
-    }
-
-    // Close modal when clicking outside
-    window.onclick = function(event) {
-        const modal = document.getElementById('createClubModal');
-        if (event.target == modal) {
-            closeCreateClubModal();
+    // Add CSS for ripple animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
         }
-    }
+    `;
+    document.head.appendChild(style);
 </script>
 {% endblock %}
