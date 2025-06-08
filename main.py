@@ -2040,6 +2040,28 @@ def admin_get_pizza_grants():
         logger.error(f"Error fetching pizza grant submissions: {str(e)}")
         return jsonify({'error': 'Failed to fetch submissions from Airtable'}), 500
 
+@app.route('/api/admin/pizza-grants/<submission_id>', methods=['DELETE'])
+@login_required
+@limiter.limit("20 per hour")
+def admin_delete_pizza_grant(submission_id):
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    try:
+        # Delete from Airtable
+        url = f"{airtable_service.base_url}/{submission_id}"
+        response = requests.delete(url, headers=airtable_service.headers)
+        
+        if response.status_code == 200:
+            return jsonify({'message': 'Submission deleted successfully'})
+        else:
+            return jsonify({'error': 'Failed to delete submission from Airtable'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error deleting pizza grant submission: {str(e)}")
+        return jsonify({'error': 'Failed to delete submission'}), 500
+
 @app.route('/api/admin/pizza-grants/review', methods=['POST'])
 @login_required
 @limiter.limit("50 per hour")
@@ -2073,7 +2095,8 @@ def admin_review_pizza_grant():
                     # Find the club and update balance
                     club = Club.query.filter_by(name=club_name).first()
                     if club:
-                        club.balance += grant_amount
+                        from decimal import Decimal
+                        club.balance += Decimal(str(grant_amount))
                         db.session.commit()
                         logger.info(f"Updated club {club_name} balance by ${grant_amount}")
                     else:

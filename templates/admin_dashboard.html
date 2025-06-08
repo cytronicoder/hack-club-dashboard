@@ -750,8 +750,14 @@
         <div class="data-table">
             <div class="table-header">
                 <h3>Pizza Grant Review</h3>
-                <div style="display: flex; gap: 1rem; align-items: center;">
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
                     <input type="text" class="search-box" placeholder="Search submissions..." id="reviewSearch">
+                    <select class="search-box" id="statusFilter" onchange="filterSubmissionsByStatus()" style="width: 150px;">
+                        <option value="">All Status</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
                     <button class="btn btn-primary" onclick="loadPizzaGrantSubmissions()">
                         <i class="fas fa-sync"></i> Refresh
                     </button>
@@ -1242,12 +1248,16 @@ async function executeConfirmedAction() {
         } catch (error) {
             showToast('error', 'Failed to remove administrator');
         }
+    } else if (pendingAction === 'deleteSubmission') {
+        await executeDeleteSubmission();
     }
     
     closeModal('confirmModal');
     pendingAction = null;
     pendingUserId = null;
     pendingUsername = null;
+    pendingSubmissionId = null;
+    pendingProjectName = null;
 }
 
 function openModal(modalId) {
@@ -1400,6 +1410,8 @@ document.getElementById('adminSearch').addEventListener('input', function(e) {
 let pendingAction = null;
 let pendingUserId = null;
 let pendingUsername = null;
+let pendingSubmissionId = null;
+let pendingProjectName = null;
 
 function loginAsUser(userId, username) {
     document.getElementById('loginAsUsername').textContent = username;
@@ -1523,6 +1535,9 @@ function renderReviewTable(submissions) {
                             <i class="fas fa-times"></i> Reject
                         </button>
                     ` : ''}
+                    <button class="btn-action btn-suspend" onclick="deleteSubmission('${submission.id}', '${submission.project_name || 'Unknown Project'}')">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
                 </div>
             </td>
         `;
@@ -1669,16 +1684,62 @@ async function processSubmission(submissionId, action) {
 }
 
 document.getElementById('reviewSearch').addEventListener('input', function(e) {
-    const searchTerm = e.target.value.toLowerCase();
-    const filteredSubmissions = reviewData.filter(submission => 
-        (submission.project_name && submission.project_name.toLowerCase().includes(searchTerm)) ||
-        (submission.first_name && submission.first_name.toLowerCase().includes(searchTerm)) ||
-        (submission.last_name && submission.last_name.toLowerCase().includes(searchTerm)) ||
-        (submission.email && submission.email.toLowerCase().includes(searchTerm)) ||
-        (submission.club_name && submission.club_name.toLowerCase().includes(searchTerm))
-    );
-    renderReviewTable(filteredSubmissions);
+    applySubmissionFilters();
 });
+
+function applySubmissionFilters() {
+    const searchTerm = document.getElementById('reviewSearch').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    
+    let filteredSubmissions = reviewData.filter(submission => {
+        const matchesSearch = !searchTerm || (
+            (submission.project_name && submission.project_name.toLowerCase().includes(searchTerm)) ||
+            (submission.first_name && submission.first_name.toLowerCase().includes(searchTerm)) ||
+            (submission.last_name && submission.last_name.toLowerCase().includes(searchTerm)) ||
+            (submission.email && submission.email.toLowerCase().includes(searchTerm)) ||
+            (submission.club_name && submission.club_name.toLowerCase().includes(searchTerm))
+        );
+        
+        const matchesStatus = !statusFilter || submission.status === statusFilter;
+        
+        return matchesSearch && matchesStatus;
+    });
+    
+    renderReviewTable(filteredSubmissions);
+}
+
+function filterSubmissionsByStatus() {
+    applySubmissionFilters();
+}
+
+function deleteSubmission(submissionId, projectName) {
+    document.getElementById('confirmTitle').textContent = 'Delete Submission';
+    document.getElementById('confirmMessage').innerHTML = `Are you sure you want to permanently delete the submission for "<strong>${projectName}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This action cannot be undone and will remove the submission from Airtable.</span>`;
+    pendingAction = 'deleteSubmission';
+    pendingSubmissionId = submissionId;
+    pendingProjectName = projectName;
+    openModal('confirmModal');
+}
+
+async function executeDeleteSubmission() {
+    try {
+        const response = await fetch(`/api/admin/pizza-grants/${pendingSubmissionId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showToast('success', 'Submission deleted successfully');
+            loadPizzaGrantSubmissions(); // Refresh the table
+        } else {
+            showToast('error', data.error || 'Failed to delete submission');
+        }
+    } catch (error) {
+        console.error('Error deleting submission:', error);
+        showToast('error', 'Failed to delete submission');
+    }
+}
 
 document.addEventListener('click', function(e) {
     if (e.target.classList.contains('modal-backdrop')) {
