@@ -239,7 +239,7 @@ class AirtableService:
     def __init__(self):
         self.api_token = os.environ.get('AIRTABLE_TOKEN')
         self.base_id = os.environ.get('AIRTABLE_BASE_ID', 'appSnnIu0BhjI3E1p')
-        self.table_name = os.environ.get('AIRTABLE_TABLE_NAME', 'YSWS Project Submission')
+        self.table_name = os.environ.get('AIRTABLE_TABLE_NAME', 'Grants')
         self.headers = {
             'Authorization': f'Bearer {self.api_token}',
             'Content-Type': 'application/json'
@@ -311,6 +311,40 @@ class AirtableService:
                 return response.json()
             return None
         except:
+            return None
+
+    def submit_pizza_grant(self, grant_data):
+        """Submit pizza grant to Grants table"""
+        if not self.api_token:
+            return None
+
+        # Use Grants table instead
+        grants_table_name = urllib.parse.quote('Grants')
+        grants_url = f'https://api.airtable.com/v0/{self.base_id}/{grants_table_name}'
+
+        fields = {
+            'Club': grant_data.get('club_name', ''),
+            'Email': grant_data.get('contact_email', ''),
+            'Status': 'In progress',
+            'Grant Amount': str(grant_data.get('grant_amount', 0)),
+            'Grant Type': 'Pizza Card',
+            'Address': grant_data.get('club_address', ''),
+            'Order ID': grant_data.get('order_id', '')
+        }
+
+        payload = {'records': [{'fields': fields}]}
+        
+        try:
+            response = requests.post(grants_url, headers=self.headers, json=payload)
+            app.logger.debug(f"Airtable response status: {response.status_code}")
+            app.logger.debug(f"Airtable response body: {response.text}")
+            if response.status_code in [200, 201]:
+                return response.json()
+            else:
+                app.logger.error(f"Airtable error: {response.text}")
+                return None
+        except Exception as e:
+            app.logger.error(f"Exception submitting to Airtable: {str(e)}")
             return None
 
     def get_pizza_grant_submissions(self):
@@ -2129,6 +2163,107 @@ def admin_review_pizza_grant():
     except Exception as e:
         logger.error(f"Error processing pizza grant review: {str(e)}")
         return jsonify({'error': f'Failed to {action} grant'}), 500
+
+@app.route('/pizza-order/<int:club_id>')
+@login_required
+def pizza_order(club_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+    
+    # Check if user is club leader or member
+    is_leader = club.leader_id == current_user.id
+    is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
+    
+    if not is_leader and not is_member:
+        flash('You are not authorized to order pizza for this club', 'error')
+        return redirect(url_for('dashboard'))
+    
+    return render_template('pizza_order.html', club=club)
+
+@app.route('/api/clubs/<int:club_id>/pizza-order', methods=['POST'])
+@login_required
+@limiter.limit("10 per hour")
+def submit_pizza_order(club_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+    
+    # Check if user is club leader or member
+    is_leader = club.leader_id == current_user.id
+    is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
+    
+    if not is_leader and not is_member:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.get_json()
+    grant_amount = float(data.get('grant_amount', 0))
+    club_address = data.get('club_address', '').strip()
+    contact_email = data.get('contact_email', '').strip()
+    
+    # Validate inputs
+    if grant_amount <= 0:
+        return jsonify({'error': 'Grant amount must be greater than 0'}), 400
+    
+    if grant_amount > float(club.balance):
+        return jsonify({'error': 'Grant amount cannot exceed club balance'}), 400
+    
+    if not club_address or not contact_email:
+        return jsonify({'error': 'Club address and contact email are required'}), 400
+    
+    try:
+        # Generate a unique order ID
+        import uuid
+        order_id = str(uuid.uuid4())[:8].upper()
+        
+        # Submit to Grants table in Airtable
+        result = airtable_service.submit_pizza_grant({
+            'club_name': club.name,
+            'contact_email': contact_email,
+            'grant_amount': grant_amount,
+            'club_address': club_address,
+            'order_id': order_id
+        })
+        
+        if result:
+            # Deduct amount from club balance
+            from decimal import Decimal
+            club.balance -= Decimal(str(grant_amount))
+            db.session.commit()
+            
+            app.logger.info(f"Pizza order submitted for club {club.name}: ${grant_amount}, Order ID: {order_id}")
+            
+            return jsonify({
+                'success': True,
+                'message': 'Pizza order submitted successfully',
+                'order_id': order_id,
+                'remaining_balance': float(club.balance)
+            })
+        else:
+            app.logger.error(f"Failed to submit pizza order to Airtable for club {club.name}")
+            return jsonify({'error': 'Failed to submit order to grants system. Please try again or contact support.'}), 500
+            
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error submitting pizza order: {str(e)}")
+        return jsonify({'error': 'An error occurred while processing your order'}), 500
+
+@app.route('/api/clubs/<int:club_id>/balance', methods=['GET'])
+@login_required
+@limiter.limit("100 per hour")
+def get_club_balance(club_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+    
+    # Check if user is club leader or member
+    is_leader = club.leader_id == current_user.id
+    is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
+    
+    if not is_leader and not is_member:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    return jsonify({
+        'balance': float(club.balance),
+        'club_name': club.name
+    })
 
 @app.route('/api/admin/stats', methods=['GET'])
 @login_required

@@ -69,7 +69,10 @@
                             <i class="fas fa-calendar-alt"></i> Schedule
                         </a></li>
                         <li><a href="#pizza" class="nav-link" data-section="pizza">
-                            <i class="fas fa-pizza-slice"></i> Pizza Grants
+                            <i class="fas fa-hand-holding-usd"></i> Project Grants
+                        </a></li>
+                        <li><a href="#shop" class="nav-link" data-section="shop">
+                            <i class="fas fa-shopping-cart"></i> Club Shop
                         </a></li>
                         {% if current_user.id == club.leader_id %}
                         <li><a href="#settings" class="nav-link" data-section="settings">
@@ -386,8 +389,8 @@
                 <section id="pizza" class="club-section">
                     <div class="content-header">
                         <div>
-                            <h2><i class="fas fa-pizza-slice"></i> Pizza Grants</h2>
-                            <p>Submit projects for pizza funding</p>
+                            <h2><i class="fas fa-hand-holding-usd"></i> Project Grants</h2>
+                            <p>Submit projects for funding</p>
                         </div>
                         <button class="btn btn-primary" onclick="openPizzaGrantModal()">
                             <i class="fas fa-plus"></i> Submit Project
@@ -397,14 +400,14 @@
                     <div class="card" style="margin-bottom: 2rem;">
                         <div class="card-header">
                             <h3><i class="fas fa-list"></i> Club Submissions</h3>
-                            <p style="margin: 0.5rem 0 0 0; color: #6b7280; font-size: 0.9rem;">Track your club's pizza grant submissions and their status</p>
+                            <p style="margin: 0.5rem 0 0 0; color: #6b7280; font-size: 0.9rem;">Track your club's project grant submissions and their status</p>
                         </div>
                         <div class="card-body">
                             <div id="clubSubmissionsList">
                                 <div class="empty-state">
                                     <i class="fas fa-spinner fa-spin"></i>
                                     <h3>Loading submissions...</h3>
-                                    <p>Fetching your club's pizza grant submissions</p>
+                                    <p>Fetching your club's project grant submissions</p>
                                 </div>
                             </div>
                         </div>
@@ -412,9 +415,57 @@
 
                     <div id="pizzaGrantsList" style="display: none;">
                         <div class="empty-state">
-                            <i class="fas fa-pizza-slice"></i>
+                            <i class="fas fa-hand-holding-usd"></i>
                             <h3>No submissions yet</h3>
-                            <p>Submit your coding projects to earn pizza for the club!</p>
+                            <p>Submit your coding projects to earn funding for the club!</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="shop" class="club-section">
+                    <div class="content-header">
+                        <div>
+                            <h2><i class="fas fa-shopping-cart"></i> Club Shop</h2>
+                            <p>Spend your club balance on awesome items!</p>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-bottom: 2rem;">
+                        <div class="card-header">
+                            <h3><i class="fas fa-wallet"></i> Club Balance</h3>
+                        </div>
+                        <div class="card-body" style="text-align: center; padding: 2rem;">
+                            <div style="font-size: 3rem; font-weight: bold; color: #ec3750; margin-bottom: 1rem;">
+                                ${{ "%.2f"|format(club.balance|float) }}
+                            </div>
+                            <p style="color: #6b7280; font-size: 1.1rem;">Available to spend on club items</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-shopping-bag"></i> Available Items</h3>
+                            <p style="margin: 0.5rem 0 0 0; color: #6b7280; font-size: 0.9rem;">Use your club balance to purchase items for your club</p>
+                        </div>
+                        <div class="card-body">
+                            <div class="shop-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                                <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer;" onclick="purchasePizza()">
+                                    <div style="margin-bottom: 1rem;">
+                                        <img src="{{ url_for('static', filename='assets/pizza.png') }}" alt="Pizza" style="width: 80px; height: 80px; object-fit: contain;">
+                                    </div>
+                                    <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.25rem; font-weight: 600;">Pizza for your club!</h4>
+                                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5;">Get a virtual card to buy pizza for your club!</p>
+                                    <div style="background: #ec3750; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-block;">
+                                        <i class="fas fa-external-link-alt" style="margin-right: 0.5rem;"></i>
+                                        Order Now
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; margin-top: 2rem;">
+                                <h4 style="margin: 0 0 1rem 0; color: #1a202c; font-size: 1rem;"><i class="fas fa-info-circle" style="color: #3b82f6; margin-right: 0.5rem;"></i> More Items Coming Soon!</h4>
+                                <p style="margin: 0; color: #4a5568; font-size: 0.9rem;">We're working on adding more exciting items you can purchase with your club balance. Stay tuned for hardware, swag, and other cool club perks!</p>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -634,7 +685,7 @@
 <div id="pizzaGrantModal" class="modal">
     <div class="modal-content" style="max-width: 800px;">
         <div class="modal-header">
-            <h3>Submit Project for Pizza Grant</h3>
+            <h3>Submit Project for Grant</h3>
             <button class="close" onclick="document.getElementById('pizzaGrantModal').style.display='none'">&times;</button>
         </div>
         <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
@@ -765,7 +816,6 @@
                 </div>
 
                 <div class="form-group">
-Adding the missing country field in the pizza grant form.```text
                     <label class="form-label">Country *</label>
                     <input type="text" class="form-control" id="grantCountry" required>
                 </div>
