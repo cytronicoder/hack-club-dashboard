@@ -1,0 +1,261 @@
+
+{% extends "base.html" %}
+
+{% block title %}Order Pizza - {{ club.name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .pizza-order-container {
+        max-width: 600px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .pizza-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .pizza-icon {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 1rem;
+    }
+
+    .balance-display {
+        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
+    .balance-amount {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #ec3750;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 1rem;
+        transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #ec3750;
+        box-shadow: 0 0 0 3px rgba(236, 55, 80, 0.1);
+    }
+
+    .btn-pizza {
+        width: 100%;
+        background: #ec3750;
+        color: white;
+        padding: 1rem 2rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .btn-pizza:hover {
+        background: #d63146;
+    }
+
+    .btn-pizza:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+    }
+
+    .info-box {
+        background: #fef3c7;
+        border: 1px solid #f59e0b;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .info-box h4 {
+        margin: 0 0 0.5rem 0;
+        color: #92400e;
+        font-size: 1rem;
+    }
+
+    .info-box p {
+        margin: 0;
+        color: #451a03;
+        font-size: 0.9rem;
+    }
+
+    .error-message {
+        color: #dc2626;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="pizza-order-container">
+        <div class="pizza-header">
+            <img src="{{ url_for('static', filename='assets/pizza.png') }}" alt="Pizza" class="pizza-icon">
+            <h1>Order Pizza for {{ club.name }}</h1>
+            <p>Use your club balance to get a virtual card for pizza!</p>
+        </div>
+
+        <div class="balance-display">
+            <div class="balance-amount">${{ "%.2f"|format(club.balance|float) }}</div>
+            <p>Available Club Balance</p>
+        </div>
+
+        <div class="info-box">
+            <h4><i class="fas fa-info-circle"></i> How it works:</h4>
+            <p>After submitting your order, a virtual card will be issued to your club within 1-5 business days. The card can be used to purchase pizza for your club events.</p>
+        </div>
+
+        <form id="pizzaOrderForm">
+            <div class="form-group">
+                <label class="form-label" for="grantAmount">Grant Amount ($) *</label>
+                <input type="number" class="form-control" id="grantAmount" min="1" max="{{ club.balance|float }}" step="0.01" required>
+                <div class="error-message" id="amountError" style="display: none;"></div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="clubAddress">Club Address *</label>
+                <textarea class="form-control" id="clubAddress" rows="3" placeholder="Enter the delivery address for your club" required></textarea>
+                <div class="error-message" id="addressError" style="display: none;"></div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="specialInstructions">Special Instructions (Optional)</label>
+                <textarea class="form-control" id="specialInstructions" rows="2" placeholder="Any special delivery instructions or dietary requirements"></textarea>
+            </div>
+
+            <button type="submit" class="btn-pizza" id="submitBtn">
+                <i class="fas fa-pizza-slice"></i> Order Pizza Card
+            </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 1rem;">
+            <a href="{{ url_for('club_dashboard', club_id=club.id) }}#shop" style="color: #6b7280; text-decoration: none;">
+                <i class="fas fa-arrow-left"></i> Back to Club Shop
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('pizzaOrderForm');
+    const amountInput = document.getElementById('grantAmount');
+    const addressInput = document.getElementById('clubAddress');
+    const submitBtn = document.getElementById('submitBtn');
+    const amountError = document.getElementById('amountError');
+    const addressError = document.getElementById('addressError');
+    const maxBalance = {{ club.balance|float }};
+
+    // Validate amount input
+    amountInput.addEventListener('input', function() {
+        const amount = parseFloat(this.value);
+        if (amount > maxBalance) {
+            amountError.textContent = `Amount cannot exceed your club balance of $${maxBalance.toFixed(2)}`;
+            amountError.style.display = 'block';
+            this.style.borderColor = '#dc2626';
+        } else if (amount <= 0) {
+            amountError.textContent = 'Amount must be greater than $0';
+            amountError.style.display = 'block';
+            this.style.borderColor = '#dc2626';
+        } else {
+            amountError.style.display = 'none';
+            this.style.borderColor = '#e5e7eb';
+        }
+    });
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const amount = parseFloat(amountInput.value);
+        const address = addressInput.value.trim();
+        const instructions = document.getElementById('specialInstructions').value.trim();
+
+        // Validate inputs
+        let hasErrors = false;
+
+        if (!amount || amount <= 0 || amount > maxBalance) {
+            amountError.textContent = amount > maxBalance ? 
+                `Amount cannot exceed your club balance of $${maxBalance.toFixed(2)}` : 
+                'Please enter a valid amount';
+            amountError.style.display = 'block';
+            amountInput.style.borderColor = '#dc2626';
+            hasErrors = true;
+        }
+
+        if (!address) {
+            addressError.textContent = 'Club address is required';
+            addressError.style.display = 'block';
+            addressInput.style.borderColor = '#dc2626';
+            hasErrors = true;
+        }
+
+        if (hasErrors) return;
+
+        // Show loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing Order...';
+
+        // Submit order
+        fetch(`/api/clubs/{{ club.id }}/pizza-order`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                amount: amount,
+                address: address,
+                instructions: instructions
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                alert('Pizza order submitted successfully! A virtual card will be issued within 1-5 business days.');
+                window.location.href = `{{ url_for('club_dashboard', club_id=club.id) }}#shop`;
+            } else {
+                throw new Error(data.error || 'Failed to submit order');
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error.message);
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-pizza-slice"></i> Order Pizza Card';
+        });
+    });
+});
+</script>
+{% endblock %}
