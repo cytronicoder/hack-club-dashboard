@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 
 {% block title %}Admin Dashboard - Hack Club Dashboard{% endblock %}
@@ -546,7 +545,7 @@
             <i class="fas fa-crown"></i> Admins
         </button>
         <button class="admin-tab" onclick="showAdminSection('review')" data-section="review">
-            <i class="fas fa-pizza-slice"></i> Pizza Grant Review
+            <i class="fas fa-pizza-slice"></i> Project Grant Review
         </button>
     </div>
 
@@ -605,7 +604,7 @@
                         </div>
                     </div>
                     {% endfor %}
-                    
+
                     {% for club in recent_clubs %}
                     <div class="activity-item">
                         <div class="activity-icon">
@@ -749,7 +748,7 @@
     <div class="admin-section" id="review">
         <div class="data-table">
             <div class="table-header">
-                <h3>Pizza Grant Review</h3>
+                <h3>Project Grant Review</h3>
                 <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
                     <input type="text" class="search-box" placeholder="Search submissions..." id="reviewSearch">
                     <select class="search-box" id="statusFilter" onchange="filterSubmissionsByStatus()" style="width: 150px;">
@@ -758,7 +757,7 @@
                         <option value="Approved">Approved</option>
                         <option value="Rejected">Rejected</option>
                     </select>
-                    <button class="btn btn-primary" onclick="loadPizzaGrantSubmissions()">
+                    <button class="btn btn-primary" onclick="loadProjectGrantSubmissions()">
                         <i class="fas fa-sync"></i> Refresh
                     </button>
                 </div>
@@ -766,7 +765,7 @@
             <div class="table-content">
                 <div class="loading" id="reviewLoading">
                     <div class="loading-spinner"></div>
-                    <p>Loading pizza grant submissions...</p>
+                    <p>Loading project grant submissions...</p>
                 </div>
                 <table id="reviewTable" style="display: none;">
                     <thead>
@@ -938,7 +937,7 @@
 <div class="modal-backdrop" id="reviewDetailsModal">
     <div class="modal-content" style="max-width: 800px;">
         <div class="modal-header">
-            <h3>Pizza Grant Submission Details</h3>
+            <h3>Project Grant Submission Details</h3>
             <button class="modal-close" onclick="closeModal('reviewDetailsModal')">&times;</button>
         </div>
         <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
@@ -968,10 +967,10 @@ let currentSubmissionId = null;
 function showAdminSection(section) {
     document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-    
+
     document.getElementById(section).classList.add('active');
     document.querySelector(`[data-section="${section}"]`).classList.add('active');
-    
+
     if (section === 'users') {
         loadUsers();
     } else if (section === 'clubs') {
@@ -979,21 +978,21 @@ function showAdminSection(section) {
     } else if (section === 'admins') {
         loadAdmins();
     } else if (section === 'review') {
-        loadPizzaGrantSubmissions();
+        loadProjectGrantSubmissions();
     }
 }
 
 async function loadUsers() {
     const loading = document.getElementById('usersLoading');
     const table = document.getElementById('usersTable');
-    
+
     try {
         const response = await fetch('/api/admin/users');
         const data = await response.json();
         usersData = data.users;
-        
+
         renderUsersTable(usersData);
-        
+
         loading.style.display = 'none';
         table.style.display = 'table';
     } catch (error) {
@@ -1005,14 +1004,14 @@ async function loadUsers() {
 async function loadClubs() {
     const loading = document.getElementById('clubsLoading');
     const table = document.getElementById('clubsTable');
-    
+
     try {
         const response = await fetch('/api/admin/clubs');
         const data = await response.json();
         clubsData = data.clubs;
-        
+
         renderClubsTable(clubsData);
-        
+
         loading.style.display = 'none';
         table.style.display = 'table';
     } catch (error) {
@@ -1024,7 +1023,7 @@ async function loadClubs() {
 function renderUsersTable(users) {
     const tbody = document.getElementById('usersTableBody');
     tbody.innerHTML = '';
-    
+
     users.forEach(user => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1068,7 +1067,7 @@ function renderUsersTable(users) {
 function renderClubsTable(clubs) {
     const tbody = document.getElementById('clubsTableBody');
     tbody.innerHTML = '';
-    
+
     clubs.forEach(club => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1096,26 +1095,26 @@ function renderClubsTable(clubs) {
 function editUser(userId) {
     const user = usersData.find(u => u.id === userId);
     if (!user) return;
-    
+
     document.getElementById('editUserId').value = user.id;
     document.getElementById('editUsername').value = user.username;
     document.getElementById('editEmail').value = user.email;
     document.getElementById('editIsAdmin').checked = user.is_admin;
     document.getElementById('editIsSuspended').checked = user.is_suspended;
-    
+
     openModal('editUserModal');
 }
 
 function editClub(clubId) {
     const club = clubsData.find(c => c.id === clubId);
     if (!club) return;
-    
+
     document.getElementById('editClubId').value = club.id;
     document.getElementById('editClubName').value = club.name;
     document.getElementById('editClubDescription').value = club.description || '';
     document.getElementById('editClubLocation').value = club.location || '';
     document.getElementById('editClubBalance').value = club.balance;
-    
+
     openModal('editClubModal');
 }
 
@@ -1127,7 +1126,7 @@ async function saveUserChanges() {
         is_admin: document.getElementById('editIsAdmin').checked,
         is_suspended: document.getElementById('editIsSuspended').checked
     };
-    
+
     try {
         const response = await fetch(`/api/admin/users/${userId}`, {
             method: 'PUT',
@@ -1136,7 +1135,7 @@ async function saveUserChanges() {
             },
             body: JSON.stringify(userData)
         });
-        
+
         if (response.ok) {
             showToast('success', 'User updated successfully');
             closeModal('editUserModal');
@@ -1158,7 +1157,7 @@ async function saveClubChanges() {
         location: document.getElementById('editClubLocation').value,
         balance: parseFloat(document.getElementById('editClubBalance').value)
     };
-    
+
     try {
         const response = await fetch(`/api/admin/clubs/${clubId}`, {
             method: 'PUT',
@@ -1167,7 +1166,7 @@ async function saveClubChanges() {
             },
             body: JSON.stringify(clubData)
         });
-        
+
         if (response.ok) {
             showToast('success', 'Club updated successfully');
             closeModal('editClubModal');
@@ -1205,7 +1204,7 @@ async function executeConfirmedAction() {
             const response = await fetch(`/api/admin/users/${pendingUserId}`, {
                 method: 'DELETE'
             });
-            
+
             if (response.ok) {
                 showToast('success', 'User deleted successfully');
                 loadUsers();
@@ -1221,7 +1220,7 @@ async function executeConfirmedAction() {
             const response = await fetch(`/api/admin/clubs/${pendingUserId}`, {
                 method: 'DELETE'
             });
-            
+
             if (response.ok) {
                 showToast('success', 'Club deleted successfully');
                 loadClubs();
@@ -1237,7 +1236,7 @@ async function executeConfirmedAction() {
             const response = await fetch(`/api/admin/administrators/${pendingUserId}`, {
                 method: 'DELETE'
             });
-            
+
             if (response.ok) {
                 showToast('success', 'Administrator privileges removed successfully');
                 loadAdmins();
@@ -1251,7 +1250,7 @@ async function executeConfirmedAction() {
     } else if (pendingAction === 'deleteSubmission') {
         await executeDeleteSubmission();
     }
-    
+
     closeModal('confirmModal');
     pendingAction = null;
     pendingUserId = null;
@@ -1271,14 +1270,14 @@ function closeModal(modalId) {
 async function loadAdmins() {
     const loading = document.getElementById('adminsLoading');
     const table = document.getElementById('adminsTable');
-    
+
     try {
         const response = await fetch('/api/admin/administrators');
         const data = await response.json();
         adminsData = data.admins;
-        
+
         renderAdminsTable(adminsData);
-        
+
         loading.style.display = 'none';
         table.style.display = 'table';
     } catch (error) {
@@ -1290,7 +1289,7 @@ async function loadAdmins() {
 function renderAdminsTable(admins) {
     const tbody = document.getElementById('adminsTableBody');
     tbody.innerHTML = '';
-    
+
     admins.forEach(admin => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1327,24 +1326,24 @@ function renderAdminsTable(admins) {
 function editAdmin(adminId) {
     const admin = adminsData.find(a => a.id === adminId);
     if (!admin) return;
-    
+
     document.getElementById('editUserId').value = admin.id;
     document.getElementById('editUsername').value = admin.username;
     document.getElementById('editEmail').value = admin.email;
     document.getElementById('editIsAdmin').checked = admin.is_admin;
     document.getElementById('editIsSuspended').checked = admin.is_suspended;
-    
+
     openModal('editUserModal');
 }
 
 async function addNewAdmin() {
     const email = document.getElementById('addAdminEmail').value.trim();
-    
+
     if (!email) {
         showToast('error', 'Email address is required');
         return;
     }
-    
+
     try {
         const response = await fetch('/api/admin/administrators', {
             method: 'POST',
@@ -1355,7 +1354,7 @@ async function addNewAdmin() {
                 email: email
             })
         });
-        
+
         if (response.ok) {
             showToast('success', 'Administrator added successfully');
             closeModal('addAdminModal');
@@ -1425,7 +1424,7 @@ async function executeLoginAs() {
         const response = await fetch(`/api/admin/login-as-user/${pendingUserId}`, {
             method: 'POST'
         });
-        
+
         if (response.ok) {
             window.location.href = '/dashboard';
         } else {
@@ -1448,12 +1447,12 @@ function resetUserPassword(userId, username) {
 
 async function executePasswordReset() {
     const newPassword = document.getElementById('newPassword').value;
-    
+
     if (!newPassword || newPassword.length < 6) {
         showToast('error', 'Password must be at least 6 characters long');
         return;
     }
-    
+
     try {
         const response = await fetch(`/api/admin/reset-password/${pendingUserId}`, {
             method: 'POST',
@@ -1464,7 +1463,7 @@ async function executePasswordReset() {
                 new_password: newPassword
             })
         });
-        
+
         if (response.ok) {
             showToast('success', `Password reset successfully for ${pendingUsername}`);
             closeModal('resetPasswordModal');
@@ -1477,17 +1476,17 @@ async function executePasswordReset() {
     }
 }
 
-async function loadPizzaGrantSubmissions() {
+async function loadProjectGrantSubmissions() {
     const loading = document.getElementById('reviewLoading');
     const table = document.getElementById('reviewTable');
-    
+
     try {
         const response = await fetch('/api/admin/pizza-grants');
         const data = await response.json();
         reviewData = data.submissions || [];
-        
+
         renderReviewTable(reviewData);
-        
+
         loading.style.display = 'none';
         table.style.display = 'table';
     } catch (error) {
@@ -1502,12 +1501,12 @@ async function loadPizzaGrantSubmissions() {
 function renderReviewTable(submissions) {
     const tbody = document.getElementById('reviewTableBody');
     tbody.innerHTML = '';
-    
+
     if (!submissions || submissions.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #64748b;">No pizza grant submissions found</td></tr>';
         return;
     }
-    
+
     submissions.forEach(submission => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1557,9 +1556,9 @@ function getStatusClass(status) {
 async function viewSubmissionDetails(submissionId) {
     const submission = reviewData.find(s => s.id === submissionId);
     if (!submission) return;
-    
+
     currentSubmissionId = submissionId;
-    
+
     const content = document.getElementById('reviewDetailsContent');
     content.innerHTML = `
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
@@ -1571,14 +1570,14 @@ async function viewSubmissionDetails(submissionId) {
                     <p><strong>Hours Worked:</strong> ${submission.hours || '0'} hours</p>
                     <p><strong>Grant Amount:</strong> <span style="color: #10b981; font-weight: bold;">$${submission.grant_amount || '0'}</span></p>
                 </div>
-                
+
                 <h4 style="color: #1a202c; margin-bottom: 1rem;">Links</h4>
                 <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
                     <p><strong>GitHub URL:</strong> ${submission.code_url ? `<a href="${submission.code_url}" target="_blank" style="color: #ec3750;">${submission.code_url}</a>` : 'Not provided'}</p>
                     <p><strong>Live URL:</strong> ${submission.playable_url ? `<a href="${submission.playable_url}" target="_blank" style="color: #ec3750;">${submission.playable_url}</a>` : 'Not provided'}</p>
                 </div>
             </div>
-            
+
             <div>
                 <h4 style="color: #1a202c; margin-bottom: 1rem;">Submitter Information</h4>
                 <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
@@ -1588,7 +1587,7 @@ async function viewSubmissionDetails(submissionId) {
                     <p><strong>Club:</strong> ${submission.club_name || 'N/A'}</p>
                     <p><strong>Leader Email:</strong> ${submission.leader_email || 'N/A'}</p>
                 </div>
-                
+
                 <h4 style="color: #1a202c; margin-bottom: 1rem;">Address</h4>
                 <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
                     <p>${submission.address_1 || ''}</p>
@@ -1598,7 +1597,7 @@ async function viewSubmissionDetails(submissionId) {
                 </div>
             </div>
         </div>
-        
+
         <div style="margin-top: 2rem;">
             <h4 style="color: #1a202c; margin-bottom: 1rem;">Feedback</h4>
             <div style="background: #f8fafc; padding: 1rem; border-radius: 8px;">
@@ -1606,7 +1605,7 @@ async function viewSubmissionDetails(submissionId) {
                 <p><strong>How can we improve?</strong><br>${submission.improve || 'No feedback provided'}</p>
             </div>
         </div>
-        
+
         ${submission.screenshot_url ? `
             <div style="margin-top: 2rem;">
                 <h4 style="color: #1a202c; margin-bottom: 1rem;">Screenshot</h4>
@@ -1614,11 +1613,11 @@ async function viewSubmissionDetails(submissionId) {
             </div>
         ` : ''}
     `;
-    
+
     // Show/hide action buttons based on status
     const approveButton = document.getElementById('approveButton');
     const rejectButton = document.getElementById('rejectButton');
-    
+
     if (submission.status === 'Pending') {
         approveButton.style.display = 'inline-flex';
         rejectButton.style.display = 'inline-flex';
@@ -1626,7 +1625,7 @@ async function viewSubmissionDetails(submissionId) {
         approveButton.style.display = 'none';
         rejectButton.style.display = 'none';
     }
-    
+
     openModal('reviewDetailsModal');
 }
 
@@ -1668,12 +1667,12 @@ async function processSubmission(submissionId, action) {
                 action: action
             })
         });
-        
+
         const data = await response.json();
-        
+
         if (response.ok) {
             showToast('success', data.message || `Grant ${action}d successfully`);
-            loadPizzaGrantSubmissions(); // Refresh the table
+            loadProjectGrantSubmissions(); // Refresh the table
         } else {
             showToast('error', data.error || `Failed to ${action} grant`);
         }
@@ -1690,7 +1689,7 @@ document.getElementById('reviewSearch').addEventListener('input', function(e) {
 function applySubmissionFilters() {
     const searchTerm = document.getElementById('reviewSearch').value.toLowerCase();
     const statusFilter = document.getElementById('statusFilter').value;
-    
+
     let filteredSubmissions = reviewData.filter(submission => {
         const matchesSearch = !searchTerm || (
             (submission.project_name && submission.project_name.toLowerCase().includes(searchTerm)) ||
@@ -1699,12 +1698,12 @@ function applySubmissionFilters() {
             (submission.email && submission.email.toLowerCase().includes(searchTerm)) ||
             (submission.club_name && submission.club_name.toLowerCase().includes(searchTerm))
         );
-        
+
         const matchesStatus = !statusFilter || submission.status === statusFilter;
-        
+
         return matchesSearch && matchesStatus;
     });
-    
+
     renderReviewTable(filteredSubmissions);
 }
 
@@ -1726,12 +1725,12 @@ async function executeDeleteSubmission() {
         const response = await fetch(`/api/admin/pizza-grants/${pendingSubmissionId}`, {
             method: 'DELETE'
         });
-        
+
         const data = await response.json();
-        
+
         if (response.ok) {
             showToast('success', 'Submission deleted successfully');
-            loadPizzaGrantSubmissions(); // Refresh the table
+            loadProjectGrantSubmissions(); // Refresh the table
         } else {
             showToast('error', data.error || 'Failed to delete submission');
         }

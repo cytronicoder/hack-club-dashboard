@@ -69,7 +69,7 @@
                             <i class="fas fa-calendar-alt"></i> Schedule
                         </a></li>
                         <li><a href="#pizza" class="nav-link" data-section="pizza">
-                            <i class="fas fa-pizza-slice"></i> Pizza Grants
+                            <i class="fas fa-hand-holding-usd"></i> Project Grants
                         </a></li>
                         {% if current_user.id == club.leader_id %}
                         <li><a href="#settings" class="nav-link" data-section="settings">
@@ -386,8 +386,8 @@
                 <section id="pizza" class="club-section">
                     <div class="content-header">
                         <div>
-                            <h2><i class="fas fa-pizza-slice"></i> Pizza Grants</h2>
-                            <p>Submit projects for pizza funding</p>
+                            <h2><i class="fas fa-hand-holding-usd"></i> Project Grants</h2>
+                            <p>Submit projects for funding</p>
                         </div>
                         <button class="btn btn-primary" onclick="openPizzaGrantModal()">
                             <i class="fas fa-plus"></i> Submit Project
@@ -397,14 +397,14 @@
                     <div class="card" style="margin-bottom: 2rem;">
                         <div class="card-header">
                             <h3><i class="fas fa-list"></i> Club Submissions</h3>
-                            <p style="margin: 0.5rem 0 0 0; color: #6b7280; font-size: 0.9rem;">Track your club's pizza grant submissions and their status</p>
+                            <p style="margin: 0.5rem 0 0 0; color: #6b7280; font-size: 0.9rem;">Track your club's project grant submissions and their status</p>
                         </div>
                         <div class="card-body">
                             <div id="clubSubmissionsList">
                                 <div class="empty-state">
                                     <i class="fas fa-spinner fa-spin"></i>
                                     <h3>Loading submissions...</h3>
-                                    <p>Fetching your club's pizza grant submissions</p>
+                                    <p>Fetching your club's project grant submissions</p>
                                 </div>
                             </div>
                         </div>
@@ -412,9 +412,9 @@
 
                     <div id="pizzaGrantsList" style="display: none;">
                         <div class="empty-state">
-                            <i class="fas fa-pizza-slice"></i>
+                            <i class="fas fa-hand-holding-usd"></i>
                             <h3>No submissions yet</h3>
-                            <p>Submit your coding projects to earn pizza for the club!</p>
+                            <p>Submit your coding projects to earn funding for the club!</p>
                         </div>
                     </div>
                 </section>
@@ -634,7 +634,7 @@
 <div id="pizzaGrantModal" class="modal">
     <div class="modal-content" style="max-width: 800px;">
         <div class="modal-header">
-            <h3>Submit Project for Pizza Grant</h3>
+            <h3>Submit Project for Grant</h3>
             <button class="close" onclick="document.getElementById('pizzaGrantModal').style.display='none'">&times;</button>
         </div>
         <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
