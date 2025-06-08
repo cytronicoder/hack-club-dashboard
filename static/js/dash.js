@@ -148,6 +148,9 @@ function loadSectionData(section) {
         case 'resources':
             loadResources();
             break;
+        case 'pizza':
+            loadClubPizzaGrants();
+            break;
     }
 }
 
@@ -1304,6 +1307,10 @@ function submitPizzaGrantWithScreenshot(screenshotUrl, projectData, submitButton
             document.getElementById('pizzaGrantModal').style.display = 'none';
             document.getElementById('pizzaGrantForm').reset();
             showToast('success', 'Pizza grant submitted successfully!', 'Pizza Grant Submitted');
+            // Refresh the submissions list if we're on the pizza tab
+            if (document.querySelector('#pizza.active')) {
+                loadClubPizzaGrants();
+            }
         } else {
             showToast('error', data.error || 'Failed to submit pizza grant', 'Error');
         }
@@ -1561,6 +1568,166 @@ function updateClubSettings() {
         showToast('error', 'Error updating settings', 'Error');
         console.error('Settings update error:', error);
     });
+}
+
+function loadClubPizzaGrants() {
+    if (!clubId) {
+        console.warn('loadClubPizzaGrants: clubId is missing. Skipping fetch.');
+        const submissionsList = document.getElementById('clubSubmissionsList');
+        if (submissionsList) submissionsList.textContent = 'Error: Club information is unavailable to load submissions.';
+        return;
+    }
+
+    const submissionsList = document.getElementById('clubSubmissionsList');
+    
+    fetch(`/api/clubs/${clubId}/pizza-grants`)
+        .then(response => response.json())
+        .then(data => {
+            submissionsList.innerHTML = '';
+            
+            if (data.error) {
+                const errorState = createElement('div', 'empty-state');
+                const errorIcon = createElement('i', 'fas fa-exclamation-triangle');
+                errorIcon.style.color = '#f59e0b';
+                const errorTitle = createElement('h3', '', 'Error loading submissions');
+                const errorDescription = createElement('p', '', data.error);
+                
+                errorState.appendChild(errorIcon);
+                errorState.appendChild(errorTitle);
+                errorState.appendChild(errorDescription);
+                submissionsList.appendChild(errorState);
+                return;
+            }
+
+            if (data.submissions && data.submissions.length > 0) {
+                data.submissions.forEach(submission => {
+                    const card = createElement('div', 'card');
+                    card.style.marginBottom = '1rem';
+                    
+                    const cardHeader = createElement('div', 'card-header');
+                    cardHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: flex-start;';
+                    
+                    const headerDiv = createElement('div');
+                    const title = createElement('h3', '', submission.project_name || 'Untitled Project');
+                    title.style.cssText = 'margin: 0; font-size: 1.125rem; color: #1f2937;';
+                    
+                    const statusSpan = createElement('span', '', submission.status || 'Pending');
+                    let statusColor = '#6b7280'; // Default gray
+                    if (submission.status === 'Approved') statusColor = '#10b981'; // Green
+                    else if (submission.status === 'Rejected') statusColor = '#ef4444'; // Red
+                    
+                    statusSpan.style.cssText = `background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; margin-top: 0.5rem; display: inline-block;`;
+                    
+                    headerDiv.appendChild(title);
+                    headerDiv.appendChild(statusSpan);
+                    cardHeader.appendChild(headerDiv);
+                    
+                    const grantAmountDiv = createElement('div');
+                    grantAmountDiv.style.cssText = 'text-align: right;';
+                    const grantAmount = createElement('div', '', submission.grant_amount || '$0');
+                    grantAmount.style.cssText = 'font-size: 1.5rem; font-weight: bold; color: #ec3750;';
+                    const grantLabel = createElement('div', '', 'Grant Amount');
+                    grantLabel.style.cssText = 'font-size: 0.75rem; color: #6b7280; text-transform: uppercase;';
+                    grantAmountDiv.appendChild(grantAmount);
+                    grantAmountDiv.appendChild(grantLabel);
+                    cardHeader.appendChild(grantAmountDiv);
+                    
+                    const cardBody = createElement('div', 'card-body');
+                    
+                    if (submission.description) {
+                        const description = createElement('p', '', submission.description);
+                        description.style.cssText = 'margin-bottom: 1rem; color: #6b7280;';
+                        cardBody.appendChild(description);
+                    }
+                    
+                    const infoDiv = createElement('div');
+                    infoDiv.style.cssText = 'display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.875rem; color: #6b7280;';
+                    
+                    const submitterSpan = createElement('span');
+                    submitterSpan.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
+                    const submitterIcon = createElement('i', 'fas fa-user');
+                    submitterSpan.appendChild(submitterIcon);
+                    submitterSpan.appendChild(document.createTextNode(' ' + (submission.first_name && submission.last_name ? 
+                        `${submission.first_name} ${submission.last_name}` : submission.github_username || 'Unknown')));
+                    infoDiv.appendChild(submitterSpan);
+                    
+                    if (submission.hours) {
+                        const hoursSpan = createElement('span');
+                        hoursSpan.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
+                        const hoursIcon = createElement('i', 'fas fa-clock');
+                        hoursSpan.appendChild(hoursIcon);
+                        hoursSpan.appendChild(document.createTextNode(' ' + submission.hours + ' hours'));
+                        infoDiv.appendChild(hoursSpan);
+                    }
+                    
+                    if (submission.created_time) {
+                        const dateSpan = createElement('span');
+                        dateSpan.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
+                        const dateIcon = createElement('i', 'fas fa-calendar');
+                        dateSpan.appendChild(dateIcon);
+                        dateSpan.appendChild(document.createTextNode(' ' + new Date(submission.created_time).toLocaleDateString()));
+                        infoDiv.appendChild(dateSpan);
+                    }
+                    
+                    cardBody.appendChild(infoDiv);
+                    
+                    if (submission.code_url || submission.playable_url) {
+                        const linksDiv = createElement('div');
+                        linksDiv.style.cssText = 'margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;';
+                        
+                        if (submission.code_url) {
+                            const codeLink = createElement('a');
+                            codeLink.href = submission.code_url;
+                            codeLink.target = '_blank';
+                            codeLink.className = 'btn btn-secondary btn-sm';
+                            codeLink.innerHTML = '<i class="fab fa-github"></i> Code';
+                            linksDiv.appendChild(codeLink);
+                        }
+                        
+                        if (submission.playable_url) {
+                            const liveLink = createElement('a');
+                            liveLink.href = submission.playable_url;
+                            liveLink.target = '_blank';
+                            liveLink.className = 'btn btn-secondary btn-sm';
+                            liveLink.innerHTML = '<i class="fas fa-external-link-alt"></i> Live Demo';
+                            linksDiv.appendChild(liveLink);
+                        }
+                        
+                        cardBody.appendChild(linksDiv);
+                    }
+                    
+                    card.appendChild(cardHeader);
+                    card.appendChild(cardBody);
+                    submissionsList.appendChild(card);
+                });
+            } else {
+                const emptyState = createElement('div', 'empty-state');
+                const icon = createElement('i', 'fas fa-pizza-slice');
+                const title = createElement('h3', '', 'No submissions yet');
+                const description = createElement('p', '', 'Submit your coding projects to earn pizza for the club!');
+                
+                emptyState.appendChild(icon);
+                emptyState.appendChild(title);
+                emptyState.appendChild(description);
+                submissionsList.appendChild(emptyState);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading club pizza grants:', error);
+            submissionsList.innerHTML = '';
+            const errorState = createElement('div', 'empty-state');
+            const errorIcon = createElement('i', 'fas fa-exclamation-triangle');
+            errorIcon.style.color = '#ef4444';
+            const errorTitle = createElement('h3', '', 'Error loading submissions');
+            const errorDescription = createElement('p', '', 'Failed to fetch pizza grant submissions. Please try again.');
+            
+            errorState.appendChild(errorIcon);
+            errorState.appendChild(errorTitle);
+            errorState.appendChild(errorDescription);
+            submissionsList.appendChild(errorState);
+            
+            showToast('error', 'Failed to load pizza grant submissions', 'Error');
+        });
 }
 
 // Event handlers are set up in the DOMContentLoaded event at the top of this file

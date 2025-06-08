@@ -2025,6 +2025,28 @@ def update_club_settings(club_id):
         logger.error(f"Error updating club settings: {str(e)}")
         return jsonify({'error': 'Failed to update club settings'}), 500
 
+@app.route('/api/clubs/<int:club_id>/pizza-grants', methods=['GET'])
+@login_required
+@limiter.limit("100 per hour")
+def get_club_pizza_grants(club_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    is_leader = club.leader_id == current_user.id
+    is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
+
+    if not is_leader and not is_member:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    try:
+        all_submissions = airtable_service.get_pizza_grant_submissions()
+        # Filter submissions for this club only
+        club_submissions = [sub for sub in all_submissions if sub.get('club_name') == club.name]
+        return jsonify({'submissions': club_submissions})
+    except Exception as e:
+        logger.error(f"Error fetching club pizza grant submissions: {str(e)}")
+        return jsonify({'error': 'Failed to fetch submissions from Airtable'}), 500
+
 @app.route('/api/admin/pizza-grants', methods=['GET'])
 @login_required
 @limiter.limit("100 per hour")

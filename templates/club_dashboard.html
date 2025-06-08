@@ -394,7 +394,23 @@
                         </button>
                     </div>
 
-                    <div id="pizzaGrantsList">
+                    <div class="card" style="margin-bottom: 2rem;">
+                        <div class="card-header">
+                            <h3><i class="fas fa-list"></i> Club Submissions</h3>
+                            <p style="margin: 0.5rem 0 0 0; color: #6b7280; font-size: 0.9rem;">Track your club's pizza grant submissions and their status</p>
+                        </div>
+                        <div class="card-body">
+                            <div id="clubSubmissionsList">
+                                <div class="empty-state">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <h3>Loading submissions...</h3>
+                                    <p>Fetching your club's pizza grant submissions</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="pizzaGrantsList" style="display: none;">
                         <div class="empty-state">
                             <i class="fas fa-pizza-slice"></i>
                             <h3>No submissions yet</h3>
