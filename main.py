@@ -2170,13 +2170,10 @@ def pizza_order(club_id):
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
     
-    # Check if user is club leader or member
-    is_leader = club.leader_id == current_user.id
-    is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
-    
-    if not is_leader and not is_member:
-        flash('You are not authorized to order pizza for this club', 'error')
-        return redirect(url_for('dashboard'))
+    # Only club leaders can access pizza ordering
+    if club.leader_id != current_user.id:
+        flash('Only club leaders can order pizza', 'error')
+        return redirect(url_for('club_dashboard', club_id=club_id))
     
     return render_template('pizza_order.html', club=club)
 
@@ -2187,12 +2184,9 @@ def submit_pizza_order(club_id):
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
     
-    # Check if user is club leader or member
-    is_leader = club.leader_id == current_user.id
-    is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
-    
-    if not is_leader and not is_member:
-        return jsonify({'error': 'Unauthorized'}), 403
+    # Only club leaders can order pizza
+    if club.leader_id != current_user.id:
+        return jsonify({'error': 'Only club leaders can order pizza'}), 403
     
     data = request.get_json()
     grant_amount = float(data.get('grant_amount', 0))
@@ -2264,6 +2258,80 @@ def get_club_balance(club_id):
         'balance': float(club.balance),
         'club_name': club.name
     })
+
+@app.route('/api/clubs/<int:club_id>/transfer-leadership', methods=['POST'])
+@login_required
+@limiter.limit("10 per hour")
+def transfer_leadership(club_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+    
+    # Only current leader can transfer leadership
+    if club.leader_id != current_user.id:
+        return jsonify({'error': 'Only the current leader can transfer leadership'}), 403
+    
+    data = request.get_json()
+    new_leader_id = data.get('new_leader_id')
+    
+    if not new_leader_id:
+        return jsonify({'error': 'New leader ID is required'}), 400
+    
+    try:
+        new_leader_id = int(new_leader_id)
+    except ValueError:
+        return jsonify({'error': 'Invalid leader ID'}), 400
+    
+    # Check if new leader is a member of the club
+    new_leader_membership = ClubMembership.query.filter_by(
+        club_id=club_id, 
+        user_id=new_leader_id
+    ).first()
+    
+    if not new_leader_membership:
+        return jsonify({'error': 'Selected user is not a member of this club'}), 400
+    
+    # Check if new leader exists
+    new_leader = User.query.get(new_leader_id)
+    if not new_leader:
+        return jsonify({'error': 'Selected user not found'}), 404
+    
+    # Prevent transferring to self
+    if new_leader_id == current_user.id:
+        return jsonify({'error': 'Cannot transfer leadership to yourself'}), 400
+    
+    try:
+        # Transfer leadership
+        old_leader_id = club.leader_id
+        club.leader_id = new_leader_id
+        
+        # Remove new leader from membership table (they're now the leader)
+        db.session.delete(new_leader_membership)
+        
+        # Add old leader as a regular member
+        old_leader_membership = ClubMembership(
+            user_id=old_leader_id,
+            club_id=club_id,
+            role='member'
+        )
+        db.session.add(old_leader_membership)
+        
+        db.session.commit()
+        
+        app.logger.info(f"Leadership transferred from user {old_leader_id} to user {new_leader_id} for club {club_id}")
+        
+        return jsonify({
+            'message': f'Leadership transferred to {new_leader.username} successfully',
+            'new_leader': {
+                'id': new_leader.id,
+                'username': new_leader.username,
+                'email': new_leader.email
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error transferring leadership: {str(e)}")
+        return jsonify({'error': 'Failed to transfer leadership'}), 500
 
 @app.route('/api/admin/stats', methods=['GET'])
 @login_required

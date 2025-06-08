@@ -71,9 +71,11 @@
                         <li><a href="#pizza" class="nav-link" data-section="pizza">
                             <i class="fas fa-hand-holding-usd"></i> Project Grants
                         </a></li>
+                        {% if current_user.id == club.leader_id %}
                         <li><a href="#shop" class="nav-link" data-section="shop">
                             <i class="fas fa-shopping-cart"></i> Club Shop
                         </a></li>
+                        {% endif %}
                         {% if current_user.id == club.leader_id %}
                         <li><a href="#settings" class="nav-link" data-section="settings">
                             <i class="fas fa-cogs"></i> Settings
@@ -503,6 +505,33 @@
                             </form>
                         </div>
                     </div>
+
+                    <div class="card" style="margin-top: 2rem;">
+                        <div class="card-header">
+                            <h3 style="color: #dc3545;"><i class="fas fa-crown"></i> Leadership Transfer</h3>
+                            <p style="margin: 0.5rem 0 0 0; color: #6b7280; font-size: 0.9rem;">Transfer club leadership to another member</p>
+                        </div>
+                        <div class="card-body">
+                            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+                                <p style="margin: 0; color: #856404; font-size: 0.9rem;">
+                                    <i class="fas fa-exclamation-triangle" style="color: #f39c12; margin-right: 0.5rem;"></i>
+                                    <strong>Warning:</strong> This action will permanently transfer club leadership. You will become a regular member.
+                                </p>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Select New Leader</label>
+                                <select class="form-control" id="newLeaderSelect">
+                                    <option value="">Choose a member to become the new leader</option>
+                                    {% for membership in club.members %}
+                                    <option value="{{ membership.user.id }}">{{ membership.user.username }} ({{ membership.user.email }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <button class="btn" style="background-color: #dc3545; color: white;" onclick="initiateLeadershipTransfer()">
+                                <i class="fas fa-exchange-alt"></i> Transfer Leadership
+                            </button>
+                        </div>
+                    </div>
                 </section>
                 {% endif %}
             </div>
@@ -677,6 +706,53 @@
             <button class="btn btn-secondary" onclick="document.getElementById('addResourceModal').style.display='none'">Cancel</button>
             <button class="btn btn-primary" onclick="addResource()">
                 <i class="fas fa-plus"></i> Add Resource
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="transferLeadershipModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 style="color: #dc3545;"><i class="fas fa-crown"></i> Transfer Leadership</h3>
+            <button class="close" onclick="document.getElementById('transferLeadershipModal').style.display='none'">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+                <p style="margin: 0; color: #721c24; font-weight: 600;">
+                    <i class="fas fa-exclamation-triangle" style="color: #dc3545; margin-right: 0.5rem;"></i>
+                    Are you sure you want to transfer leadership?
+                </p>
+            </div>
+            <p style="margin-bottom: 1rem; color: #495057;">
+                You are about to transfer leadership of <strong>{{ club.name }}</strong> to:
+            </p>
+            <div style="background: #e9ecef; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="width: 40px; height: 40px; background: #6c757d; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;" id="newLeaderAvatar">
+                        ?
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; color: #212529;" id="newLeaderName">Select a member</div>
+                        <div style="font-size: 0.875rem; color: #6c757d;" id="newLeaderEmail"></div>
+                    </div>
+                </div>
+            </div>
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+                <p style="margin: 0; color: #856404; font-size: 0.9rem;">
+                    <i class="fas fa-info-circle" style="color: #f39c12; margin-right: 0.5rem;"></i>
+                    After transfer, you will become a regular member and will no longer have leader privileges.
+                </p>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Type "TRANSFER" to confirm:</label>
+                <input type="text" class="form-control" id="transferConfirmationInput" placeholder="Type TRANSFER to confirm">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="document.getElementById('transferLeadershipModal').style.display='none'">Cancel</button>
+            <button id="confirmTransferButton" class="btn" style="background-color: #dc3545; color: white;" onclick="confirmLeadershipTransfer()" disabled>
+                <i class="fas fa-exchange-alt"></i> Transfer Leadership
             </button>
         </div>
     </div>
