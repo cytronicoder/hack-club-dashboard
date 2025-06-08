@@ -1781,7 +1781,6 @@ function loadShop() {
         shopList.appendChild(shopItemDiv);
     });
 }
-}
 
 function purchasePizza() {
     // Open fillout.com in a new tab
