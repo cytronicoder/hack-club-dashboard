@@ -450,7 +450,9 @@
                         <div class="card-body">
                             <div class="shop-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
                                 <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer;" onclick="purchasePizza()">
-                                    <div style="font-size: 4rem; margin-bottom: 1rem;">🍕</div>
+                                    <div style="margin-bottom: 1rem;">
+                                        <img src="{{ url_for('static', filename='assets/pizza.png') }}" alt="Pizza" style="width: 80px; height: 80px; object-fit: contain;">
+                                    </div>
                                     <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.25rem; font-weight: 600;">Pizza for your club!</h4>
                                     <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5;">Get a virtual card to buy pizza for your club!</p>
                                     <div style="background: #ec3750; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-block;">
