@@ -1902,6 +1902,38 @@ def club_project_detail(club_id, project_id):
         db.session.commit()
         return jsonify({'message': 'Project updated successfully'})
 
+@app.route('/api/clubs/<int:club_id>/settings', methods=['PUT'])
+@login_required
+@limiter.limit("50 per hour")
+def update_club_settings(club_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+    
+    # Only club leaders can update settings
+    if club.leader_id != current_user.id:
+        return jsonify({'error': 'Only club leaders can update settings'}), 403
+    
+    try:
+        data = request.get_json()
+        
+        # Update club information
+        if 'name' in data:
+            club.name = data['name'].strip()
+        if 'description' in data:
+            club.description = data['description'].strip() if data['description'] else None
+        if 'location' in data:
+            club.location = data['location'].strip() if data['location'] else None
+        
+        club.updated_at = datetime.now(timezone.utc)
+        db.session.commit()
+        
+        return jsonify({'message': 'Club settings updated successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating club settings: {str(e)}")
+        return jsonify({'error': 'Failed to update club settings'}), 500
+
 @app.route('/api/admin/stats', methods=['GET'])
 @login_required
 @limiter.limit("100 per hour")

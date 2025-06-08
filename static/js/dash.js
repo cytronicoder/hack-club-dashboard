@@ -25,6 +25,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (clubId) {
         loadInitialData();
     }
+
+    // Setup settings form handler
+    setupSettingsForm();
 });
 
 // Utility function to safely escape HTML
@@ -1488,6 +1491,77 @@ const memberSelect = document.getElementById('grantMemberSelect');
             loadMemberHackatimeProjects();
         });
     }
+
+// Settings form submission handler
+function setupSettingsForm() {
+    const settingsForm = document.getElementById('clubSettingsForm');
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            updateClubSettings();
+        });
+    }
+}
+
+function updateClubSettings() {
+    if (!clubId) {
+        showToast('error', 'Cannot update settings: Club ID is missing.', 'Error');
+        console.error('updateClubSettings: clubId is missing.');
+        return;
+    }
+
+    const clubName = document.getElementById('clubName').value;
+    const clubDescription = document.getElementById('clubDescription').value;
+    const clubLocation = document.getElementById('clubLocation').value;
+
+    if (!clubName.trim()) {
+        showToast('error', 'Club name is required', 'Validation Error');
+        return;
+    }
+
+    const submitButton = document.querySelector('#clubSettingsForm button[type="submit"]');
+    const originalText = submitButton.innerHTML;
+    
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+    fetch(`/api/clubs/${clubId}/settings`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            name: clubName.trim(),
+            description: clubDescription.trim(),
+            location: clubLocation.trim()
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalText;
+        
+        if (data.message) {
+            showToast('success', 'Club settings updated successfully', 'Settings Saved');
+            // Update the club header with new information
+            const clubTitle = document.querySelector('.club-details h1');
+            if (clubTitle) clubTitle.textContent = clubName;
+            
+            const locationMeta = document.querySelector('.club-meta span:first-child');
+            if (locationMeta) {
+                locationMeta.innerHTML = '<i class="fas fa-map-marker-alt"></i> ' + (clubLocation || 'No location set');
+            }
+        } else {
+            showToast('error', data.error || 'Failed to update settings', 'Error');
+        }
+    })
+    .catch(error => {
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalText;
+        showToast('error', 'Error updating settings', 'Error');
+        console.error('Settings update error:', error);
+    });
+}
 
 // Event handlers are set up in the DOMContentLoaded event at the top of this file
 
