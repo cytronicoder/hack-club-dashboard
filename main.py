@@ -4,6 +4,7 @@ import time
 import json
 import hashlib
 import requests
+import logging
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import Flask, render_template, redirect, flash, request, jsonify, url_for, abort, session, Response
@@ -15,6 +16,9 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import string
 import urllib.parse
+
+# Setup logger
+logger = logging.getLogger(__name__)
 
 def get_database_url():
     url = os.getenv('DATABASE_URL')
@@ -80,6 +84,7 @@ class Club(db.Model):
     leader_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     join_code = db.Column(db.String(8), unique=True, nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     balance = db.Column(db.Numeric(10, 2), default=0.00)
 
     leader = db.relationship('User', backref='led_clubs')
@@ -307,6 +312,92 @@ class AirtableService:
             return None
         except:
             return None
+
+    def get_pizza_grant_submissions(self):
+        if not self.api_token:
+            return []
+
+        try:
+            response = requests.get(self.base_url, headers=self.headers)
+            if response.status_code == 200:
+                data = response.json()
+                records = data.get('records', [])
+                
+                submissions = []
+                for record in records:
+                    fields = record.get('fields', {})
+                    submissions.append({
+                        'id': record['id'],
+                        'project_name': fields.get('Hackatime Project', ''),
+                        'first_name': fields.get('First Name', ''),
+                        'last_name': fields.get('Last Name', ''),
+                        'email': fields.get('Email', ''),
+                        'github_username': fields.get('GitHub Username', ''),
+                        'description': fields.get('Description', ''),
+                        'playable_url': fields.get('Playable URL', ''),
+                        'code_url': fields.get('Code URL', ''),
+                        'doing_well': fields.get('What are we doing well?', ''),
+                        'improve': fields.get('How can we improve?', ''),
+                        'address_1': fields.get('Address (Line 1)', ''),
+                        'address_2': fields.get('Address (Line 2)', ''),
+                        'city': fields.get('City', ''),
+                        'state': fields.get('State / Province', ''),
+                        'zip': fields.get('ZIP / Postal Code', ''),
+                        'country': fields.get('Country', ''),
+                        'club_name': fields.get('Club Name', ''),
+                        'leader_email': fields.get('Leader Email', ''),
+                        'hours': fields.get('Hours', '0'),
+                        'grant_amount': fields.get('Grant Amount', '$0'),
+                        'status': fields.get('Status', 'Pending'),
+                        'screenshot_url': fields.get('Screenshot', [{}])[0].get('url', '') if fields.get('Screenshot') else '',
+                        'created_time': record.get('createdTime', '')
+                    })
+                
+                return submissions
+            return []
+        except Exception as e:
+            app.logger.error(f"Error fetching pizza grant submissions: {str(e)}")
+            return []
+
+    def get_submission_by_id(self, submission_id):
+        if not self.api_token:
+            return None
+
+        try:
+            url = f"{self.base_url}/{submission_id}"
+            response = requests.get(url, headers=self.headers)
+            if response.status_code == 200:
+                data = response.json()
+                fields = data.get('fields', {})
+                return {
+                    'id': data['id'],
+                    'club_name': fields.get('Club Name', ''),
+                    'grant_amount': fields.get('Grant Amount', '$0'),
+                    'status': fields.get('Status', 'Pending')
+                }
+            return None
+        except Exception as e:
+            app.logger.error(f"Error fetching submission {submission_id}: {str(e)}")
+            return None
+
+    def update_submission_status(self, submission_id, action):
+        if not self.api_token:
+            return False
+
+        status = 'Approved' if action == 'approve' else 'Rejected'
+        
+        try:
+            url = f"{self.base_url}/{submission_id}"
+            payload = {
+                'fields': {
+                    'Status': status
+                }
+            }
+            response = requests.patch(url, headers=self.headers, json=payload)
+            return response.status_code == 200
+        except Exception as e:
+            app.logger.error(f"Error updating submission status: {str(e)}")
+            return False
 
 airtable_service = AirtableService()
 
@@ -1933,6 +2024,66 @@ def update_club_settings(club_id):
         db.session.rollback()
         logger.error(f"Error updating club settings: {str(e)}")
         return jsonify({'error': 'Failed to update club settings'}), 500
+
+@app.route('/api/admin/pizza-grants', methods=['GET'])
+@login_required
+@limiter.limit("100 per hour")
+def admin_get_pizza_grants():
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    try:
+        submissions = airtable_service.get_pizza_grant_submissions()
+        return jsonify({'submissions': submissions})
+    except Exception as e:
+        logger.error(f"Error fetching pizza grant submissions: {str(e)}")
+        return jsonify({'error': 'Failed to fetch submissions from Airtable'}), 500
+
+@app.route('/api/admin/pizza-grants/review', methods=['POST'])
+@login_required
+@limiter.limit("50 per hour")
+def admin_review_pizza_grant():
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    data = request.get_json()
+    submission_id = data.get('submission_id')
+    action = data.get('action')  # 'approve' or 'reject'
+
+    if not submission_id or action not in ['approve', 'reject']:
+        return jsonify({'error': 'Invalid submission ID or action'}), 400
+
+    try:
+        # Update submission status in Airtable
+        success = airtable_service.update_submission_status(submission_id, action)
+        
+        if not success:
+            return jsonify({'error': 'Failed to update submission status'}), 500
+
+        if action == 'approve':
+            # Get submission details to update club balance
+            submission = airtable_service.get_submission_by_id(submission_id)
+            if submission and submission.get('grant_amount'):
+                grant_amount = float(submission['grant_amount'].replace('$', ''))
+                club_name = submission.get('club_name')
+                
+                if club_name:
+                    # Find the club and update balance
+                    club = Club.query.filter_by(name=club_name).first()
+                    if club:
+                        club.balance += grant_amount
+                        db.session.commit()
+                        logger.info(f"Updated club {club_name} balance by ${grant_amount}")
+                    else:
+                        logger.warning(f"Club {club_name} not found for grant approval")
+
+        return jsonify({'message': f'Grant {action}d successfully'})
+        
+    except Exception as e:
+        logger.error(f"Error processing pizza grant review: {str(e)}")
+        return jsonify({'error': f'Failed to {action} grant'}), 500
 
 @app.route('/api/admin/stats', methods=['GET'])
 @login_required
