@@ -551,6 +551,37 @@ function createMeeting() {
     });
 }
 
+    fetch(`/api/clubs/${clubId}/meetings`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            title,
+            description,
+            meeting_date: date,
+            start_time: startTime,
+            end_time: endTime,
+            location,
+            meeting_link: link
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            document.getElementById('createMeetingModal').style.display = 'none';
+            document.getElementById('createMeetingForm').reset();
+            loadMeetings();
+            showToast('success', 'Meeting scheduled successfully', 'Meeting Scheduled');
+        } else {
+            showToast('error', data.error || 'Failed to schedule meeting', 'Error');
+        }
+    })
+    .catch(error => {
+        showToast('error', 'Error scheduling meeting', 'Error');
+    });
+}
+
 function loadMeetings() {
     if (!clubId) {
         console.warn('loadMeetings: clubId is missing. Skipping fetch.');
