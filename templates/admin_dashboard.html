@@ -545,6 +545,9 @@
         <button class="admin-tab" onclick="showAdminSection('admins')" data-section="admins">
             <i class="fas fa-crown"></i> Admins
         </button>
+        <button class="admin-tab" onclick="showAdminSection('review')" data-section="review">
+            <i class="fas fa-pizza-slice"></i> Pizza Grant Review
+        </button>
     </div>
 
     <div class="admin-section active" id="overview">
@@ -742,6 +745,48 @@
             </div>
         </div>
     </div>
+
+    <div class="admin-section" id="review">
+        <div class="data-table">
+            <div class="table-header">
+                <h3>Pizza Grant Review</h3>
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <input type="text" class="search-box" placeholder="Search submissions..." id="reviewSearch">
+                    <select class="search-box" id="statusFilter" onchange="filterSubmissionsByStatus()" style="width: 150px;">
+                        <option value="">All Status</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="loadPizzaGrantSubmissions()">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="table-content">
+                <div class="loading" id="reviewLoading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading pizza grant submissions...</p>
+                </div>
+                <table id="reviewTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Project</th>
+                            <th>Submitter</th>
+                            <th>Club</th>
+                            <th>Amount</th>
+                            <th>Hours</th>
+                            <th>Status</th>
+                            <th>Submitted</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reviewTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="modal-backdrop" id="editUserModal">
@@ -890,10 +935,35 @@
     </div>
 </div>
 
+<div class="modal-backdrop" id="reviewDetailsModal">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h3>Pizza Grant Submission Details</h3>
+            <button class="modal-close" onclick="closeModal('reviewDetailsModal')">&times;</button>
+        </div>
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+            <div id="reviewDetailsContent">
+                <!-- Content will be loaded dynamically -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('reviewDetailsModal')">Close</button>
+            <button class="btn btn-success" id="approveButton" onclick="approveSubmission()" style="display: none;">
+                <i class="fas fa-check"></i> Approve Grant
+            </button>
+            <button class="btn btn-danger" id="rejectButton" onclick="rejectSubmission()" style="display: none;">
+                <i class="fas fa-times"></i> Reject Grant
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 let usersData = [];
 let clubsData = [];
 let adminsData = [];
+let reviewData = [];
+let currentSubmissionId = null;
 
 function showAdminSection(section) {
     document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
@@ -908,6 +978,8 @@ function showAdminSection(section) {
         loadClubs();
     } else if (section === 'admins') {
         loadAdmins();
+    } else if (section === 'review') {
+        loadPizzaGrantSubmissions();
     }
 }
 
@@ -1176,12 +1248,16 @@ async function executeConfirmedAction() {
         } catch (error) {
             showToast('error', 'Failed to remove administrator');
         }
+    } else if (pendingAction === 'deleteSubmission') {
+        await executeDeleteSubmission();
     }
     
     closeModal('confirmModal');
     pendingAction = null;
     pendingUserId = null;
     pendingUsername = null;
+    pendingSubmissionId = null;
+    pendingProjectName = null;
 }
 
 function openModal(modalId) {
@@ -1334,6 +1410,8 @@ document.getElementById('adminSearch').addEventListener('input', function(e) {
 let pendingAction = null;
 let pendingUserId = null;
 let pendingUsername = null;
+let pendingSubmissionId = null;
+let pendingProjectName = null;
 
 function loginAsUser(userId, username) {
     document.getElementById('loginAsUsername').textContent = username;
@@ -1396,6 +1474,270 @@ async function executePasswordReset() {
         }
     } catch (error) {
         showToast('error', 'Failed to reset password');
+    }
+}
+
+async function loadPizzaGrantSubmissions() {
+    const loading = document.getElementById('reviewLoading');
+    const table = document.getElementById('reviewTable');
+    
+    try {
+        const response = await fetch('/api/admin/pizza-grants');
+        const data = await response.json();
+        reviewData = data.submissions || [];
+        
+        renderReviewTable(reviewData);
+        
+        loading.style.display = 'none';
+        table.style.display = 'table';
+    } catch (error) {
+        console.error('Error loading pizza grant submissions:', error);
+        showToast('error', 'Failed to load pizza grant submissions');
+        loading.style.display = 'none';
+        document.getElementById('reviewTableBody').innerHTML = '<tr><td colspan="8" style="text-align: center; color: #ef4444;">Failed to load submissions. Check Airtable configuration.</td></tr>';
+        table.style.display = 'table';
+    }
+}
+
+function renderReviewTable(submissions) {
+    const tbody = document.getElementById('reviewTableBody');
+    tbody.innerHTML = '';
+    
+    if (!submissions || submissions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #64748b;">No pizza grant submissions found</td></tr>';
+        return;
+    }
+    
+    submissions.forEach(submission => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><strong>${submission.project_name || 'N/A'}</strong></td>
+            <td>${submission.first_name} ${submission.last_name}<br><small style="color: #64748b;">${submission.email}</small></td>
+            <td>${submission.club_name || 'N/A'}</td>
+            <td><strong style="color: #10b981;">$${submission.grant_amount || '0'}</strong></td>
+            <td>${submission.hours || '0'} hrs</td>
+            <td>
+                <span class="status-badge ${getStatusClass(submission.status)}">
+                    ${submission.status || 'Pending'}
+                </span>
+            </td>
+            <td>${submission.created_time ? new Date(submission.created_time).toLocaleDateString() : 'N/A'}</td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-action btn-edit" onclick="viewSubmissionDetails('${submission.id}')">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                    ${submission.status === 'Pending' ? `
+                        <button class="btn-action btn-login" onclick="approveSubmissionQuick('${submission.id}')">
+                            <i class="fas fa-check"></i> Approve
+                        </button>
+                        <button class="btn-action btn-delete" onclick="rejectSubmissionQuick('${submission.id}')">
+                            <i class="fas fa-times"></i> Reject
+                        </button>
+                    ` : ''}
+                    <button class="btn-action btn-suspend" onclick="deleteSubmission('${submission.id}', '${submission.project_name || 'Unknown Project'}')">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function getStatusClass(status) {
+    switch(status) {
+        case 'Approved': return 'status-active';
+        case 'Rejected': return 'status-suspended';
+        case 'Pending': return 'status-user';
+        default: return 'status-user';
+    }
+}
+
+async function viewSubmissionDetails(submissionId) {
+    const submission = reviewData.find(s => s.id === submissionId);
+    if (!submission) return;
+    
+    currentSubmissionId = submissionId;
+    
+    const content = document.getElementById('reviewDetailsContent');
+    content.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <div>
+                <h4 style="color: #1a202c; margin-bottom: 1rem;">Project Information</h4>
+                <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <p><strong>Project Name:</strong> ${submission.project_name || 'N/A'}</p>
+                    <p><strong>Description:</strong><br>${submission.description || 'No description provided'}</p>
+                    <p><strong>Hours Worked:</strong> ${submission.hours || '0'} hours</p>
+                    <p><strong>Grant Amount:</strong> <span style="color: #10b981; font-weight: bold;">$${submission.grant_amount || '0'}</span></p>
+                </div>
+                
+                <h4 style="color: #1a202c; margin-bottom: 1rem;">Links</h4>
+                <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <p><strong>GitHub URL:</strong> ${submission.code_url ? `<a href="${submission.code_url}" target="_blank" style="color: #ec3750;">${submission.code_url}</a>` : 'Not provided'}</p>
+                    <p><strong>Live URL:</strong> ${submission.playable_url ? `<a href="${submission.playable_url}" target="_blank" style="color: #ec3750;">${submission.playable_url}</a>` : 'Not provided'}</p>
+                </div>
+            </div>
+            
+            <div>
+                <h4 style="color: #1a202c; margin-bottom: 1rem;">Submitter Information</h4>
+                <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <p><strong>Name:</strong> ${submission.first_name} ${submission.last_name}</p>
+                    <p><strong>Email:</strong> ${submission.email}</p>
+                    <p><strong>GitHub Username:</strong> ${submission.github_username || 'N/A'}</p>
+                    <p><strong>Club:</strong> ${submission.club_name || 'N/A'}</p>
+                    <p><strong>Leader Email:</strong> ${submission.leader_email || 'N/A'}</p>
+                </div>
+                
+                <h4 style="color: #1a202c; margin-bottom: 1rem;">Address</h4>
+                <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <p>${submission.address_1 || ''}</p>
+                    ${submission.address_2 ? `<p>${submission.address_2}</p>` : ''}
+                    <p>${submission.city || ''}, ${submission.state || ''} ${submission.zip || ''}</p>
+                    <p>${submission.country || ''}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 2rem;">
+            <h4 style="color: #1a202c; margin-bottom: 1rem;">Feedback</h4>
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 8px;">
+                <p><strong>What are we doing well?</strong><br>${submission.doing_well || 'No feedback provided'}</p>
+                <p><strong>How can we improve?</strong><br>${submission.improve || 'No feedback provided'}</p>
+            </div>
+        </div>
+        
+        ${submission.screenshot_url ? `
+            <div style="margin-top: 2rem;">
+                <h4 style="color: #1a202c; margin-bottom: 1rem;">Screenshot</h4>
+                <img src="${submission.screenshot_url}" alt="Project Screenshot" style="max-width: 100%; border-radius: 8px; border: 1px solid #e2e8f0;">
+            </div>
+        ` : ''}
+    `;
+    
+    // Show/hide action buttons based on status
+    const approveButton = document.getElementById('approveButton');
+    const rejectButton = document.getElementById('rejectButton');
+    
+    if (submission.status === 'Pending') {
+        approveButton.style.display = 'inline-flex';
+        rejectButton.style.display = 'inline-flex';
+    } else {
+        approveButton.style.display = 'none';
+        rejectButton.style.display = 'none';
+    }
+    
+    openModal('reviewDetailsModal');
+}
+
+async function approveSubmissionQuick(submissionId) {
+    if (confirm('Are you sure you want to approve this pizza grant?')) {
+        await processSubmission(submissionId, 'approve');
+    }
+}
+
+async function rejectSubmissionQuick(submissionId) {
+    if (confirm('Are you sure you want to reject this pizza grant?')) {
+        await processSubmission(submissionId, 'reject');
+    }
+}
+
+async function approveSubmission() {
+    if (currentSubmissionId) {
+        await processSubmission(currentSubmissionId, 'approve');
+        closeModal('reviewDetailsModal');
+    }
+}
+
+async function rejectSubmission() {
+    if (currentSubmissionId) {
+        await processSubmission(currentSubmissionId, 'reject');
+        closeModal('reviewDetailsModal');
+    }
+}
+
+async function processSubmission(submissionId, action) {
+    try {
+        const response = await fetch('/api/admin/pizza-grants/review', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                submission_id: submissionId,
+                action: action
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showToast('success', data.message || `Grant ${action}d successfully`);
+            loadPizzaGrantSubmissions(); // Refresh the table
+        } else {
+            showToast('error', data.error || `Failed to ${action} grant`);
+        }
+    } catch (error) {
+        console.error(`Error ${action}ing submission:`, error);
+        showToast('error', `Failed to ${action} grant`);
+    }
+}
+
+document.getElementById('reviewSearch').addEventListener('input', function(e) {
+    applySubmissionFilters();
+});
+
+function applySubmissionFilters() {
+    const searchTerm = document.getElementById('reviewSearch').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    
+    let filteredSubmissions = reviewData.filter(submission => {
+        const matchesSearch = !searchTerm || (
+            (submission.project_name && submission.project_name.toLowerCase().includes(searchTerm)) ||
+            (submission.first_name && submission.first_name.toLowerCase().includes(searchTerm)) ||
+            (submission.last_name && submission.last_name.toLowerCase().includes(searchTerm)) ||
+            (submission.email && submission.email.toLowerCase().includes(searchTerm)) ||
+            (submission.club_name && submission.club_name.toLowerCase().includes(searchTerm))
+        );
+        
+        const matchesStatus = !statusFilter || submission.status === statusFilter;
+        
+        return matchesSearch && matchesStatus;
+    });
+    
+    renderReviewTable(filteredSubmissions);
+}
+
+function filterSubmissionsByStatus() {
+    applySubmissionFilters();
+}
+
+function deleteSubmission(submissionId, projectName) {
+    document.getElementById('confirmTitle').textContent = 'Delete Submission';
+    document.getElementById('confirmMessage').innerHTML = `Are you sure you want to permanently delete the submission for "<strong>${projectName}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This action cannot be undone and will remove the submission from Airtable.</span>`;
+    pendingAction = 'deleteSubmission';
+    pendingSubmissionId = submissionId;
+    pendingProjectName = projectName;
+    openModal('confirmModal');
+}
+
+async function executeDeleteSubmission() {
+    try {
+        const response = await fetch(`/api/admin/pizza-grants/${pendingSubmissionId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showToast('success', 'Submission deleted successfully');
+            loadPizzaGrantSubmissions(); // Refresh the table
+        } else {
+            showToast('error', data.error || 'Failed to delete submission');
+        }
+    } catch (error) {
+        console.error('Error deleting submission:', error);
+        showToast('error', 'Failed to delete submission');
     }
 }
 

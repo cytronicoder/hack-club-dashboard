@@ -298,48 +298,76 @@
 </div>
 
 <script>
-document.getElementById('completeSignupForm').addEventListener('submit', function(e) {
-    e.preventDefault();
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('completeSignupForm');
+    if (!form) return;
     
-    const submitBtn = document.getElementById('submitBtn');
-    const originalText = submitBtn.innerHTML;
-    
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
-    
-    const data = {
-        username: document.getElementById('username').value.trim(),
-        email: document.getElementById('email').value.trim(),
-        first_name: document.getElementById('firstName').value.trim(),
-        last_name: document.getElementById('lastName').value.trim(),
-        birthday: document.getElementById('birthday').value,
-        is_leader: document.getElementById('isLeader').checked
-    };
-    
-    fetch('/complete-slack-signup', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast('success', data.message, 'Account Created');
-            setTimeout(() => {
-                window.location.href = '/dashboard';
-            }, 1500);
-        } else {
-            showToast('error', data.error || 'Failed to create account', 'Error');
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const submitBtn = document.getElementById('submitBtn');
+        const usernameInput = document.getElementById('username');
+        const emailInput = document.getElementById('email');
+        const firstNameInput = document.getElementById('firstName');
+        const lastNameInput = document.getElementById('lastName');
+        const birthdayInput = document.getElementById('birthday');
+        const isLeaderCheckbox = document.getElementById('isLeader');
+        
+        if (!submitBtn || !usernameInput || !emailInput || !firstNameInput || !isLeaderCheckbox) {
+            console.error('Required form elements not found');
+            return;
         }
-    })
-    .catch(error => {
-        showToast('error', 'Network error. Please try again.', 'Error');
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
+        
+        const originalText = submitBtn.innerHTML;
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
+        
+        const data = {
+            username: usernameInput.value.trim(),
+            email: emailInput.value.trim(),
+            first_name: firstNameInput.value.trim(),
+            last_name: lastNameInput ? lastNameInput.value.trim() : '',
+            birthday: birthdayInput ? birthdayInput.value : '',
+            is_leader: isLeaderCheckbox.checked
+        };
+        
+        fetch('/complete-slack-signup', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (typeof showToast === 'function') {
+                    showToast('success', data.message, 'Account Created');
+                }
+                setTimeout(() => {
+                    window.location.href = '/dashboard';
+                }, 1500);
+            } else {
+                if (typeof showToast === 'function') {
+                    showToast('error', data.error || 'Failed to create account', 'Error');
+                }
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Signup error:', error);
+            if (typeof showToast === 'function') {
+                showToast('error', 'Network error. Please try again.', 'Error');
+            }
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        });
     });
 });
 </script>

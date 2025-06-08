@@ -255,57 +255,85 @@
 </div>
 
 <script>
-document.getElementById('verification-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('verification-form');
+    if (!form) return;
     
-    const errorDiv = document.getElementById('error-message');
-    const successDiv = document.getElementById('success-message');
-    const verifyBtn = document.getElementById('verify-btn');
-    
-    // Hide previous messages
-    errorDiv.style.display = 'none';
-    successDiv.style.display = 'none';
-    
-    // Disable button
-    verifyBtn.disabled = true;
-    verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
-    
-    const formData = {
-        email: document.getElementById('email').value,
-        club_name: document.getElementById('club_name').value
-    };
-    
-    try {
-        const response = await fetch('/verify-leader', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(formData)
-        });
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
         
-        const result = await response.json();
+        const errorDiv = document.getElementById('error-message');
+        const successDiv = document.getElementById('success-message');
+        const verifyBtn = document.getElementById('verify-btn');
         
-        if (response.ok && result.success) {
-            successDiv.textContent = result.message;
-            successDiv.style.display = 'block';
-            
-            // Redirect after a short delay
-            setTimeout(() => {
-                window.location.href = '/complete-leader-signup';
-            }, 1500);
-        } else {
-            errorDiv.textContent = result.error || 'Verification failed';
-            errorDiv.style.display = 'block';
+        // Hide previous messages with null checks
+        if (errorDiv) {
+            errorDiv.style.display = 'none';
         }
-    } catch (error) {
-        errorDiv.textContent = 'Network error. Please try again.';
-        errorDiv.style.display = 'block';
-    }
-    
-    // Re-enable button
-    verifyBtn.disabled = false;
-    verifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verify Leadership';
+        if (successDiv) {
+            successDiv.style.display = 'none';
+        }
+        
+        // Disable button with null check
+        if (verifyBtn) {
+            verifyBtn.disabled = true;
+            verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+        }
+        
+        const emailInput = document.getElementById('email');
+        const clubNameInput = document.getElementById('club_name');
+        
+        if (!emailInput || !clubNameInput) {
+            console.error('Required form inputs not found');
+            return;
+        }
+        
+        const formData = {
+            email: emailInput.value,
+            club_name: clubNameInput.value
+        };
+        
+        try {
+            const response = await fetch('/verify-leader', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                if (successDiv) {
+                    successDiv.textContent = result.message;
+                    successDiv.style.display = 'block';
+                }
+                
+                // Redirect after a short delay
+                setTimeout(() => {
+                    window.location.href = '/complete-leader-signup';
+                }, 1500);
+            } else {
+                if (errorDiv) {
+                    errorDiv.textContent = result.error || 'Verification failed';
+                    errorDiv.style.display = 'block';
+                }
+            }
+        } catch (error) {
+            console.error('Verification error:', error);
+            if (errorDiv) {
+                errorDiv.textContent = 'Network error. Please try again.';
+                errorDiv.style.display = 'block';
+            }
+        }
+        
+        // Re-enable button with null check
+        if (verifyBtn) {
+            verifyBtn.disabled = false;
+            verifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verify Leadership';
+        }
+    });
 });
 </script>
 {% endblock %}

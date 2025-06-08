@@ -282,12 +282,18 @@
 </div>
 
 <script>
-document.getElementById('isLeader').addEventListener('change', function() {
+document.addEventListener('DOMContentLoaded', function() {
+    const isLeaderCheckbox = document.getElementById('isLeader');
     const leaderInfo = document.getElementById('leader-info');
-    if (this.checked) {
-        leaderInfo.style.display = 'block';
-    } else {
-        leaderInfo.style.display = 'none';
+    
+    if (isLeaderCheckbox && leaderInfo) {
+        isLeaderCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                leaderInfo.style.display = 'block';
+            } else {
+                leaderInfo.style.display = 'none';
+            }
+        });
     }
 });
 </script>

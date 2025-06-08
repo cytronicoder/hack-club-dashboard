@@ -1,0 +1,122 @@
+INFO:main:Super admin account exists and is active
+INFO:main:Starting server on port 5000
+ * Serving Flask app 'main'
+ * Debug mode: off
+INFO:werkzeug:WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.31.128.78:5000
+INFO:werkzeug:Press CTRL+C to quit
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:02] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:02] "GET / HTTP/1.1" 200 -
+DEBUG:main:Auth check for admin_dashboard: authenticated=None, user_id=None, logged_in=None, current_user=None
+WARNING:main:Authentication failed for admin_dashboard: user_id=None, logged_in=None
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:02] "GET /admin HTTP/1.1" 302 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:02] "GET /login HTTP/1.1" 200 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:02] "GET /static/assets/logo-rounded.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:02] "GET /static/assets/logo-rounded.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:02] "GET /static/assets/flag-orpheus-left.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:03] "GET /static/assets/Dinos.jpg HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:03] "GET /static/assets/orpheus-having-boba.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:03] "GET /static/assets/orpheus-skateboarding-PCB.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:03] "GET /static/assets/logo-rounded.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:03] "GET /static/assets/orphmoji_peefest.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:03] "GET /static/assets/orphmoji_scared.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:03] "GET /static/assets/logo-rounded.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:03] "GET /static/assets/flag-orpheus-left.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:03] "GET /static/assets/Rummage.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:03] "GET /static/assets/orpheus-having-boba.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:03] "GET /static/assets/parts.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:03] "GET /static/assets/orpheus-skateboarding-PCB.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:03] "GET /static/assets/orphmoji_peefest.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:03] "GET /static/assets/orphmoji_scared.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:04] "GET /static/assets/find.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:04] "GET /static/assets/orpheus-having-boba.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:04] "GET /static/assets/Rummage.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:04] "GET /static/assets/hackers,_assemble!.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:04] "GET /static/assets/hackers,_assemble!.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:04] "GET /static/assets/hackers,_assemble!.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:04] "GET /static/assets/parts.png HTTP/1.1" 304 -
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:04] "GET /static/assets/find.png HTTP/1.1" 304 -
+INFO:main:User Ethan (ID: 4) logging in from IP: 172.31.128.78
+INFO:main:Session created for user Ethan: session_id=4, logged_in=True
+INFO:werkzeug:172.31.128.78 - - [08/Jun/2025 02:19:08] "POST /login HTTP/1.1" 302 -
+DEBUG:main:Auth check for dashboard: authenticated=4, user_id=4, logged_in=True, current_user=Ethan
+ERROR:main:Exception on /dashboard [GET]
+Traceback (most recent call last):
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1963, in _exec_single_context
+    self.dialect.do_execute(
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 943, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UndefinedColumn: column club.updated_at does not exist
+LINE 1: ...ub_join_code, club.created_at AS club_created_at, club.updat...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "club.created_at".
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/main.py", line 229, in decorated_function
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/main.py", line 639, in dashboard
+    led_clubs = Club.query.filter_by(leader_id=current_user.id).all()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2365, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2251, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1415, in execute
+    return meth(
+           ^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 523, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1637, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1842, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1982, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2351, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1963, in _exec_single_context
+    self.dialect.do_execute(
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 943, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column club.updated_at does not exist
+LINE 1: ...ub_join_code, club.created_at AS club_created_at, club.updat...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "club.created_at".
+
+[SQL: SELECT club.id AS club_id, club.name AS club_name, club.description AS club_description, club.location AS club_location, club.leader_id AS club_leader_id, club.join_code AS club_join_code, club.created_at AS club_created_at, club.updated_at AS club_updated_at, club.balance AS club_balance 
+FROM club 
+WHERE club.leader_id = %(leader_id_1)s]
+[parameters: {'leader_id_1': 4}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
