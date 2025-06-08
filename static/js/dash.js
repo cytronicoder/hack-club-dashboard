@@ -1550,27 +1550,111 @@ function updateClubSettings() {
         submitButton.disabled = false;
         submitButton.innerHTML = originalText;
 
-        if (data.message) {
-            showToast('success', 'Club settings updated successfully', 'Settings Saved');
-            // Update the club header with new information
-            const clubTitle = document.querySelector('.club-details h1');
-            if (clubTitle) clubTitle.textContent = clubName;
-
-            const locationMeta = document.querySelector('.club-meta span:first-child');
-            if (locationMeta) {
-                locationMeta.innerHTML = '<i class="fas fa-map-marker-alt"></i> ' + (clubLocation || 'No location set');
-            }
+        if (data.error) {
+            showToast('error', data.error, 'Error');
         } else {
-            showToast('error', data.error || 'Failed to update settings', 'Error');
+            showToast('success', 'Club settings updated successfully!', 'Updated');
+            // Update the club header if name changed
+            const clubHeader = document.querySelector('.club-info h1');
+            if (clubHeader) {
+                clubHeader.textContent = clubName.trim();
+            }
         }
     })
     .catch(error => {
         submitButton.disabled = false;
         submitButton.innerHTML = originalText;
-        showToast('error', 'Error updating settings', 'Error');
-        console.error('Settings update error:', error);
+        showToast('error', 'Error updating club settings', 'Error');
     });
 }
+
+function initiateLeadershipTransfer() {
+    const newLeaderSelect = document.getElementById('newLeaderSelect');
+    const selectedValue = newLeaderSelect.value;
+    
+    if (!selectedValue) {
+        showToast('error', 'Please select a member to transfer leadership to', 'Validation Error');
+        return;
+    }
+    
+    const selectedOption = newLeaderSelect.options[newLeaderSelect.selectedIndex];
+    const newLeaderName = selectedOption.text.split(' (')[0];
+    const newLeaderEmail = selectedOption.text.match(/\((.*?)\)/)[1];
+    
+    // Update modal content
+    document.getElementById('newLeaderName').textContent = newLeaderName;
+    document.getElementById('newLeaderEmail').textContent = newLeaderEmail;
+    document.getElementById('newLeaderAvatar').textContent = newLeaderName.charAt(0).toUpperCase();
+    
+    // Reset confirmation input
+    document.getElementById('transferConfirmationInput').value = '';
+    document.getElementById('confirmTransferButton').disabled = true;
+    
+    // Show modal
+    document.getElementById('transferLeadershipModal').style.display = 'block';
+}
+
+function confirmLeadershipTransfer() {
+    const newLeaderSelect = document.getElementById('newLeaderSelect');
+    const newLeaderId = newLeaderSelect.value;
+    
+    if (!newLeaderId) {
+        showToast('error', 'No leader selected', 'Error');
+        return;
+    }
+    
+    const confirmButton = document.getElementById('confirmTransferButton');
+    const originalText = confirmButton.innerHTML;
+    
+    confirmButton.disabled = true;
+    confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Transferring...';
+    
+    fetch(`/api/clubs/${clubId}/transfer-leadership`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            new_leader_id: newLeaderId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        confirmButton.disabled = false;
+        confirmButton.innerHTML = originalText;
+        
+        if (data.error) {
+            showToast('error', data.error, 'Error');
+        } else {
+            showToast('success', 'Leadership transferred successfully!', 'Success');
+            document.getElementById('transferLeadershipModal').style.display = 'none';
+            // Redirect to dashboard after a short delay
+            setTimeout(() => {
+                window.location.href = '/dashboard';
+            }, 2000);
+        }
+    })
+    .catch(error => {
+        confirmButton.disabled = false;
+        confirmButton.innerHTML = originalText;
+        showToast('error', 'Error transferring leadership', 'Error');
+    });
+}
+
+// Add event listener for confirmation input
+document.addEventListener('DOMContentLoaded', function() {
+    const transferInput = document.getElementById('transferConfirmationInput');
+    const confirmButton = document.getElementById('confirmTransferButton');
+    
+    if (transferInput && confirmButton) {
+        transferInput.addEventListener('input', function() {
+            const isValid = this.value.trim().toUpperCase() === 'TRANSFER';
+            confirmButton.disabled = !isValid;
+        });
+    }
+});
+
+        
 
 function loadClubPizzaGrants() {
     if (!clubId) {
