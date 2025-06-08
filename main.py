@@ -326,7 +326,7 @@ class AirtableService:
             'Club': grant_data.get('club_name', ''),
             'Email': grant_data.get('contact_email', ''),
             'Status': 'In progress',
-            'Grant Amount': grant_data.get('grant_amount', 0),
+            'Grant Amount': str(grant_data.get('grant_amount', 0)),
             'Grant Type': 'Pizza Card',
             'Address': grant_data.get('club_address', ''),
             'Order ID': grant_data.get('order_id', '')
@@ -336,10 +336,15 @@ class AirtableService:
         
         try:
             response = requests.post(grants_url, headers=self.headers, json=payload)
+            app.logger.debug(f"Airtable response status: {response.status_code}")
+            app.logger.debug(f"Airtable response body: {response.text}")
             if response.status_code in [200, 201]:
                 return response.json()
-            return None
-        except:
+            else:
+                app.logger.error(f"Airtable error: {response.text}")
+                return None
+        except Exception as e:
+            app.logger.error(f"Exception submitting to Airtable: {str(e)}")
             return None
 
     def get_pizza_grant_submissions(self):
@@ -2233,7 +2238,8 @@ def submit_pizza_order(club_id):
                 'remaining_balance': float(club.balance)
             })
         else:
-            return jsonify({'error': 'Failed to submit order to grants system'}), 500
+            app.logger.error(f"Failed to submit pizza order to Airtable for club {club.name}")
+            return jsonify({'error': 'Failed to submit order to grants system. Please try again or contact support.'}), 500
             
     except Exception as e:
         db.session.rollback()
