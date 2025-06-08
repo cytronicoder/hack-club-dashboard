@@ -1654,27 +1654,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-        if (data.message) {
-            showToast('success', 'Club settings updated successfully', 'Settings Saved');
-            // Update the club header with new information
-            const clubTitle = document.querySelector('.club-details h1');
-            if (clubTitle) clubTitle.textContent = clubName;
-
-            const locationMeta = document.querySelector('.club-meta span:first-child');
-            if (locationMeta) {
-                locationMeta.innerHTML = '<i class="fas fa-map-marker-alt"></i> ' + (clubLocation || 'No location set');
-            }
-        } else {
-            showToast('error', data.error || 'Failed to update settings', 'Error');
-        }
-    })
-    .catch(error => {
-        submitButton.disabled = false;
-        submitButton.innerHTML = originalText;
-        showToast('error', 'Error updating settings', 'Error');
-        console.error('Settings update error:', error);
-    });
-}
+        
 
 function loadClubPizzaGrants() {
     if (!clubId) {
