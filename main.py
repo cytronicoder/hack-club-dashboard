@@ -239,7 +239,7 @@ class AirtableService:
     def __init__(self):
         self.api_token = os.environ.get('AIRTABLE_TOKEN')
         self.base_id = os.environ.get('AIRTABLE_BASE_ID', 'appSnnIu0BhjI3E1p')
-        self.table_name = os.environ.get('AIRTABLE_TABLE_NAME', 'YSWS Project Submission')
+        self.table_name = os.environ.get('AIRTABLE_TABLE_NAME', 'Grants')
         self.headers = {
             'Authorization': f'Bearer {self.api_token}',
             'Content-Type': 'application/json'
@@ -307,6 +307,35 @@ class AirtableService:
         payload = {'records': [{'fields': fields}]}
         try:
             response = requests.post(self.base_url, headers=self.headers, json=payload)
+            if response.status_code in [200, 201]:
+                return response.json()
+            return None
+        except:
+            return None
+
+    def submit_pizza_grant(self, grant_data):
+        """Submit pizza grant to Grants table"""
+        if not self.api_token:
+            return None
+
+        # Use Grants table instead
+        grants_table_name = urllib.parse.quote('Grants')
+        grants_url = f'https://api.airtable.com/v0/{self.base_id}/{grants_table_name}'
+
+        fields = {
+            'Club': grant_data.get('club_name', ''),
+            'Email': grant_data.get('contact_email', ''),
+            'Status': 'In progress',
+            'Grant Amount': grant_data.get('grant_amount', 0),
+            'Grant Type': 'Pizza Card',
+            'Address': grant_data.get('club_address', ''),
+            'Order ID': grant_data.get('order_id', '')
+        }
+
+        payload = {'records': [{'fields': fields}]}
+        
+        try:
+            response = requests.post(grants_url, headers=self.headers, json=payload)
             if response.status_code in [200, 201]:
                 return response.json()
             return None
@@ -2164,7 +2193,6 @@ def submit_pizza_order(club_id):
     grant_amount = float(data.get('grant_amount', 0))
     club_address = data.get('club_address', '').strip()
     contact_email = data.get('contact_email', '').strip()
-    additional_notes = data.get('additional_notes', '').strip()
     
     # Validate inputs
     if grant_amount <= 0:
@@ -2181,37 +2209,14 @@ def submit_pizza_order(club_id):
         import uuid
         order_id = str(uuid.uuid4())[:8].upper()
         
-        # Prepare submission data for Airtable
-        submission_data = {
-            'project_name': f'Pizza Order - {club.name}',
-            'project_hours': '0',  # Pizza orders don't require hours
-            'first_name': current_user.first_name or 'Club',
-            'last_name': current_user.last_name or 'Member',
-            'username': current_user.username,
-            'email': contact_email,
-            'birthday': current_user.birthday.isoformat() if current_user.birthday else '',
-            'project_description': f'Pizza order for {club.name}. Order ID: {order_id}. Address: {club_address}. Notes: {additional_notes}',
-            'github_url': '',  # Not applicable for pizza orders
-            'live_url': '',    # Not applicable for pizza orders
-            'learning': 'Pizza ordering and club management',
-            'doing_well': 'Great club community and activities',
-            'improve': 'More pizza ordering options',
-            'address_1': club_address.split('\n')[0] if '\n' in club_address else club_address,
-            'address_2': '\n'.join(club_address.split('\n')[1:]) if '\n' in club_address else '',
-            'city': club.location.split(',')[0].strip() if club.location and ',' in club.location else club.location or 'Unknown',
-            'state': club.location.split(',')[1].strip() if club.location and ',' in club.location else 'Unknown',
-            'zip': '00000',  # Default zip
-            'country': 'USA',  # Default country
-            'screenshot_url': '',  # Not required for pizza orders
+        # Submit to Grants table in Airtable
+        result = airtable_service.submit_pizza_grant({
             'club_name': club.name,
-            'leader_email': club.leader.email
-        }
-        
-        # Override grant amount in submission data
-        submission_data['project_hours'] = str(grant_amount)  # Store amount in hours field temporarily
-        
-        # Submit to Airtable
-        result = airtable_service.log_pizza_grant(submission_data)
+            'contact_email': contact_email,
+            'grant_amount': grant_amount,
+            'club_address': club_address,
+            'order_id': order_id
+        })
         
         if result:
             # Deduct amount from club balance
