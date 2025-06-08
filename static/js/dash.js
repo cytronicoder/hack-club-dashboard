@@ -1783,8 +1783,8 @@ function loadShop() {
 }
 
 function purchasePizza() {
-    // Redirect to pizza order form
-    window.location.href = `/pizza-order/${clubId}`;
+    // Open fillout.com in a new tab
+    window.open('https://fillout.com', '_blank');
 }
 
 // Add hover effect styles for shop items

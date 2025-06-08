@@ -449,7 +449,7 @@
                         </div>
                         <div class="card-body">
                             <div class="shop-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
-                                <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer;" onclick="window.location.href='/pizza-order/{{ club.id }}'"
+                                <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer;" onclick="purchasePizza()">
                                     <div style="margin-bottom: 1rem;">
                                         <img src="{{ url_for('static', filename='assets/pizza.png') }}" alt="Pizza" style="width: 80px; height: 80px; object-fit: contain;">
                                     </div>
