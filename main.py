@@ -5,6 +5,8 @@ import json
 import hashlib
 import requests
 import logging
+import re
+import html
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import Flask, render_template, redirect, flash, request, jsonify, url_for, abort, session, Response
@@ -30,6 +32,81 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(32))
 app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Input validation and sanitization functions
+def sanitize_string(value, max_length=None, allow_html=False):
+    """Sanitize string input to prevent XSS and injection attacks"""
+    if not value:
+        return value
+    
+    # Convert to string if not already
+    value = str(value).strip()
+    
+    # Limit length if specified
+    if max_length and len(value) > max_length:
+        value = value[:max_length]
+    
+    # Remove or escape HTML/script tags
+    if not allow_html:
+        # Remove script tags completely
+        value = re.sub(r'<script[^>]*>.*?</script>', '', value, flags=re.IGNORECASE | re.DOTALL)
+        # Remove other potentially dangerous tags
+        value = re.sub(r'<(script|iframe|object|embed|form|input|button|link|style)[^>]*>', '', value, flags=re.IGNORECASE)
+        # Escape remaining HTML
+        value = html.escape(value)
+    
+    # Remove null bytes and other control characters
+    value = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', value)
+    
+    return value
+
+def validate_username(username):
+    """Validate username format"""
+    if not username:
+        return False, "Username is required"
+    
+    username = username.strip()
+    if len(username) < 3:
+        return False, "Username must be at least 3 characters long"
+    if len(username) > 30:
+        return False, "Username must be less than 30 characters"
+    
+    # Only allow alphanumeric characters, underscores, and hyphens
+    if not re.match(r'^[a-zA-Z0-9_-]+$', username):
+        return False, "Username can only contain letters, numbers, underscores, and hyphens"
+    
+    return True, username
+
+def validate_email(email):
+    """Validate email format"""
+    if not email:
+        return False, "Email is required"
+    
+    email = email.strip().lower()
+    if len(email) > 120:
+        return False, "Email is too long"
+    
+    # Basic email validation
+    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_regex, email):
+        return False, "Invalid email format"
+    
+    return True, email
+
+def validate_name(name, field_name="Name"):
+    """Validate first/last name"""
+    if not name:
+        return True, ""  # Names are optional
+    
+    name = name.strip()
+    if len(name) > 50:
+        return False, f"{field_name} must be less than 50 characters"
+    
+    # Only allow letters, spaces, hyphens, and apostrophes
+    if not re.match(r"^[a-zA-Z\s'-]+$", name):
+        return False, f"{field_name} can only contain letters, spaces, hyphens, and apostrophes"
+    
+    return True, name
 
 # Session configuration for multiple servers
 app.config['SESSION_COOKIE_SECURE'] = True if os.getenv('FLASK_ENV') == 'production' else False
@@ -599,26 +676,50 @@ def signup():
         return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
+        # Get and validate inputs
         username = request.form.get('username', '').strip()
-        email = request.form.get('email', '').strip().lower()
+        email = request.form.get('email', '').strip()
         password = request.form.get('password', '')
         first_name = request.form.get('first_name', '').strip()
         last_name = request.form.get('last_name', '').strip()
         birthday = request.form.get('birthday', '')
         is_leader = request.form.get('is_leader') == 'on'
 
-        if not username or len(username) < 3:
-            flash('Username must be at least 3 characters long', 'error')
+        # Validate username
+        valid, result = validate_username(username)
+        if not valid:
+            flash(result, 'error')
             return render_template('signup.html')
+        username = result
 
-        if not email:
-            flash('Email is required', 'error')
+        # Validate email
+        valid, result = validate_email(email)
+        if not valid:
+            flash(result, 'error')
             return render_template('signup.html')
+        email = result
 
+        # Validate password
         if not password or len(password) < 6:
             flash('Password must be at least 6 characters long', 'error')
             return render_template('signup.html')
 
+        # Validate names
+        if first_name:
+            valid, result = validate_name(first_name, "First name")
+            if not valid:
+                flash(result, 'error')
+                return render_template('signup.html')
+            first_name = result
+
+        if last_name:
+            valid, result = validate_name(last_name, "Last name")
+            if not valid:
+                flash(result, 'error')
+                return render_template('signup.html')
+            last_name = result
+
+        # Check for existing users
         if User.query.filter_by(email=email).first():
             flash('Email already registered', 'error')
             return render_template('signup.html')
@@ -1076,6 +1177,12 @@ def club_posts(club_id):
         if not content:
             return jsonify({'error': 'Content is required'}), 400
 
+        # Sanitize content to prevent XSS
+        content = sanitize_string(content, max_length=5000, allow_html=False)
+        
+        if not content.strip():
+            return jsonify({'error': 'Content cannot be empty after sanitization'}), 400
+
         post = ClubPost(
             club_id=club_id,
             user_id=current_user.id,
@@ -1115,28 +1222,48 @@ def update_user():
     new_password = data.get('new_password')
     hackatime_api_key = data.get('hackatime_api_key')
 
+    # Validate username
     if username and username != current_user.username:
-        existing_user = User.query.filter_by(username=username).first()
+        valid, result = validate_username(username)
+        if not valid:
+            return jsonify({'error': result}), 400
+        
+        existing_user = User.query.filter_by(username=result).first()
         if existing_user:
             return jsonify({'error': 'Username already taken'}), 400
+        current_user.username = result
 
+    # Validate email
     if email and email != current_user.email:
-        existing_user = User.query.filter_by(email=email).first()
+        valid, result = validate_email(email)
+        if not valid:
+            return jsonify({'error': result}), 400
+        
+        existing_user = User.query.filter_by(email=result).first()
         if existing_user:
             return jsonify({'error': 'Email already registered'}), 400
+        current_user.email = result
 
-    if username:
-        current_user.username = username
-    if email:
-        current_user.email = email
+    # Validate names
     if first_name is not None:
-        current_user.first_name = first_name.strip() if first_name.strip() else None
+        valid, result = validate_name(first_name, "First name")
+        if not valid:
+            return jsonify({'error': result}), 400
+        current_user.first_name = result if result.strip() else None
+        
     if last_name is not None:
-        current_user.last_name = last_name.strip() if last_name.strip() else None
+        valid, result = validate_name(last_name, "Last name")
+        if not valid:
+            return jsonify({'error': result}), 400
+        current_user.last_name = result if result.strip() else None
+        
     if birthday is not None:
         current_user.birthday = datetime.strptime(birthday, '%Y-%m-%d').date() if birthday else None
+        
     if hackatime_api_key is not None:
-        current_user.hackatime_api_key = hackatime_api_key if hackatime_api_key.strip() else None
+        # Sanitize API key
+        api_key = sanitize_string(hackatime_api_key, max_length=255)
+        current_user.hackatime_api_key = api_key if api_key.strip() else None
 
     if new_password:
         if not current_password:
@@ -1200,6 +1327,13 @@ def club_assignments(club_id):
 
         if not title or not description:
             return jsonify({'error': 'Title and description are required'}), 400
+
+        # Sanitize inputs
+        title = sanitize_string(title, max_length=200)
+        description = sanitize_string(description, max_length=5000)
+
+        if not title.strip() or not description.strip():
+            return jsonify({'error': 'Title and description cannot be empty'}), 400
 
         assignment = ClubAssignment(
             club_id=club_id,
@@ -1673,45 +1807,79 @@ def admin_manage_user(user_id):
     user = User.query.get_or_404(user_id)
     
     if request.method == 'DELETE':
-        # Don't allow deleting super admin
-        if user.email == 'ethan@hackclub.com':
-            return jsonify({'error': 'Cannot delete super admin'}), 400
-        
-        # Delete user's memberships first
-        ClubMembership.query.filter_by(user_id=user_id).delete()
-        
-        # Transfer leadership of clubs or delete clubs if needed
-        led_clubs = Club.query.filter_by(leader_id=user_id).all()
-        for club in led_clubs:
-            db.session.delete(club)
-        
-        db.session.delete(user)
-        db.session.commit()
-        return jsonify({'message': 'User deleted successfully'})
+        try:
+            # Don't allow deleting super admin
+            if user.email == 'ethan@hackclub.com':
+                return jsonify({'error': 'Cannot delete super admin'}), 400
+            
+            # Delete related data in correct order to avoid foreign key violations
+            # Delete club assignments for clubs led by this user
+            led_clubs = Club.query.filter_by(leader_id=user_id).all()
+            for club in led_clubs:
+                ClubAssignment.query.filter_by(club_id=club.id).delete()
+                ClubPost.query.filter_by(club_id=club.id).delete()
+                ClubMeeting.query.filter_by(club_id=club.id).delete()
+                ClubResource.query.filter_by(club_id=club.id).delete()
+                ClubProject.query.filter_by(club_id=club.id).delete()
+                ClubMembership.query.filter_by(club_id=club.id).delete()
+                db.session.delete(club)
+            
+            # Delete user's own posts, projects, etc.
+            ClubPost.query.filter_by(user_id=user_id).delete()
+            ClubProject.query.filter_by(user_id=user_id).delete()
+            
+            # Delete user's memberships
+            ClubMembership.query.filter_by(user_id=user_id).delete()
+            
+            # Finally delete the user
+            db.session.delete(user)
+            db.session.commit()
+            
+            app.logger.info(f"Admin {current_user.username} deleted user {user.username} (ID: {user_id})")
+            return jsonify({'message': 'User deleted successfully'})
+            
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Error deleting user {user_id}: {str(e)}")
+            return jsonify({'error': 'Failed to delete user due to database constraints'}), 500
     
     if request.method == 'PUT':
-        data = request.get_json()
-        
-        if 'username' in data:
-            existing_user = User.query.filter_by(username=data['username']).first()
-            if existing_user and existing_user.id != user_id:
-                return jsonify({'error': 'Username already taken'}), 400
-            user.username = data['username']
-        
-        if 'email' in data:
-            existing_user = User.query.filter_by(email=data['email']).first()
-            if existing_user and existing_user.id != user_id:
-                return jsonify({'error': 'Email already registered'}), 400
-            user.email = data['email']
-        
-        if 'is_admin' in data:
-            # Don't allow removing super admin privileges
-            if user.email == 'ethan@hackclub.com' and not data['is_admin']:
-                return jsonify({'error': 'Cannot remove super admin privileges'}), 400
-            user.is_admin = data['is_admin']
-        
-        db.session.commit()
-        return jsonify({'message': 'User updated successfully'})
+        try:
+            data = request.get_json()
+            
+            if 'username' in data:
+                valid, result = validate_username(data['username'])
+                if not valid:
+                    return jsonify({'error': result}), 400
+                
+                existing_user = User.query.filter_by(username=result).first()
+                if existing_user and existing_user.id != user_id:
+                    return jsonify({'error': 'Username already taken'}), 400
+                user.username = result
+            
+            if 'email' in data:
+                valid, result = validate_email(data['email'])
+                if not valid:
+                    return jsonify({'error': result}), 400
+                
+                existing_user = User.query.filter_by(email=result).first()
+                if existing_user and existing_user.id != user_id:
+                    return jsonify({'error': 'Email already registered'}), 400
+                user.email = result
+            
+            if 'is_admin' in data:
+                # Don't allow removing super admin privileges
+                if user.email == 'ethan@hackclub.com' and not data['is_admin']:
+                    return jsonify({'error': 'Cannot remove super admin privileges'}), 400
+                user.is_admin = bool(data['is_admin'])
+            
+            db.session.commit()
+            return jsonify({'message': 'User updated successfully'})
+            
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Error updating user {user_id}: {str(e)}")
+            return jsonify({'error': 'Failed to update user'}), 500
 
 @app.route('/api/admin/clubs/<int:club_id>', methods=['PUT', 'DELETE'])
 @login_required
@@ -1889,12 +2057,20 @@ def club_info(club_id):
             return jsonify({'error': 'Only club leaders can update club info'}), 403
 
         data = request.get_json()
+        
         if 'name' in data:
-            club.name = data['name']
+            name = sanitize_string(data['name'], max_length=100)
+            if not name.strip():
+                return jsonify({'error': 'Club name cannot be empty'}), 400
+            club.name = name
+            
         if 'description' in data:
-            club.description = data['description']
+            description = sanitize_string(data['description'], max_length=5000)
+            club.description = description if description.strip() else None
+            
         if 'location' in data:
-            club.location = data['location']
+            location = sanitize_string(data['location'], max_length=255)
+            club.location = location if location.strip() else None
 
         db.session.commit()
         return jsonify({'message': 'Club updated successfully'})
