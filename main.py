@@ -809,6 +809,11 @@ def join_club_redirect():
             flash('Invalid join code', 'error')
             return redirect(url_for('dashboard'))
 
+        # Check if user is already the leader
+        if club.leader_id == current_user.id:
+            flash(f"You are the leader of {club.name}", 'info')
+            return redirect(url_for('club_dashboard', club_id=club.id))
+
         existing_membership = ClubMembership.query.filter_by(
             user_id=current_user.id, club_id=club.id).first()
 
