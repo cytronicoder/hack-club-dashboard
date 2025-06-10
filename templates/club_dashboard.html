@@ -168,26 +168,16 @@
                             </div>
                         </div>
 
-                        {% if current_user.id == club.leader_id %}
-                        <div class="dashboard-card">
-                            <div class="dashboard-card-header">
-                                <div class="card-icon" style="background: linear-gradient(135deg, #ec3750, #d63146); color: white;">
-                                    <i class="fas fa-pizza-slice"></i>
-                                </div>
-                                <div class="card-content">
-                                    <h3>Club Shop</h3>
-                                    <div class="card-metric" style="font-size: 1.5rem;">🍕</div>
-                                    <p>Order items for your club</p>
-                                </div>
-                            </div>
-                            <div class="dashboard-card-actions">
-                                <a href="#shop" class="btn btn-sm" style="background: linear-gradient(135deg, #ec3750, #d63146); color: white; border: none;" onclick="openTab('shop')">
-                                    <i class="fas fa-shopping-cart"></i> Pizza Party!
-                                </a>
-                            </div>
-                        </div>
                         {% endif %}
                     </div>
+                    
+                    {% if current_user.id == club.leader_id %}
+                    <div style="position: fixed; bottom: 2rem; right: 2rem; z-index: 1000;">
+                        <button onclick="openTab('shop')" style="background: linear-gradient(135deg, #ec3750, #d63146); color: white; border: none; padding: 1rem; border-radius: 50%; font-size: 1.5rem; box-shadow: 0 4px 12px rgba(236, 55, 80, 0.4); cursor: pointer; transition: all 0.3s ease; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;" onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 6px 20px rgba(236, 55, 80, 0.6)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(236, 55, 80, 0.4)'" title="Pizza Party! 🍕">
+                            <i class="fas fa-pizza-slice"></i>
+                        </button>
+                    </div>
+                    {% endif %}
                 </section>
 
                 <section id="stream" class="club-section">
@@ -463,7 +453,15 @@
                             <div style="font-size: 3rem; font-weight: bold; color: #ec3750; margin-bottom: 1rem;">
                                 ${{ "%.2f"|format(club.balance|float) }}
                             </div>
-                            <p style="color: #6b7280; font-size: 1.1rem;">Available to spend on club items</p>
+                            <p style="color: #6b7280; font-size: 1.1rem; margin-bottom: 2rem;">Available to spend on club items</p>
+                            
+                            <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 1.5rem;">
+                                <h4 style="margin: 0 0 1rem 0; color: #92400e; font-size: 1rem;"><i class="fas fa-hand-holding-usd" style="color: #f59e0b; margin-right: 0.5rem;"></i> Need More Club Balance?</h4>
+                                <p style="margin: 0 0 1rem 0; color: #92400e; font-size: 0.9rem;">Submit your coding projects in the <strong>Project Grants</strong> tab to earn more balance for your club! Each approved project adds funds that you can spend here.</p>
+                                <a href="#pizza" class="btn btn-sm" style="background: #f59e0b; color: white; border: none; text-decoration: none; display: inline-block; padding: 0.5rem 1rem; border-radius: 6px;" onclick="openTab('pizza')">
+                                    <i class="fas fa-arrow-right" style="margin-right: 0.5rem;"></i>Go to Project Grants
+                                </a>
+                            </div>
                         </div>
                     </div>
 
@@ -517,15 +515,7 @@
                                 </div>
                             </div>
 
-                            <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 1.5rem; margin-top: 2rem;">
-                                <h4 style="margin: 0 0 1rem 0; color: #92400e; font-size: 1rem;"><i class="fas fa-hand-holding-usd" style="color: #f59e0b; margin-right: 0.5rem;"></i> Need More Club Balance?</h4>
-                                <p style="margin: 0 0 1rem 0; color: #92400e; font-size: 0.9rem;">Submit your coding projects in the <strong>Project Grants</strong> tab to earn more balance for your club! Each approved project adds funds that you can spend here.</p>
-                                <a href="#pizza" class="btn btn-sm" style="background: #f59e0b; color: white; border: none; text-decoration: none; display: inline-block; padding: 0.5rem 1rem; border-radius: 6px;" onclick="openTab('pizza')">
-                                    <i class="fas fa-arrow-right" style="margin-right: 0.5rem;"></i>Go to Project Grants
-                                </a>
-                            </div>
-
-                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; margin-top: 1rem;">
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; margin-top: 2rem;">
                                 <h4 style="margin: 0 0 1rem 0; color: #1a202c; font-size: 1rem;"><i class="fas fa-info-circle" style="color: #3b82f6; margin-right: 0.5rem;"></i> More Items Coming Soon!</h4>
                                 <p style="margin: 0; color: #4a5568; font-size: 0.9rem;">We're working on adding more exciting items you can purchase with your club balance. Stay tuned for hardware, swag, and other cool club perks!</p>
                             </div>
