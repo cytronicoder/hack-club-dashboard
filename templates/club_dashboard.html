@@ -90,11 +90,17 @@
 
             <div class="dashboard-main">
                 <section id="dashboard" class="club-section active">
-                    <div class="section-header">
+                    <div class="section-header" style="position: relative;">
                         <h2><i class="fas fa-tachometer-alt"></i> Dashboard</h2>
                         <p>Welcome to {{ club.name }}</p>
+                        {% if current_user.id == club.leader_id %}
+                        <button class="pizza-party-button" onclick="purchasePizza()" style="position: absolute; top: 0; right: 0; background: linear-gradient(135deg, #ec3750, #d63146); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0px)'">
+                            <i class="fas fa-pizza-slice"></i> Pizza Party
+                        </button>
+                        {% endif %}
                     </div>
 
+                    {% if current_user.id == club.leader_id %}
                     <div class="dashboard-cards">
                         <div class="dashboard-card">
                             <div class="dashboard-card-header">
@@ -168,6 +174,8 @@
                             </div>
                         </div>
                     </div>
+                    {% endif %}
+
                 </section>
 
                 <section id="stream" class="club-section">
@@ -443,7 +451,15 @@
                             <div style="font-size: 3rem; font-weight: bold; color: #ec3750; margin-bottom: 1rem;">
                                 ${{ "%.2f"|format(club.balance|float) }}
                             </div>
-                            <p style="color: #6b7280; font-size: 1.1rem;">Available to spend on club items</p>
+                            <p style="color: #6b7280; font-size: 1.1rem; margin-bottom: 2rem;">Available to spend on club items</p>
+
+                            <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 1.5rem;">
+                                <h4 style="margin: 0 0 1rem 0; color: #92400e; font-size: 1rem;"><i class="fas fa-hand-holding-usd" style="color: #f59e0b; margin-right: 0.5rem;"></i> Need More Club Balance?</h4>
+                                <p style="margin: 0 0 1rem 0; color: #92400e; font-size: 0.9rem;">Submit your coding projects in the <strong>Project Grants</strong> tab to earn more balance for your club! Each approved project adds funds that you can spend here.</p>
+                                <a href="#pizza" class="btn btn-sm" style="background: #f59e0b; color: white; border: none; text-decoration: none; display: inline-block; padding: 0.5rem 1rem; border-radius: 6px;" onclick="openTab('pizza')">
+                                    <i class="fas fa-arrow-right" style="margin-right: 0.5rem;"></i>Go to Project Grants
+                                </a>
+                            </div>
                         </div>
                     </div>
 
@@ -557,7 +573,7 @@
                                         <img src="{{ url_for('static', filename='assets/swirl.png') }}" alt="Swirl" style="width: 80px; height: 80px; object-fit: contain;">
                                     </div>
                                     <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.25rem; font-weight: 600;">Swirl</h4>
-                                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5;">Run a personal website workshop and get ice cream for the workshop!</p>
+                                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5.: Run a personal website workshop and get ice cream for the workshop!</p>
                                     <div style="background: #ec3750; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-block;">
                                         <i class="fas fa-external-link-alt" style="margin-right: 0.5rem;"></i>
                                         Get Ice Cream
@@ -1046,6 +1062,18 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<style>
+    .dashboard-header {
+        text-align: center;
+        margin-bottom: 3rem;
+        padding: 2rem;
+        background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+        border-radius: 20px;
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255,255,255,0.1);
+        position: relative;
+    }
+</style>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
 <script src="{{ url_for('static', filename='js/dash.js') }}"></script>
 {% endblock %}
