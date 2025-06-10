@@ -282,6 +282,12 @@
                 <input type="date" class="form-control" id="birthday" placeholder="Enter your birthday">
             </div>
 
+            <div class="form-group">
+                <label class="form-label">Password *</label>
+                <input type="password" class="form-control" id="password" placeholder="Create a password" required minlength="6">
+                <small style="color: #64748b; font-size: 0.875rem;">You'll need this to sign in without Slack</small>
+            </div>
+
             <div class="checkbox-group">
                 <input type="checkbox" id="isLeader">
                 <label for="isLeader">
@@ -323,12 +329,22 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
         
+        const passwordInput = document.getElementById('password');
+        
+        if (!passwordInput) {
+            console.error('Password input not found');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            return;
+        }
+
         const data = {
             username: usernameInput.value.trim(),
             email: emailInput.value.trim(),
             first_name: firstNameInput.value.trim(),
             last_name: lastNameInput ? lastNameInput.value.trim() : '',
             birthday: birthdayInput ? birthdayInput.value : '',
+            password: passwordInput.value,
             is_leader: isLeaderCheckbox.checked
         };
         

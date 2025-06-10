@@ -969,6 +969,7 @@ def complete_slack_signup():
         last_name = data.get('last_name', '').strip()
         birthday = data.get('birthday', '').strip()
         email = data.get('email', slack_data.get('email', '')).strip()
+        password = data.get('password', '').strip()
         is_leader = data.get('is_leader', False)
 
         if not username or len(username) < 3:
@@ -979,6 +980,9 @@ def complete_slack_signup():
 
         if not first_name:
             return jsonify({'error': 'First name is required'}), 400
+
+        if not password or len(password) < 6:
+            return jsonify({'error': 'Password must be at least 6 characters long'}), 400
 
         if User.query.filter_by(username=username).first():
             return jsonify({'error': 'Username already taken'}), 400
@@ -995,7 +999,7 @@ def complete_slack_signup():
                 slack_user_id=slack_data['slack_user_id'],
                 birthday=datetime.strptime(birthday, '%Y-%m-%d').date() if birthday else None
             )
-            user.set_password(secrets.token_urlsafe(32))
+            user.set_password(password)
 
             db.session.add(user)
             db.session.flush()
