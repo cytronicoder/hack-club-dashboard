@@ -2261,7 +2261,31 @@ def get_club_pizza_grants(club_id):
         all_submissions = airtable_service.get_pizza_grant_submissions()
         # Filter submissions for this club only
         club_submissions = [sub for sub in all_submissions if sub.get('club_name') == club.name]
-        return jsonify({'submissions': club_submissions})
+        
+        # Filter response based on user role
+        if is_leader:
+            # Leaders can see all fields for their club
+            filtered_submissions = club_submissions
+        else:
+            # Regular members can only see safe, non-personal fields
+            filtered_submissions = []
+            for sub in club_submissions:
+                filtered_sub = {
+                    'id': sub.get('id'),
+                    'project_name': sub.get('project_name'),
+                    'description': sub.get('description'),
+                    'playable_url': sub.get('playable_url'),
+                    'code_url': sub.get('code_url'),
+                    'hours': sub.get('hours'),
+                    'grant_amount': sub.get('grant_amount'),
+                    'status': sub.get('status'),
+                    'created_time': sub.get('created_time'),
+                    'github_username': sub.get('github_username'),
+                    'screenshot_url': sub.get('screenshot_url')
+                }
+                filtered_submissions.append(filtered_sub)
+        
+        return jsonify({'submissions': filtered_submissions})
     except Exception as e:
         logger.error(f"Error fetching club pizza grant submissions: {str(e)}")
         return jsonify({'error': 'Failed to fetch submissions from Airtable'}), 500
