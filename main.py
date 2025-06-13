@@ -458,11 +458,13 @@ else:
     class OAuthAuthorizationCode:
         pass
 
-@login_manager.user_loader
 def load_user(user_id):
     if not db_available:
         return None
     return db.session.get(User, int(user_id))
+
+if login_manager is not None:
+    login_manager.user_loader(load_user)
 
 # Airtable Service for Pizza Grants
 class AirtableService:
