@@ -3,22 +3,20 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy dependency files
 COPY pyproject.toml ./
+COPY uv.lock* ./
 
-# Install dependencies directly with pip
-RUN pip install --no-cache-dir flask flask-login flask-sqlalchemy requests psycopg2-binary werkzeug flask-limiter gunicorn
+RUN pip install --no-cache-dir uv
+RUN uv pip install --system --no-cache flask flask-login flask-sqlalchemy requests psycopg2-binary werkzeug flask-limiter flask-session python-dotenv gunicorn
 
-# Copy application code
 COPY . .
-
-# Create non-root user
-RUN adduser --disabled-password --gecos '' appuser && chown -R appuser:appuser /app
-USER appuser
 
 EXPOSE 5000
 
 ENV FLASK_ENV=production
 ENV PYTHONUNBUFFERED=1
 
-CMD ["sh", "-c", "gunicorn --config gunicorn.conf.py main:app"]
+RUN adduser --disabled-password --gecos '' appuser && chown -R appuser:appuser /app
+USER appuser
+
+CMD ["sh", "-c", "set -a && . ./.env && set +a && gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 main:app"]
