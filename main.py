@@ -475,6 +475,18 @@ def load_user(user_id):
 if login_manager is not None:
     login_manager.user_loader(load_user)
 
+@app.context_processor
+def inject_user():
+    if db_available and login_manager is not None:
+        return dict(current_user=current_user)
+    else:
+        # Create a dummy user object when database is unavailable
+        class DummyUser:
+            def is_authenticated(self):
+                return False
+            is_authenticated = property(is_authenticated)
+        return dict(current_user=DummyUser())
+
 # Airtable Service for Pizza Grants
 class AirtableService:
     def __init__(self):
