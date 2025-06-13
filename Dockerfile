@@ -19,4 +19,4 @@ ENV PYTHONUNBUFFERED=1
 RUN adduser --disabled-password --gecos '' appuser && chown -R appuser:appuser /app
 USER appuser
 
-CMD ["sh", "-c", "set -a && . ./.env && set +a && gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 main:app"]
+CMD ["sh", "-c", "set -a && [ -f ./.env ] && . ./.env || true && set +a && gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 main:app"]
