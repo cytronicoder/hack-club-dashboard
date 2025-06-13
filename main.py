@@ -174,6 +174,21 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(16))
 app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Configure logging for production
+import logging
+if os.getenv('FLASK_ENV') == 'production':
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s %(levelname)s %(name)s %(message)s',
+        handlers=[
+            logging.StreamHandler()
+        ]
+    )
+    app.logger.setLevel(logging.INFO)
+    app.logger.info('Flask app starting in production mode')
+    app.logger.info(f'Database URL configured: {bool(get_database_url())}')
+    app.logger.info(f'Environment variables loaded: SECRET_KEY={bool(os.getenv("SECRET_KEY"))}, DATABASE_URL={bool(os.getenv("DATABASE_URL"))}')
+
 # Configure persistent sessions
 if session_available:
     app.config['SESSION_TYPE'] = 'filesystem'
@@ -211,9 +226,24 @@ try:
         storage_uri="memory://",
         strategy="fixed-window"
     )
+    
+    if os.getenv('FLASK_ENV') == 'production':
+        app.logger.info('Database and components initialized successfully')
 except Exception as e:
-    print(f"Database initialization failed: {e}")
+    error_msg = f"Database initialization failed: {e}"
+    print(error_msg)
+    if os.getenv('FLASK_ENV') == 'production':
+        app.logger.error(error_msg)
     db_available = False
+    
+    # Create a dummy limiter that does nothing when database is unavailable
+    class DummyLimiter:
+        def limit(self, *args, **kwargs):
+            def decorator(f):
+                return f
+            return decorator
+    
+    limiter = DummyLimiter()
 
 # Models - only define if database is available
 if db_available and db is not None:
@@ -437,11 +467,25 @@ else:
     class OAuthAuthorizationCode:
         pass
 
-@login_manager.user_loader
 def load_user(user_id):
     if not db_available:
         return None
     return db.session.get(User, int(user_id))
+
+if login_manager is not None:
+    login_manager.user_loader(load_user)
+
+@app.context_processor
+def inject_user():
+    if db_available and login_manager is not None:
+        return dict(current_user=current_user)
+    else:
+        # Create a dummy user object when database is unavailable
+        class DummyUser:
+            def is_authenticated(self):
+                return False
+            is_authenticated = property(is_authenticated)
+        return dict(current_user=DummyUser())
 
 # Airtable Service for Pizza Grants
 class AirtableService:
@@ -3303,6 +3347,9 @@ if __name__ == '__main__':
         try:
             with app.app_context():
                 db.create_all()
+                
+                if os.getenv('FLASK_ENV') == 'production':
+                    app.logger.info('Database tables created successfully')
 
                 # Create super admin if doesn't exist
                 super_admin = User.query.filter_by(email='ethan@hackclub.com').first()
@@ -3315,16 +3362,26 @@ if __name__ == '__main__':
                     super_admin.set_password('hackclub2024')  # Default password
                     db.session.add(super_admin)
                     db.session.commit()
+                    if os.getenv('FLASK_ENV') == 'production':
+                        app.logger.info('Super admin account created')
                 else:
                     # Ensure admin status
                     super_admin.is_admin = True
                     db.session.commit()
+                    if os.getenv('FLASK_ENV') == 'production':
+                        app.logger.info('Super admin account verified')
 
         except Exception as e:
-            print(f"Database connection failed: {e}")
+            error_msg = f"Database connection failed: {e}"
+            print(error_msg)
+            if os.getenv('FLASK_ENV') == 'production':
+                app.logger.error(error_msg)
             print("Starting app without database functionality...")
             db_available = False
     else:
-        print("Starting app without database functionality...")
+        msg = "Starting app without database functionality..."
+        print(msg)
+        if os.getenv('FLASK_ENV') == 'production':
+            app.logger.warning(msg)
 
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -1,0 +1,157 @@
+/workspace$  gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 --log-level info --access-logfile - --error-logfile - main:app
+gunicorn: command not installed. Multiple versions of this command were found in Nix.
+Select one to run (or press Ctrl-C to cancel):
+python312Packages.gunicorn  21.2.0  gunicorn 'Green Unicorn' is a WSGI HTTP Server for UNIX, fast clients and sleepy applications
+Adding python312Packages.gunicorn to .replit
+[2025-06-13 02:03:06 +0000] [2885] [INFO] Starting gunicorn 21.2.0
+[2025-06-13 02:03:06 +0000] [2885] [INFO] Listening at: http://0.0.0.0:5000 (2885)
+[2025-06-13 02:03:06 +0000] [2885] [INFO] Using worker: sync
+[2025-06-13 02:03:06 +0000] [2904] [INFO] Booting worker with pid: 2904
+[2025-06-13 02:03:06 +0000] [2905] [INFO] Booting worker with pid: 2905
+[2025-06-13 02:03:06 +0000] [2906] [INFO] Booting worker with pid: 2906
+[2025-06-13 02:03:06 +0000] [2907] [INFO] Booting worker with pid: 2907
+[2025-06-13 02:03:06 +0000] [2885] [INFO] Handling signal: winch
+Database initialization failed: No module named 'psycopg2._psycopg'
+Database initialization failed: No module named 'psycopg2._psycopg'
+Database initialization failed: No module named 'psycopg2._psycopg'
+Database initialization failed: No module named 'psycopg2._psycopg'
+[2025-06-13 02:03:09 +0000] [2905] [ERROR] Exception in worker process
+Traceback (most recent call last):
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/arbiter.py", line 609, in spawn_worker
+    worker.init_process()
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/workers/base.py", line 134, in init_process
+    self.load_wsgi()
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/workers/base.py", line 146, in load_wsgi
+    self.wsgi = self.app.wsgi()
+                ^^^^^^^^^^^^^^^
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/app/base.py", line 67, in wsgi
+    self.callable = self.load()
+                    ^^^^^^^^^^^
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/app/wsgiapp.py", line 58, in load
+    return self.load_wsgiapp()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/app/wsgiapp.py", line 48, in load_wsgiapp
+    return util.import_app(self.app_uri)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/util.py", line 371, in import_app
+    mod = importlib.import_module(module)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/c7ycrgwv039nqglbif98yggx211sdbcl-python3-3.12.3/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/runner/workspace/main.py", line 461, in <module>
+    @login_manager.user_loader
+     ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'user_loader'
+[2025-06-13 02:03:09 +0000] [2905] [INFO] Worker exiting (pid: 2905)
+[2025-06-13 02:03:09 +0000] [2906] [ERROR] Exception in worker process
+Traceback (most recent call last):
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/arbiter.py", line 609, in spawn_worker
+    worker.init_process()
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/workers/base.py", line 134, in init_process
+    self.load_wsgi()
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/workers/base.py", line 146, in load_wsgi
+    self.wsgi = self.app.wsgi()
+                ^^^^^^^^^^^^^^^
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/app/base.py", line 67, in wsgi
+    self.callable = self.load()
+                    ^^^^^^^^^^^
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/app/wsgiapp.py", line 58, in load
+    return self.load_wsgiapp()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/app/wsgiapp.py", line 48, in load_wsgiapp
+    return util.import_app(self.app_uri)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/util.py", line 371, in import_app
+    mod = importlib.import_module(module)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/c7ycrgwv039nqglbif98yggx211sdbcl-python3-3.12.3/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/runner/workspace/main.py", line 461, in <module>
+    @login_manager.user_loader
+     ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'user_loader'
+[2025-06-13 02:03:09 +0000] [2906] [INFO] Worker exiting (pid: 2906)
+[2025-06-13 02:03:09 +0000] [2907] [ERROR] Exception in worker process
+Traceback (most recent call last):
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/arbiter.py", line 609, in spawn_worker
+    worker.init_process()
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/workers/base.py", line 134, in init_process
+    self.load_wsgi()
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/workers/base.py", line 146, in load_wsgi
+    self.wsgi = self.app.wsgi()
+                ^^^^^^^^^^^^^^^
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/app/base.py", line 67, in wsgi
+    self.callable = self.load()
+                    ^^^^^^^^^^^
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/app/wsgiapp.py", line 58, in load
+    return self.load_wsgiapp()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/app/wsgiapp.py", line 48, in load_wsgiapp
+    return util.import_app(self.app_uri)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/util.py", line 371, in import_app
+    mod = importlib.import_module(module)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/c7ycrgwv039nqglbif98yggx211sdbcl-python3-3.12.3/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/runner/workspace/main.py", line 461, in <module>
+    @login_manager.user_loader
+     ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'user_loader'
+[2025-06-13 02:03:09 +0000] [2907] [INFO] Worker exiting (pid: 2907)
+[2025-06-13 02:03:09 +0000] [2904] [ERROR] Exception in worker process
+Traceback (most recent call last):
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/arbiter.py", line 609, in spawn_worker
+    worker.init_process()
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/workers/base.py", line 134, in init_process
+    self.load_wsgi()
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/workers/base.py", line 146, in load_wsgi
+    self.wsgi = self.app.wsgi()
+                ^^^^^^^^^^^^^^^
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/app/base.py", line 67, in wsgi
+    self.callable = self.load()
+                    ^^^^^^^^^^^
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/app/wsgiapp.py", line 58, in load
+    return self.load_wsgiapp()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/app/wsgiapp.py", line 48, in load_wsgiapp
+    return util.import_app(self.app_uri)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/gxlhlsg3p9lgsb2bda7ylnp9iwwf2svm-python3.12-gunicorn-21.2.0/lib/python3.12/site-packages/gunicorn/util.py", line 371, in import_app
+    mod = importlib.import_module(module)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/c7ycrgwv039nqglbif98yggx211sdbcl-python3-3.12.3/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/runner/workspace/main.py", line 461, in <module>
+    @login_manager.user_loader
+     ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'user_loader'
+[2025-06-13 02:03:09 +0000] [2904] [INFO] Worker exiting (pid: 2904)

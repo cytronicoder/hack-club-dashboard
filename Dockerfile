@@ -19,4 +19,4 @@ ENV PYTHONUNBUFFERED=1
 RUN adduser --disabled-password --gecos '' appuser && chown -R appuser:appuser /app
 USER appuser
 
-CMD ["sh", "-c", "set -a && [ -f ./.env ] && . ./.env || true && set +a && gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 main:app"]
+CMD ["sh", "-c", "set -a && if [ -f ./.env ]; then echo 'Loading .env file...' && . ./.env && echo 'Environment loaded from .env'; else echo 'No .env file found, using system environment variables'; fi && set +a && echo 'Starting gunicorn...' && gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 --log-level info --access-logfile - --error-logfile - main:app"]
