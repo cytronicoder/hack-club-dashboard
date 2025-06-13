@@ -1,4 +1,3 @@
-
 // Global variables
 let clubId = '';
 let joinCode = '';
@@ -25,6 +24,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (clubId) {
         loadInitialData();
     }
+
+    // Setup settings form handler
+    setupSettingsForm();
 });
 
 // Utility function to safely escape HTML
@@ -144,6 +146,12 @@ function loadSectionData(section) {
             break;
         case 'resources':
             loadResources();
+            break;
+        case 'pizza':
+            loadClubPizzaGrants();
+            break;
+        case 'shop':
+            loadShop();
             break;
     }
 }
@@ -269,26 +277,26 @@ function loadPosts() {
         .then(data => {
             const postsList = document.getElementById('postsList');
             postsList.innerHTML = '';
-            
+
             if (data.posts && data.posts.length > 0) {
                 data.posts.forEach(post => {
                     const postCard = createElement('div', 'post-card');
-                    
+
                     const postHeader = createElement('div', 'post-header');
                     const postAvatar = createElement('div', 'post-avatar', post.user.username[0].toUpperCase());
                     const postInfo = createElement('div', 'post-info');
                     const postUsername = createElement('h4', '', post.user.username);
                     const postDate = createElement('div', 'post-date', new Date(post.created_at).toLocaleDateString());
-                    
+
                     postInfo.appendChild(postUsername);
                     postInfo.appendChild(postDate);
                     postHeader.appendChild(postAvatar);
                     postHeader.appendChild(postInfo);
-                    
+
                     const postContent = createElement('div', 'post-content');
                     const postText = createElement('p', '', post.content);
                     postContent.appendChild(postText);
-                    
+
                     postCard.appendChild(postHeader);
                     postCard.appendChild(postContent);
                     postsList.appendChild(postCard);
@@ -298,7 +306,7 @@ function loadPosts() {
                 const icon = createElement('i', 'fas fa-stream');
                 const title = createElement('h3', '', 'No posts yet');
                 const description = createElement('p', '', 'Be the first to share something with your club!');
-                
+
                 emptyState.appendChild(icon);
                 emptyState.appendChild(title);
                 emptyState.appendChild(description);
@@ -405,36 +413,36 @@ function loadAssignments() {
         .then(data => {
             const assignmentsList = document.getElementById('assignmentsList');
             const assignmentsCount = document.getElementById('assignmentsCount');
-            
+
             assignmentsList.innerHTML = '';
 
             if (data.assignments && data.assignments.length > 0) {
                 data.assignments.forEach(assignment => {
                     const card = createElement('div', 'card');
                     card.style.marginBottom = '1rem';
-                    
+
                     const cardHeader = createElement('div', 'card-header');
                     cardHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: flex-start;';
-                    
+
                     const headerDiv = createElement('div');
                     const title = createElement('h3', '', assignment.title);
                     title.style.cssText = 'margin: 0; font-size: 1.125rem; color: #1f2937;';
-                    
+
                     const statusSpan = createElement('span', '', assignment.status);
                     statusSpan.style.cssText = `background: ${assignment.status === 'active' ? '#10b981' : '#6b7280'}; color: white; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; margin-top: 0.5rem; display: inline-block;`;
-                    
+
                     headerDiv.appendChild(title);
                     headerDiv.appendChild(statusSpan);
                     cardHeader.appendChild(headerDiv);
-                    
+
                     const cardBody = createElement('div', 'card-body');
                     const description = createElement('p', '', assignment.description);
                     description.style.cssText = 'margin-bottom: 1rem; color: #6b7280;';
                     cardBody.appendChild(description);
-                    
+
                     const infoDiv = createElement('div');
                     infoDiv.style.cssText = 'display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.875rem; color: #6b7280;';
-                    
+
                     if (assignment.due_date) {
                         const dueSpan = createElement('span');
                         dueSpan.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
@@ -443,14 +451,14 @@ function loadAssignments() {
                         dueSpan.appendChild(document.createTextNode(' Due: ' + new Date(assignment.due_date).toLocaleDateString()));
                         infoDiv.appendChild(dueSpan);
                     }
-                    
+
                     const membersSpan = createElement('span');
                     membersSpan.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
                     const membersIcon = createElement('i', 'fas fa-users');
                     membersSpan.appendChild(membersIcon);
                     membersSpan.appendChild(document.createTextNode(' ' + (assignment.for_all_members ? 'All members' : 'Selected members')));
                     infoDiv.appendChild(membersSpan);
-                    
+
                     cardBody.appendChild(infoDiv);
                     card.appendChild(cardHeader);
                     card.appendChild(cardBody);
@@ -463,12 +471,12 @@ function loadAssignments() {
                 const icon = createElement('i', 'fas fa-clipboard-list');
                 const title = createElement('h3', '', 'No assignments yet');
                 const description = createElement('p', '', 'Create your first assignment to get started!');
-                
+
                 emptyState.appendChild(icon);
                 emptyState.appendChild(title);
                 emptyState.appendChild(description);
                 assignmentsList.appendChild(emptyState);
-                
+
                 assignmentsCount.textContent = '0';
             }
         })
@@ -555,7 +563,7 @@ function loadMeetings() {
         .then(data => {
             const meetingsList = document.getElementById('meetingsList');
             const meetingsCount = document.getElementById('meetingsCount');
-            
+
             meetingsList.innerHTML = '';
 
             if (data.meetings && data.meetings.length > 0) {
@@ -563,34 +571,34 @@ function loadMeetings() {
                     const card = createElement('div', 'card');
                     card.style.marginBottom = '1rem';
                     card.id = `meeting-${meeting.id}`;
-                    
+
                     const cardHeader = createElement('div', 'card-header');
                     cardHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: flex-start;';
-                    
+
                     const headerDiv = createElement('div');
                     const title = createElement('h3', '', meeting.title);
                     title.style.cssText = 'margin: 0; font-size: 1.125rem; color: #1f2937;';
                     headerDiv.appendChild(title);
                     cardHeader.appendChild(headerDiv);
-                    
+
                     const cardBody = createElement('div', 'card-body');
-                    
+
                     if (meeting.description) {
                         const description = createElement('p', '', meeting.description);
                         description.style.cssText = 'margin-bottom: 1rem; color: #6b7280;';
                         cardBody.appendChild(description);
                     }
-                    
+
                     const infoDiv = createElement('div');
                     infoDiv.style.cssText = 'display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.875rem; color: #6b7280;';
-                    
+
                     const dateSpan = createElement('span');
                     dateSpan.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
                     const dateIcon = createElement('i', 'fas fa-calendar');
                     dateSpan.appendChild(dateIcon);
                     dateSpan.appendChild(document.createTextNode(' ' + new Date(meeting.meeting_date).toLocaleDateString()));
                     infoDiv.appendChild(dateSpan);
-                    
+
                     const timeSpan = createElement('span');
                     timeSpan.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
                     const timeIcon = createElement('i', 'fas fa-clock');
@@ -598,7 +606,7 @@ function loadMeetings() {
                     const timeText = meeting.start_time + (meeting.end_time ? ` - ${meeting.end_time}` : '');
                     timeSpan.appendChild(document.createTextNode(' ' + timeText));
                     infoDiv.appendChild(timeSpan);
-                    
+
                     if (meeting.location) {
                         const locationSpan = createElement('span');
                         locationSpan.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
@@ -607,14 +615,14 @@ function loadMeetings() {
                         locationSpan.appendChild(document.createTextNode(' ' + meeting.location));
                         infoDiv.appendChild(locationSpan);
                     }
-                    
+
                     if (meeting.meeting_link) {
                         const linkSpan = createElement('span');
                         linkSpan.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
                         const linkIcon = createElement('i', 'fas fa-link');
                         linkSpan.appendChild(linkIcon);
                         linkSpan.appendChild(document.createTextNode(' '));
-                        
+
                         const link = createElement('a');
                         link.href = meeting.meeting_link;
                         link.target = '_blank';
@@ -623,7 +631,7 @@ function loadMeetings() {
                         linkSpan.appendChild(link);
                         infoDiv.appendChild(linkSpan);
                     }
-                    
+
                     cardBody.appendChild(infoDiv);
                     card.appendChild(cardHeader);
                     card.appendChild(cardBody);
@@ -642,12 +650,12 @@ function loadMeetings() {
                 const icon = createElement('i', 'fas fa-calendar-times');
                 const title = createElement('h3', '', 'No meetings scheduled');
                 const description = createElement('p', '', 'Schedule your first club meeting to get started!');
-                
+
                 emptyState.appendChild(icon);
                 emptyState.appendChild(title);
                 emptyState.appendChild(description);
                 meetingsList.appendChild(emptyState);
-                
+
                 meetingsCount.textContent = '0';
             }
         })
@@ -779,52 +787,52 @@ function loadProjects() {
         .then(data => {
             const projectsList = document.getElementById('projectsList');
             const projectsCount = document.getElementById('projectsCount');
-            
+
             projectsList.innerHTML = '';
 
             if (data.projects && data.projects.length > 0) {
                 data.projects.forEach(project => {
                     const card = createElement('div', 'card');
                     card.style.marginBottom = '1rem';
-                    
+
                     const cardHeader = createElement('div', 'card-header');
                     cardHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: flex-start;';
-                    
+
                     const headerDiv = createElement('div');
                     const title = createElement('h3', '', project.name);
                     title.style.cssText = 'margin: 0; font-size: 1.125rem; color: #1f2937;';
                     headerDiv.appendChild(title);
-                    
+
                     if (project.featured) {
                         const featuredSpan = createElement('span', '', 'Featured');
                         featuredSpan.style.cssText = 'background: #f59e0b; color: white; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; margin-top: 0.5rem; display: inline-block;';
                         headerDiv.appendChild(featuredSpan);
                     }
-                    
+
                     cardHeader.appendChild(headerDiv);
-                    
+
                     const cardBody = createElement('div', 'card-body');
                     const description = createElement('p', '', project.description || 'No description available');
                     description.style.cssText = 'margin-bottom: 1rem; color: #6b7280;';
                     cardBody.appendChild(description);
-                    
+
                     const infoDiv = createElement('div');
                     infoDiv.style.cssText = 'display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.875rem; color: #6b7280;';
-                    
+
                     const ownerSpan = createElement('span');
                     ownerSpan.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
                     const ownerIcon = createElement('i', 'fas fa-user');
                     ownerSpan.appendChild(ownerIcon);
                     ownerSpan.appendChild(document.createTextNode(' ' + project.owner.username));
                     infoDiv.appendChild(ownerSpan);
-                    
+
                     const dateSpan = createElement('span');
                     dateSpan.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
                     const dateIcon = createElement('i', 'fas fa-calendar');
                     dateSpan.appendChild(dateIcon);
                     dateSpan.appendChild(document.createTextNode(' ' + new Date(project.updated_at).toLocaleDateString()));
                     infoDiv.appendChild(dateSpan);
-                    
+
                     cardBody.appendChild(infoDiv);
                     card.appendChild(cardHeader);
                     card.appendChild(cardBody);
@@ -837,12 +845,12 @@ function loadProjects() {
                 const icon = createElement('i', 'fas fa-code');
                 const title = createElement('h3', '', 'No projects yet');
                 const description = createElement('p', '', 'Members can start creating projects to showcase here!');
-                
+
                 emptyState.appendChild(icon);
                 emptyState.appendChild(title);
                 emptyState.appendChild(description);
                 projectsList.appendChild(emptyState);
-                
+
                 projectsCount.textContent = '0';
             }
         })
@@ -929,10 +937,10 @@ function loadResources() {
                     const card = createElement('div', 'card');
                     card.style.marginBottom = '1rem';
                     card.id = `resource-${resource.id}`;
-                    
+
                     const cardHeader = createElement('div', 'card-header');
                     cardHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: flex-start;';
-                    
+
                     const headerDiv = createElement('div');
                     const title = createElement('h3');
                     title.style.cssText = 'margin: 0; font-size: 1.125rem; color: #1f2937;';
@@ -941,24 +949,24 @@ function loadResources() {
                     title.appendChild(document.createTextNode(' ' + resource.title));
                     headerDiv.appendChild(title);
                     cardHeader.appendChild(headerDiv);
-                    
+
                     const cardBody = createElement('div', 'card-body');
-                    
+
                     if (resource.description) {
                         const description = createElement('p', '', resource.description);
                         description.style.cssText = 'margin-bottom: 1rem; color: #6b7280;';
                         cardBody.appendChild(description);
                     }
-                    
+
                     const infoDiv = createElement('div');
                     infoDiv.style.cssText = 'display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.875rem; color: #6b7280;';
-                    
+
                     const linkSpan = createElement('span');
                     linkSpan.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
                     const linkIcon = createElement('i', 'fas fa-link');
                     linkSpan.appendChild(linkIcon);
                     linkSpan.appendChild(document.createTextNode(' '));
-                    
+
                     const link = createElement('a');
                     link.href = resource.url;
                     link.target = '_blank';
@@ -966,7 +974,7 @@ function loadResources() {
                     link.textContent = 'Visit Resource';
                     linkSpan.appendChild(link);
                     infoDiv.appendChild(linkSpan);
-                    
+
                     cardBody.appendChild(infoDiv);
                     card.appendChild(cardHeader);
                     card.appendChild(cardBody);
@@ -977,7 +985,7 @@ function loadResources() {
                 const icon = createElement('i', 'fas fa-book');
                 const title = createElement('h3', '', 'No resources yet');
                 const description = createElement('p', '', 'Add helpful links and learning materials for your club!');
-                
+
                 emptyState.appendChild(icon);
                 emptyState.appendChild(title);
                 emptyState.appendChild(description);
@@ -1296,11 +1304,15 @@ function submitPizzaGrantWithScreenshot(screenshotUrl, projectData, submitButton
     .then(data => {
         submitButton.textContent = originalText;
         submitButton.disabled = false;
-        
+
         if (data.message) {
             document.getElementById('pizzaGrantModal').style.display = 'none';
             document.getElementById('pizzaGrantForm').reset();
             showToast('success', 'Pizza grant submitted successfully!', 'Pizza Grant Submitted');
+            // Refresh the submissions list if we're on the pizza tab
+            if (document.querySelector('#pizza.active')) {
+                loadClubPizzaGrants();
+            }
         } else {
             showToast('error', data.error || 'Failed to submit pizza grant', 'Error');
         }
@@ -1323,7 +1335,7 @@ function loadHackatimeProjects() {
         const icon = createElement('i', 'fas fa-clock');
         const title = createElement('h3', '', 'Select a member');
         const description = createElement('p', '', 'Choose a member from the dropdown to view their Hackatime coding projects');
-        
+
         emptyState.appendChild(icon);
         emptyState.appendChild(title);
         emptyState.appendChild(description);
@@ -1336,7 +1348,7 @@ function loadHackatimeProjects() {
     const loadingIcon = createElement('i', 'fas fa-spinner fa-spin');
     const loadingTitle = createElement('h3', '', 'Loading projects...');
     const loadingDescription = createElement('p', '', 'Fetching Hackatime data');
-    
+
     loadingState.appendChild(loadingIcon);
     loadingState.appendChild(loadingTitle);
     loadingState.appendChild(loadingDescription);
@@ -1346,14 +1358,14 @@ function loadHackatimeProjects() {
         .then(response => response.json())
         .then(data => {
             projectsList.innerHTML = '';
-            
+
             if (data.error) {
                 const errorState = createElement('div', 'empty-state');
                 const errorIcon = createElement('i', 'fas fa-exclamation-triangle');
                 errorIcon.style.color = '#f59e0b';
                 const errorTitle = createElement('h3', '', 'Unable to load projects');
                 const errorDescription = createElement('p', '', data.error);
-                
+
                 errorState.appendChild(errorIcon);
                 errorState.appendChild(errorTitle);
                 errorState.appendChild(errorDescription);
@@ -1365,39 +1377,39 @@ function loadHackatimeProjects() {
                 const title = createElement('h4', '', `${data.username}'s Hackatime Projects`);
                 title.style.cssText = 'margin-bottom: 1rem; color: #1a202c;';
                 projectsList.appendChild(title);
-                
+
                 data.projects.forEach(project => {
                     const card = createElement('div', 'card');
                     card.style.marginBottom = '1rem';
-                    
+
                     const cardHeader = createElement('div', 'card-header');
                     cardHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: flex-start;';
-                    
+
                     const headerDiv = createElement('div');
                     const projectTitle = createElement('h3');
                     projectTitle.style.cssText = 'margin: 0; font-size: 1.125rem; color: #1f2937;';
                     const codeIcon = createElement('i', 'fas fa-code');
                     projectTitle.appendChild(codeIcon);
                     projectTitle.appendChild(document.createTextNode(' ' + project.name));
-                    
+
                     const timeSpan = createElement('span', '', project.formatted_time);
                     timeSpan.style.cssText = 'background: #10b981; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-top: 0.5rem; display: inline-block;';
-                    
+
                     headerDiv.appendChild(projectTitle);
                     headerDiv.appendChild(timeSpan);
                     cardHeader.appendChild(headerDiv);
-                    
+
                     const cardBody = createElement('div', 'card-body');
                     const infoDiv = createElement('div');
                     infoDiv.style.cssText = 'display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.875rem; color: #6b7280; margin-top: 0;';
-                    
+
                     const timeInfo = createElement('span');
                     timeInfo.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
                     const clockIcon = createElement('i', 'fas fa-clock');
                     timeInfo.appendChild(clockIcon);
                     timeInfo.appendChild(document.createTextNode(` ${project.total_seconds.toLocaleString()} seconds (${project.formatted_time})`));
                     infoDiv.appendChild(timeInfo);
-                    
+
                     if (project.percent) {
                         const percentInfo = createElement('span');
                         percentInfo.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
@@ -1406,7 +1418,7 @@ function loadHackatimeProjects() {
                         percentInfo.appendChild(document.createTextNode(` ${project.percent.toFixed(1)}% of total time`));
                         infoDiv.appendChild(percentInfo);
                     }
-                    
+
                     cardBody.appendChild(infoDiv);
                     card.appendChild(cardHeader);
                     card.appendChild(cardBody);
@@ -1417,7 +1429,7 @@ function loadHackatimeProjects() {
                 const icon = createElement('i', 'fas fa-clock');
                 const title = createElement('h3', '', 'No projects found');
                 const description = createElement('p', '', `${data.username} hasn't logged any coding time yet on Hackatime`);
-                
+
                 emptyState.appendChild(icon);
                 emptyState.appendChild(title);
                 emptyState.appendChild(description);
@@ -1431,12 +1443,12 @@ function loadHackatimeProjects() {
             errorIcon.style.color = '#ef4444';
             const errorTitle = createElement('h3', '', 'Error loading projects');
             const errorDescription = createElement('p', '', 'Failed to fetch Hackatime data. Please try again.');
-            
+
             errorState.appendChild(errorIcon);
             errorState.appendChild(errorTitle);
             errorState.appendChild(errorDescription);
             projectsList.appendChild(errorState);
-            
+
             showToast('error', 'Failed to load Hackatime projects', 'Error');
         });
 }
@@ -1488,6 +1500,394 @@ const memberSelect = document.getElementById('grantMemberSelect');
             loadMemberHackatimeProjects();
         });
     }
+
+// Settings form submission handler
+function setupSettingsForm() {
+    const settingsForm = document.getElementById('clubSettingsForm');
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            updateClubSettings();
+        });
+    }
+}
+
+function updateClubSettings() {
+    if (!clubId) {
+        showToast('error', 'Cannot update settings: Club ID is missing.', 'Error');
+        console.error('updateClubSettings: clubId is missing.');
+        return;
+    }
+
+    const clubName = document.getElementById('clubName').value;
+    const clubDescription = document.getElementById('clubDescription').value;
+    const clubLocation = document.getElementById('clubLocation').value;
+
+    if (!clubName.trim()) {
+        showToast('error', 'Club name is required', 'Validation Error');
+        return;
+    }
+
+    const submitButton = document.querySelector('#clubSettingsForm button[type="submit"]');
+    const originalText = submitButton.innerHTML;
+
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+    fetch(`/api/clubs/${clubId}/settings`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            name: clubName.trim(),
+            description: clubDescription.trim(),
+            location: clubLocation.trim()
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalText;
+
+        if (data.error) {
+            showToast('error', data.error, 'Error');
+        } else {
+            showToast('success', 'Club settings updated successfully!', 'Updated');
+            // Update the club header if name changed
+            const clubHeader = document.querySelector('.club-info h1');
+            if (clubHeader) {
+                clubHeader.textContent = clubName.trim();
+            }
+        }
+    })
+    .catch(error => {
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalText;
+        showToast('error', 'Error updating club settings', 'Error');
+    });
+}
+
+function initiateLeadershipTransfer() {
+    const newLeaderSelect = document.getElementById('newLeaderSelect');
+    const selectedValue = newLeaderSelect.value;
+    
+    if (!selectedValue) {
+        showToast('error', 'Please select a member to transfer leadership to', 'Validation Error');
+        return;
+    }
+    
+    const selectedOption = newLeaderSelect.options[newLeaderSelect.selectedIndex];
+    const newLeaderName = selectedOption.text.split(' (')[0];
+    const newLeaderEmail = selectedOption.text.match(/\((.*?)\)/)[1];
+    
+    // Update modal content
+    document.getElementById('newLeaderName').textContent = newLeaderName;
+    document.getElementById('newLeaderEmail').textContent = newLeaderEmail;
+    document.getElementById('newLeaderAvatar').textContent = newLeaderName.charAt(0).toUpperCase();
+    
+    // Reset confirmation input
+    document.getElementById('transferConfirmationInput').value = '';
+    document.getElementById('confirmTransferButton').disabled = true;
+    
+    // Show modal
+    document.getElementById('transferLeadershipModal').style.display = 'block';
+}
+
+function confirmLeadershipTransfer() {
+    const newLeaderSelect = document.getElementById('newLeaderSelect');
+    const newLeaderId = newLeaderSelect.value;
+    
+    if (!newLeaderId) {
+        showToast('error', 'No leader selected', 'Error');
+        return;
+    }
+    
+    const confirmButton = document.getElementById('confirmTransferButton');
+    const originalText = confirmButton.innerHTML;
+    
+    confirmButton.disabled = true;
+    confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Transferring...';
+    
+    fetch(`/api/clubs/${clubId}/transfer-leadership`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            new_leader_id: newLeaderId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        confirmButton.disabled = false;
+        confirmButton.innerHTML = originalText;
+        
+        if (data.error) {
+            showToast('error', data.error, 'Error');
+        } else {
+            showToast('success', 'Leadership transferred successfully!', 'Success');
+            document.getElementById('transferLeadershipModal').style.display = 'none';
+            // Redirect to dashboard after a short delay
+            setTimeout(() => {
+                window.location.href = '/dashboard';
+            }, 2000);
+        }
+    })
+    .catch(error => {
+        confirmButton.disabled = false;
+        confirmButton.innerHTML = originalText;
+        showToast('error', 'Error transferring leadership', 'Error');
+    });
+}
+
+// Add event listener for confirmation input
+document.addEventListener('DOMContentLoaded', function() {
+    const transferInput = document.getElementById('transferConfirmationInput');
+    const confirmButton = document.getElementById('confirmTransferButton');
+    
+    if (transferInput && confirmButton) {
+        transferInput.addEventListener('input', function() {
+            const isValid = this.value.trim().toUpperCase() === 'TRANSFER';
+            confirmButton.disabled = !isValid;
+        });
+    }
+});
+
+        
+
+function loadClubPizzaGrants() {
+    if (!clubId) {
+        console.warn('loadClubPizzaGrants: clubId is missing. Skipping fetch.');
+        const submissionsList = document.getElementById('clubSubmissionsList');
+        if (submissionsList) submissionsList.textContent = 'Error: Club information is unavailable to load submissions.';
+        return;
+    }
+
+    const submissionsList = document.getElementById('clubSubmissionsList');
+
+    fetch(`/api/clubs/${clubId}/pizza-grants`)
+        .then(response => response.json())
+        .then(data => {
+            submissionsList.innerHTML = '';
+
+            if (data.error) {
+                const errorState = createElement('div', 'empty-state');
+                const errorIcon = createElement('i', 'fas fa-exclamation-triangle');
+                errorIcon.style.color = '#f59e0b';
+                const errorTitle = createElement('h3', '', 'Error loading submissions');
+                const errorDescription = createElement('p', '', data.error);
+
+                errorState.appendChild(errorIcon);
+                errorState.appendChild(errorTitle);
+                errorState.appendChild(errorDescription);
+                submissionsList.appendChild(errorState);
+                return;
+            }
+
+            if (data.submissions && data.submissions.length > 0) {
+                data.submissions.forEach(submission => {
+                    const card = createElement('div', 'card');
+                    card.style.marginBottom = '1rem';
+
+                    const cardHeader = createElement('div', 'card-header');
+                    cardHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: flex-start;';
+
+                    const headerDiv = createElement('div');
+                    const title = createElement('h3', '', submission.project_name || 'Untitled Project');
+                    title.style.cssText = 'margin: 0; font-size: 1.125rem; color: #1f2937;';
+
+                    const statusSpan = createElement('span', '', submission.status || 'Pending');
+                    let statusColor = '#6b7280'; // Default gray
+                    if (submission.status === 'Approved') statusColor = '#10b981'; // Green
+                    else if (submission.status === 'Rejected') statusColor = '#ef4444'; // Red
+
+                    statusSpan.style.cssText = `background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; margin-top: 0.5rem; display: inline-block;`;
+
+                    headerDiv.appendChild(title);
+                    headerDiv.appendChild(statusSpan);
+                    cardHeader.appendChild(headerDiv);
+
+                    const grantAmountDiv = createElement('div');
+                    grantAmountDiv.style.cssText = 'text-align: right;';
+                    const grantAmount = createElement('div', '', submission.grant_amount || '$0');
+                    grantAmount.style.cssText = 'font-size: 1.5rem; font-weight: bold; color: #ec3750;';
+                    const grantLabel = createElement('div', '', 'Grant Amount');
+                    grantLabel.style.cssText = 'font-size: 0.75rem; color: #6b7280; text-transform: uppercase;';
+                    grantAmountDiv.appendChild(grantAmount);
+                    grantAmountDiv.appendChild(grantLabel);
+                    cardHeader.appendChild(grantAmountDiv);
+
+                    const cardBody = createElement('div', 'card-body');
+
+                    if (submission.description) {
+                        const description = createElement('p', '', submission.description);
+                        description.style.cssText = 'margin-bottom: 1rem; color: #6b7280;';
+                        cardBody.appendChild(description);
+                    }
+
+                    const infoDiv = createElement('div');
+                    infoDiv.style.cssText = 'display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.875rem; color: #6b7280;';
+
+                    const submitterSpan = createElement('span');
+                    submitterSpan.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
+                    const submitterIcon = createElement('i', 'fas fa-user');
+                    submitterSpan.appendChild(submitterIcon);
+                    submitterSpan.appendChild(document.createTextNode(' ' + (submission.first_name && submission.last_name ? 
+                        `${submission.first_name} ${submission.last_name}` : submission.github_username || 'Unknown')));
+                    infoDiv.appendChild(submitterSpan);
+
+                    if (submission.hours) {
+                        const hoursSpan = createElement('span');
+                        hoursSpan.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
+                        const hoursIcon = createElement('i', 'fas fa-clock');
+                        hoursSpan.appendChild(hoursIcon);
+                        hoursSpan.appendChild(document.createTextNode(' ' + submission.hours + ' hours'));
+                        infoDiv.appendChild(hoursSpan);
+                    }
+
+                    if (submission.created_time) {
+                        const dateSpan = createElement('span');
+                        dateSpan.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
+                        const dateIcon = createElement('i', 'fas fa-calendar');
+                        dateSpan.appendChild(dateIcon);
+                        dateSpan.appendChild(document.createTextNode(' ' + new Date(submission.created_time).toLocaleDateString()));
+                        infoDiv.appendChild(dateSpan);
+                    }
+
+                    cardBody.appendChild(infoDiv);
+
+                    if (submission.code_url || submission.playable_url) {
+                        const linksDiv = createElement('div');
+                        linksDiv.style.cssText = 'margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;';
+
+                        if (submission.code_url) {
+                            const codeLink = createElement('a');
+                            codeLink.href = submission.code_url;
+                            codeLink.target = '_blank';
+                            codeLink.className = 'btn btn-secondary btn-sm';
+                            codeLink.innerHTML = '<i class="fab fa-github"></i> Code';
+                            linksDiv.appendChild(codeLink);
+                        }
+
+                        if (submission.playable_url) {
+                            const liveLink = createElement('a');
+                            liveLink.href = submission.playable_url;
+                            liveLink.target = '_blank';
+                            liveLink.className = 'btn btn-secondary btn-sm';
+                            liveLink.innerHTML = '<i class="fas fa-external-link-alt"></i> Live Demo';
+                            linksDiv.appendChild(liveLink);
+                        }
+
+                        cardBody.appendChild(linksDiv);
+                    }
+
+                    card.appendChild(cardHeader);
+                    card.appendChild(cardBody);
+                    submissionsList.appendChild(card);
+                });
+            } else {
+                const emptyState = createElement('div', 'empty-state');
+                const icon = createElement('i', 'fas fa-pizza-slice');
+                const title = createElement('h3', '', 'No submissions yet');
+                const description = createElement('p', '', 'Submit your coding projects to earn pizza for the club!');
+
+                emptyState.appendChild(icon);
+                emptyState.appendChild(title);
+                emptyState.appendChild(description);
+                submissionsList.appendChild(emptyState);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading club pizza grants:', error);
+            submissionsList.innerHTML = '';
+            const errorState = createElement('div', 'empty-state');
+            const errorIcon = createElement('i', 'fas fa-exclamation-triangle');
+            errorIcon.style.color = '#ef4444';
+            const errorTitle = createElement('h3', '', 'Error loading submissions');
+            const errorDescription = createElement('p', '', 'Failed to fetch pizza grant submissions. Please try again.');
+
+            errorState.appendChild(errorIcon);
+            errorState.appendChild(errorTitle);
+            errorState.appendChild(errorDescription);
+            submissionsList.appendChild(errorState);
+
+            showToast('error', 'Failed to load pizza grant submissions', 'Error');
+        });
+}
+
+function loadShop() {
+    const shopList = document.getElementById('shopList');
+    shopList.innerHTML = '';
+
+    // Fetch club balance
+    fetch(`/api/clubs/${clubId}/balance`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showToast('error', data.error || 'Failed to load club balance', 'Error');
+            } else {
+                const balanceDiv = createElement('div');
+                balanceDiv.style.cssText = 'font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem;';
+                balanceDiv.textContent = `Club Balance: $${data.balance}`;
+                shopList.appendChild(balanceDiv);
+            }
+        })
+        .catch(error => {
+            showToast('error', 'Error loading club balance', 'Error');
+        });
+
+    // Define shop items
+    const shopItems = [
+        {
+            name: 'Pizza for your club!',
+            description: 'Get a virtual card to buy pizza for your club!',
+            action: 'purchasePizza'
+        }
+    ];
+
+    shopItems.forEach(item => {
+        const shopItemDiv = createElement('div', 'shop-item');
+        shopItemDiv.style.cssText = 'border: 1px solid #e2e8f0; padding: 1rem; margin-bottom: 1rem; border-radius: 0.375rem; cursor: pointer; transition: all 0.2s ease-in-out;';
+
+        const itemName = createElement('h3', '', item.name);
+        itemName.style.cssText = 'font-size: 1rem; margin-bottom: 0.5rem;';
+        shopItemDiv.appendChild(itemName);
+
+        const itemDescription = createElement('p', '', item.description);
+        itemDescription.style.cssText = 'color: #6b7280; font-size: 0.875rem;';
+        shopItemDiv.appendChild(itemDescription);
+
+        shopItemDiv.onclick = () => {
+            window[item.action]();
+        };
+
+        shopList.appendChild(shopItemDiv);
+    });
+}
+
+function purchasePizza() {
+    // Redirect to pizza order form
+    window.location.href = `/pizza-order/${clubId}`;
+}
+
+// Add hover effect styles for shop items
+document.addEventListener('DOMContentLoaded', function() {
+    const shopItems = document.querySelectorAll('.shop-item');
+    shopItems.forEach(item => {
+        item.addEventListener('mouseenter', function() {
+            this.style.borderColor = '#ec3750';
+            this.style.transform = 'translateY(-4px)';
+            this.style.boxShadow = '0 8px 25px rgba(236, 55, 80, 0.15)';
+        });
+
+        item.addEventListener('mouseleave', function() {
+            this.style.borderColor = '#e2e8f0';
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+        });
+    });
+});
 
 // Event handlers are set up in the DOMContentLoaded event at the top of this file
 

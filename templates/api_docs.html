@@ -220,7 +220,7 @@
         
         <div class="code-block">
 curl -H "Authorization: Bearer YOUR_API_KEY" \
-     https://your-domain/api/v1/clubs
+     {{ request.host_url }}api/v1/clubs
         </div>
 
         <h3>API Key Scopes</h3>
@@ -549,7 +549,7 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
             <p>Exchange authorization code for access token.</p>
             
             <div class="code-block">
-curl -X POST https://your-domain/oauth/token \
+curl -X POST {{ request.host_url }}oauth/token \
   -d "grant_type=authorization_code" \
   -d "client_id=YOUR_CLIENT_ID" \
   -d "client_secret=YOUR_CLIENT_SECRET" \

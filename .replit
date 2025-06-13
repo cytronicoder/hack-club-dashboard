@@ -1,36 +1,28 @@
-entrypoint = "main.py"
-modules = ["python-3.11", "postgresql-16"]
-
+run = "python main.py"
+modules = ["python-3.11"]
 [nix]
 channel = "stable-24_05"
-packages = ["imagemagick_light", "docker", "python312Packages.gunicorn"]
-
-[unitTest]
-language = "python3"
-
-[gitHubImport]
-requiredFiles = [".replit", "replit.nix"]
+packages = ["python312Packages.gunicorn", "unzipNLS", "postgresql_12"]
 
 [deployment]
-run = ["python3", "main.py"]
-deploymentTarget = "cloudrun"
+run = ["sh", "-c", "gunicorn --bind 0.0.0.0:$PORT --workers 4 --timeout 120 --log-level debug --access-logfile - --error-logfile - --capture-output main:app"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 5001
+externalPort = 3000
 
 [workflows]
-runButton = "Run Flask App"
+runButton = "Run"
 
 [[workflows.workflow]]
-name = "Run Flask App"
+name = "Run"
 author = 17724980
 mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python3 main.py"
-
-[[ports]]
-localPort = 3000
-externalPort = 3000
-
-[[ports]]
-localPort = 5000
-externalPort = 80
+args = "python main.py"
