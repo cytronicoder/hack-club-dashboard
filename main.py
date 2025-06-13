@@ -2816,6 +2816,75 @@ def oauth_user():
 
     return jsonify({'user': user_data})
 
+@app.route('/pizza-order/<int:club_id>')
+@login_required
+def pizza_order(club_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+    
+    # Check if user is a member or leader of the club
+    is_leader = club.leader_id == current_user.id
+    is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
+    
+    if not is_leader and not is_member:
+        flash('You are not a member of this club', 'error')
+        return redirect(url_for('dashboard'))
+    
+    return render_template('pizza_order.html', club=club)
+
+@app.route('/api/clubs/<int:club_id>/pizza-order', methods=['POST'])
+@login_required
+@limiter.limit("10 per hour")
+def submit_pizza_order(club_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+    
+    # Check if user is a member or leader of the club
+    is_leader = club.leader_id == current_user.id
+    is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
+    
+    if not is_leader and not is_member:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.get_json()
+    grant_amount = data.get('grant_amount')
+    club_address = data.get('club_address')
+    contact_email = data.get('contact_email')
+    
+    if not grant_amount or not club_address or not contact_email:
+        return jsonify({'error': 'All fields are required'}), 400
+    
+    # Check if club has sufficient balance
+    if float(grant_amount) > float(club.balance):
+        return jsonify({'error': 'Insufficient club balance'}), 400
+    
+    # Generate order ID
+    order_id = f"PO-{club.id}-{int(time.time())}"
+    
+    # Submit to Airtable
+    grant_data = {
+        'club_name': club.name,
+        'contact_email': contact_email,
+        'grant_amount': grant_amount,
+        'club_address': club_address,
+        'order_id': order_id
+    }
+    
+    result = airtable_service.submit_pizza_grant(grant_data)
+    
+    if result:
+        # Deduct amount from club balance
+        club.balance = float(club.balance) - float(grant_amount)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Pizza order submitted successfully!',
+            'order_id': order_id
+        })
+    else:
+        return jsonify({'error': 'Failed to submit pizza order. Please try again.'}), 500
+
 @app.route('/api/docs')
 def api_documentation():
     return render_template('api_docs.html')
