@@ -1,0 +1,29 @@
+
+
+2025-06-13T02:12:25.494109941Z Loading .env file...
+2025-06-13T02:12:25.494268799Z sh: 8: ./.env: Project: not found
+2025-06-13T02:12:25.494278157Z Environment loaded from .env
+2025-06-13T02:12:25.494285530Z Starting gunicorn...
+2025-06-13T02:12:25.643813091Z [2025-06-13 02:12:25 +0000] [7] [INFO] Starting gunicorn 23.0.0
+2025-06-13T02:12:25.644120097Z [2025-06-13 02:12:25 +0000] [7] [INFO] Listening at: http://0.0.0.0:5000 (7)
+2025-06-13T02:12:25.644130807Z [2025-06-13 02:12:25 +0000] [7] [INFO] Using worker: sync
+2025-06-13T02:12:25.649694957Z [2025-06-13 02:12:25 +0000] [8] [INFO] Booting worker with pid: 8
+2025-06-13T02:12:25.667449400Z [2025-06-13 02:12:25 +0000] [9] [INFO] Booting worker with pid: 9
+2025-06-13T02:12:25.709282653Z [2025-06-13 02:12:25 +0000] [10] [INFO] Booting worker with pid: 10
+2025-06-13T02:12:25.760947917Z [2025-06-13 02:12:25 +0000] [11] [INFO] Booting worker with pid: 11
+2025-06-13T02:12:26.955489845Z 2025-06-13 02:12:26,955 INFO main Flask app starting in production mode
+2025-06-13T02:12:26.955510183Z 2025-06-13 02:12:26,955 INFO main Database URL configured: True
+2025-06-13T02:12:26.955514120Z 2025-06-13 02:12:26,955 INFO main Environment variables loaded: SECRET_KEY=False, DATABASE_URL=True
+2025-06-13T02:12:26.978644982Z 2025-06-13 02:12:26,978 INFO main Flask app starting in production mode
+2025-06-13T02:12:26.978665260Z 2025-06-13 02:12:26,978 INFO main Database URL configured: True
+2025-06-13T02:12:26.978706026Z 2025-06-13 02:12:26,978 INFO main Environment variables loaded: SECRET_KEY=False, DATABASE_URL=True
+2025-06-13T02:12:27.014346600Z 2025-06-13 02:12:27,014 INFO main Flask app starting in production mode
+2025-06-13T02:12:27.014376636Z 2025-06-13 02:12:27,014 INFO main Database URL configured: True
+2025-06-13T02:12:27.014442419Z 2025-06-13 02:12:27,014 INFO main Environment variables loaded: SECRET_KEY=False, DATABASE_URL=True
+2025-06-13T02:12:27.084926292Z 2025-06-13 02:12:27,084 INFO main Database and components initialized successfully
+2025-06-13T02:12:27.086640907Z 2025-06-13 02:12:27,086 INFO main Flask app starting in production mode
+2025-06-13T02:12:27.086667887Z 2025-06-13 02:12:27,086 INFO main Database URL configured: True
+2025-06-13T02:12:27.086791688Z 2025-06-13 02:12:27,086 INFO main Environment variables loaded: SECRET_KEY=False, DATABASE_URL=True
+2025-06-13T02:12:27.115780943Z 2025-06-13 02:12:27,115 INFO main Database and components initialized successfully
+2025-06-13T02:12:27.164742739Z 2025-06-13 02:12:27,164 INFO main Database and components initialized successfully
+2025-06-13T02:12:27.236205516Z 2025-06-13 02:12:27,236 INFO main Database and components initialized successfully
