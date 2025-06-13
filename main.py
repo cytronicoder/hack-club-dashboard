@@ -235,6 +235,15 @@ except Exception as e:
     if os.getenv('FLASK_ENV') == 'production':
         app.logger.error(error_msg)
     db_available = False
+    
+    # Create a dummy limiter that does nothing when database is unavailable
+    class DummyLimiter:
+        def limit(self, *args, **kwargs):
+            def decorator(f):
+                return f
+            return decorator
+    
+    limiter = DummyLimiter()
 
 # Models - only define if database is available
 if db_available and db is not None:
