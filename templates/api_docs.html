@@ -1,0 +1,678 @@
+
+{% extends "base.html" %}
+
+{% block title %}API Documentation - Hack Club Dashboard{% endblock %}
+
+{% block extra_head %}
+<style>
+    .docs-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .docs-header {
+        text-align: center;
+        margin-bottom: 3rem;
+        padding: 3rem 2rem;
+        background: linear-gradient(135deg, #ec3750 0%, #ff6b7a 100%);
+        color: white;
+        border-radius: 20px;
+    }
+
+    .docs-header h1 {
+        font-size: 3rem;
+        font-weight: 900;
+        margin-bottom: 1rem;
+    }
+
+    .docs-nav {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        border: 1px solid #e2e8f0;
+    }
+
+    .docs-nav ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .docs-nav a {
+        color: #64748b;
+        text-decoration: none;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        font-weight: 500;
+    }
+
+    .docs-nav a:hover {
+        background: #f8fafc;
+        color: #ec3750;
+    }
+
+    .docs-section {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        border: 1px solid #e2e8f0;
+    }
+
+    .docs-section h2 {
+        color: #1a202c;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #ec3750;
+    }
+
+    .endpoint {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid #ec3750;
+    }
+
+    .endpoint-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .method {
+        padding: 0.25rem 0.75rem;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        color: white;
+    }
+
+    .method.get { background: #10b981; }
+    .method.post { background: #3b82f6; }
+    .method.put { background: #f59e0b; }
+    .method.delete { background: #ef4444; }
+
+    .endpoint-url {
+        font-family: 'Courier New', monospace;
+        background: #1a202c;
+        color: #e2e8f0;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        flex: 1;
+    }
+
+    .code-block {
+        background: #1a202c;
+        color: #e2e8f0;
+        padding: 1rem;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.875rem;
+        overflow-x: auto;
+        margin: 1rem 0;
+    }
+
+    .auth-badge {
+        background: #fef3c7;
+        color: #92400e;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .auth-badge.oauth {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .params-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+    }
+
+    .params-table th,
+    .params-table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .params-table th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .param-type {
+        background: #e2e8f0;
+        color: #4b5563;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-family: monospace;
+    }
+
+    .required {
+        color: #ef4444;
+        font-weight: 600;
+    }
+
+    .quick-start {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 1px solid #0ea5e9;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .quick-start h3 {
+        color: #0c4a6e;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="docs-container">
+    <div class="docs-header">
+        <h1><i class="fas fa-code"></i> API Documentation</h1>
+        <p>Build amazing applications with the Hack Club Dashboard API</p>
+    </div>
+
+    <div class="quick-start">
+        <h3><i class="fas fa-rocket"></i> Quick Start</h3>
+        <p>Get started with the Hack Club Dashboard API in minutes:</p>
+        <ol>
+            <li>Get an API key from your admin</li>
+            <li>Include your API key in the Authorization header</li>
+            <li>Start making requests to our endpoints</li>
+        </ol>
+    </div>
+
+    <div class="docs-nav">
+        <ul>
+            <li><a href="#authentication">Authentication</a></li>
+            <li><a href="#clubs">Clubs</a></li>
+            <li><a href="#users">Users</a></li>
+            <li><a href="#projects">Projects</a></li>
+            <li><a href="#analytics">Analytics</a></li>
+            <li><a href="#oauth">OAuth</a></li>
+            <li><a href="#rate-limits">Rate Limits</a></li>
+        </ul>
+    </div>
+
+    <div class="docs-section" id="authentication">
+        <h2>Authentication</h2>
+        <p>The Hack Club Dashboard API uses API keys for authentication. Include your API key in the Authorization header of your requests.</p>
+        
+        <div class="code-block">
+curl -H "Authorization: Bearer YOUR_API_KEY" \
+     https://your-domain/api/v1/clubs
+        </div>
+
+        <h3>API Key Scopes</h3>
+        <table class="params-table">
+            <tr>
+                <th>Scope</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><code>clubs:read</code></td>
+                <td>Read club information, members, and basic data</td>
+            </tr>
+            <tr>
+                <td><code>clubs:write</code></td>
+                <td>Create and modify club data</td>
+            </tr>
+            <tr>
+                <td><code>users:read</code></td>
+                <td>Read user profiles and information</td>
+            </tr>
+            <tr>
+                <td><code>projects:read</code></td>
+                <td>Read project data and submissions</td>
+            </tr>
+            <tr>
+                <td><code>assignments:read</code></td>
+                <td>Read assignments and tasks</td>
+            </tr>
+            <tr>
+                <td><code>meetings:read</code></td>
+                <td>Read meeting schedules and information</td>
+            </tr>
+            <tr>
+                <td><code>analytics:read</code></td>
+                <td>Access platform analytics and statistics</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="docs-section" id="clubs">
+        <h2>Clubs</h2>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-url">/api/v1/clubs</span>
+                <span class="auth-badge">API Key Required</span>
+            </div>
+            <p>Get a list of all clubs with pagination support.</p>
+            
+            <h4>Query Parameters</h4>
+            <table class="params-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Required</th>
+                </tr>
+                <tr>
+                    <td>page</td>
+                    <td><span class="param-type">integer</span></td>
+                    <td>Page number (default: 1)</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td>per_page</td>
+                    <td><span class="param-type">integer</span></td>
+                    <td>Items per page (max: 100, default: 20)</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td>search</td>
+                    <td><span class="param-type">string</span></td>
+                    <td>Search term for club name or location</td>
+                    <td>No</td>
+                </tr>
+            </table>
+
+            <div class="code-block">
+{
+  "clubs": [
+    {
+      "id": 1,
+      "name": "Tech High Hack Club",
+      "description": "A club for passionate young programmers",
+      "location": "San Francisco, CA",
+      "leader": {
+        "id": 5,
+        "username": "alex_codes",
+        "email": "alex@example.com"
+      },
+      "member_count": 25,
+      "balance": 150.00,
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "per_page": 20,
+    "total": 50,
+    "pages": 3,
+    "has_next": true,
+    "has_prev": false
+  }
+}
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-url">/api/v1/clubs/{id}</span>
+                <span class="auth-badge">API Key Required</span>
+            </div>
+            <p>Get detailed information about a specific club. If the club isn't in our database, we'll check Airtable as a fallback.</p>
+            
+            <div class="code-block">
+{
+  "club": {
+    "id": 1,
+    "name": "Tech High Hack Club",
+    "description": "A club for passionate young programmers",
+    "location": "San Francisco, CA",
+    "leader": {
+      "id": 5,
+      "username": "alex_codes",
+      "email": "alex@example.com"
+    },
+    "member_count": 25,
+    "balance": 150.00,
+    "join_code": "ABCD1234",
+    "created_at": "2024-01-15T10:30:00Z",
+    "source": "database"
+  }
+}
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-url">/api/v1/clubs/{id}/members</span>
+                <span class="auth-badge">API Key Required</span>
+            </div>
+            <p>Get all members of a specific club.</p>
+            
+            <div class="code-block">
+{
+  "members": [
+    {
+      "id": 5,
+      "username": "alex_codes",
+      "email": "alex@example.com",
+      "role": "leader",
+      "joined_at": "2024-01-15T10:30:00Z"
+    },
+    {
+      "id": 12,
+      "username": "sarah_dev",
+      "email": "sarah@example.com",
+      "role": "member",
+      "joined_at": "2024-01-20T14:15:00Z"
+    }
+  ]
+}
+            </div>
+        </div>
+    </div>
+
+    <div class="docs-section" id="projects">
+        <h2>Projects</h2>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-url">/api/v1/clubs/{id}/projects</span>
+                <span class="auth-badge">API Key Required</span>
+            </div>
+            <p>Get all projects from a specific club.</p>
+            
+            <div class="code-block">
+{
+  "projects": [
+    {
+      "id": 15,
+      "name": "Weather App",
+      "description": "A simple weather forecasting application",
+      "url": "https://weather-app.example.com",
+      "github_url": "https://github.com/user/weather-app",
+      "featured": true,
+      "author": {
+        "id": 12,
+        "username": "sarah_dev"
+      },
+      "created_at": "2024-02-01T09:00:00Z",
+      "updated_at": "2024-02-15T16:30:00Z"
+    }
+  ]
+}
+            </div>
+        </div>
+    </div>
+
+    <div class="docs-section" id="users">
+        <h2>Users</h2>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-url">/api/v1/users/{id}</span>
+                <span class="auth-badge">API Key Required</span>
+            </div>
+            <p>Get information about a specific user.</p>
+            
+            <div class="code-block">
+{
+  "user": {
+    "id": 5,
+    "username": "alex_codes",
+    "email": "alex@example.com",
+    "first_name": "Alex",
+    "last_name": "Johnson",
+    "created_at": "2024-01-10T08:00:00Z",
+    "clubs_led": 1,
+    "clubs_joined": 2
+  }
+}
+            </div>
+        </div>
+    </div>
+
+    <div class="docs-section" id="analytics">
+        <h2>Analytics</h2>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-url">/api/v1/analytics/overview</span>
+                <span class="auth-badge">API Key Required</span>
+            </div>
+            <p>Get platform-wide analytics and statistics.</p>
+            
+            <div class="code-block">
+{
+  "analytics": {
+    "totals": {
+      "users": 1250,
+      "clubs": 85,
+      "posts": 3500,
+      "assignments": 420,
+      "meetings": 180,
+      "projects": 980
+    },
+    "recent": {
+      "new_users_30d": 45,
+      "new_clubs_30d": 8,
+      "active_users_30d": 380
+    }
+  }
+}
+            </div>
+        </div>
+    </div>
+
+    <div class="docs-section" id="oauth">
+        <h2>OAuth 2.0</h2>
+        <p>Use OAuth to allow users to authenticate with their Hack Club Dashboard accounts in your application.</p>
+
+        <h3>Authorization Code Flow</h3>
+        
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-url">/oauth/authorize</span>
+                <span class="auth-badge oauth">OAuth</span>
+            </div>
+            <p>Start the OAuth authorization flow.</p>
+            
+            <h4>Query Parameters</h4>
+            <table class="params-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Required</th>
+                </tr>
+                <tr>
+                    <td>client_id</td>
+                    <td><span class="param-type">string</span></td>
+                    <td>Your application's client ID</td>
+                    <td><span class="required">Yes</span></td>
+                </tr>
+                <tr>
+                    <td>redirect_uri</td>
+                    <td><span class="param-type">string</span></td>
+                    <td>Where to redirect after authorization</td>
+                    <td><span class="required">Yes</span></td>
+                </tr>
+                <tr>
+                    <td>response_type</td>
+                    <td><span class="param-type">string</span></td>
+                    <td>Must be "code"</td>
+                    <td><span class="required">Yes</span></td>
+                </tr>
+                <tr>
+                    <td>scope</td>
+                    <td><span class="param-type">string</span></td>
+                    <td>Space-separated list of scopes</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td>state</td>
+                    <td><span class="param-type">string</span></td>
+                    <td>Random string for security</td>
+                    <td>Recommended</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span class="endpoint-url">/oauth/token</span>
+                <span class="auth-badge oauth">OAuth</span>
+            </div>
+            <p>Exchange authorization code for access token.</p>
+            
+            <div class="code-block">
+curl -X POST https://your-domain/oauth/token \
+  -d "grant_type=authorization_code" \
+  -d "client_id=YOUR_CLIENT_ID" \
+  -d "client_secret=YOUR_CLIENT_SECRET" \
+  -d "code=AUTHORIZATION_CODE" \
+  -d "redirect_uri=YOUR_REDIRECT_URI"
+            </div>
+
+            <h4>Response</h4>
+            <div class="code-block">
+{
+  "access_token": "abc123...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "def456...",
+  "scope": "clubs:read users:read"
+}
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-url">/oauth/user</span>
+                <span class="auth-badge oauth">OAuth Token Required</span>
+            </div>
+            <p>Get the authenticated user's information.</p>
+            
+            <div class="code-block">
+{
+  "user": {
+    "id": 5,
+    "username": "alex_codes",
+    "email": "alex@example.com",
+    "first_name": "Alex",
+    "last_name": "Johnson"
+  }
+}
+            </div>
+        </div>
+    </div>
+
+    <div class="docs-section" id="rate-limits">
+        <h2>Rate Limits</h2>
+        <p>API endpoints have the following rate limits:</p>
+        
+        <table class="params-table">
+            <tr>
+                <th>Endpoint Type</th>
+                <th>Rate Limit</th>
+            </tr>
+            <tr>
+                <td>General API</td>
+                <td>200 requests per hour</td>
+            </tr>
+            <tr>
+                <td>Club listings</td>
+                <td>100 requests per hour</td>
+            </tr>
+            <tr>
+                <td>Analytics</td>
+                <td>100 requests per hour</td>
+            </tr>
+            <tr>
+                <td>OAuth endpoints</td>
+                <td>60 requests per minute</td>
+            </tr>
+        </table>
+
+        <p>Rate limit headers are included in all responses:</p>
+        <div class="code-block">
+X-RateLimit-Limit: 200
+X-RateLimit-Remaining: 150
+X-RateLimit-Reset: 1609459200
+        </div>
+    </div>
+
+    <div class="docs-section">
+        <h2>Error Responses</h2>
+        <p>The API uses standard HTTP status codes and returns error details in JSON format:</p>
+        
+        <div class="code-block">
+{
+  "error": "Invalid API key",
+  "code": "UNAUTHORIZED",
+  "message": "The provided API key is invalid or has been revoked"
+}
+        </div>
+
+        <h3>Common Status Codes</h3>
+        <table class="params-table">
+            <tr>
+                <th>Status Code</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>200</td>
+                <td>Success</td>
+            </tr>
+            <tr>
+                <td>400</td>
+                <td>Bad Request - Invalid parameters</td>
+            </tr>
+            <tr>
+                <td>401</td>
+                <td>Unauthorized - Invalid or missing API key</td>
+            </tr>
+            <tr>
+                <td>403</td>
+                <td>Forbidden - Insufficient permissions</td>
+            </tr>
+            <tr>
+                <td>404</td>
+                <td>Not Found - Resource doesn't exist</td>
+            </tr>
+            <tr>
+                <td>429</td>
+                <td>Too Many Requests - Rate limit exceeded</td>
+            </tr>
+            <tr>
+                <td>500</td>
+                <td>Internal Server Error</td>
+            </tr>
+        </table>
+    </div>
+</div>
+{% endblock %}

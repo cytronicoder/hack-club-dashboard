@@ -1,3 +1,4 @@
+
 {% extends "base.html" %}
 
 {% block title %}Admin Dashboard - Hack Club Dashboard{% endblock %}
@@ -544,8 +545,8 @@
         <button class="admin-tab" onclick="showAdminSection('admins')" data-section="admins">
             <i class="fas fa-crown"></i> Admins
         </button>
-        <button class="admin-tab" onclick="showAdminSection('review')" data-section="review">
-            <i class="fas fa-hand-holding-usd"></i> Project Grant Review
+        <button class="admin-tab" onclick="showAdminSection('api')" data-section="api">
+            <i class="fas fa-code"></i> API
         </button>
     </div>
 
@@ -604,7 +605,7 @@
                         </div>
                     </div>
                     {% endfor %}
-
+                    
                     {% for club in recent_clubs %}
                     <div class="activity-item">
                         <div class="activity-icon">
@@ -745,44 +746,78 @@
         </div>
     </div>
 
-    <div class="admin-section" id="review">
-        <div class="data-table">
-            <div class="table-header">
-                <h3>Project Grant Review</h3>
-                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                    <input type="text" class="search-box" placeholder="Search submissions..." id="reviewSearch">
-                    <select class="search-box" id="statusFilter" onchange="filterSubmissionsByStatus()" style="width: 150px;">
-                        <option value="">All Status</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Approved">Approved</option>
-                        <option value="Rejected">Rejected</option>
-                    </select>
-                    <button class="btn btn-primary" onclick="loadProjectGrantSubmissions()">
-                        <i class="fas fa-sync"></i> Refresh
+    <div class="admin-section" id="api">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+            <div class="data-table">
+                <div class="table-header">
+                    <h3>API Keys</h3>
+                    <button class="btn btn-primary" onclick="openModal('addApiKeyModal')">
+                        <i class="fas fa-plus"></i> Create API Key
                     </button>
                 </div>
+                <div class="table-content">
+                    <div class="loading" id="apiKeysLoading">
+                        <div class="loading-spinner"></div>
+                        <p>Loading API keys...</p>
+                    </div>
+                    <table id="apiKeysTable" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>User</th>
+                                <th>Scopes</th>
+                                <th>Status</th>
+                                <th>Last Used</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="apiKeysTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="data-table">
+                <div class="table-header">
+                    <h3>OAuth Applications</h3>
+                    <button class="btn btn-primary" onclick="openModal('addOAuthAppModal')">
+                        <i class="fas fa-plus"></i> Create OAuth App
+                    </button>
+                </div>
+                <div class="table-content">
+                    <div class="loading" id="oauthAppsLoading">
+                        <div class="loading-spinner"></div>
+                        <p>Loading OAuth applications...</p>
+                    </div>
+                    <table id="oauthAppsTable" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Client ID</th>
+                                <th>User</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="oauthAppsTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="data-table">
+            <div class="table-header">
+                <h3>API Documentation</h3>
             </div>
             <div class="table-content">
-                <div class="loading" id="reviewLoading">
-                    <div class="loading-spinner"></div>
-                    <p>Loading project grant submissions...</p>
+                <div style="padding: 2rem; text-align: center;">
+                    <p style="margin-bottom: 1rem; color: #64748b;">Complete API documentation with examples and endpoints</p>
+                    <a href="/api/docs" target="_blank" class="btn btn-primary">
+                        <i class="fas fa-book"></i> View API Documentation
+                    </a>
                 </div>
-                <table id="reviewTable" style="display: none;">
-                    <thead>
-                        <tr>
-                            <th>Project</th>
-                            <th>Submitter</th>
-                            <th>Club</th>
-                            <th>Amount</th>
-                            <th>Hours</th>
-                            <th>Status</th>
-                            <th>Submitted</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="reviewTableBody">
-                    </tbody>
-                </table>
             </div>
         </div>
     </div>
@@ -934,25 +969,143 @@
     </div>
 </div>
 
-<div class="modal-backdrop" id="reviewDetailsModal">
-    <div class="modal-content" style="max-width: 800px;">
+<div class="modal-backdrop" id="addApiKeyModal">
+    <div class="modal-content">
         <div class="modal-header">
-            <h3>Project Grant Submission Details</h3>
-            <button class="modal-close" onclick="closeModal('reviewDetailsModal')">&times;</button>
+            <h3>Create API Key</h3>
+            <button class="modal-close" onclick="closeModal('addApiKeyModal')">&times;</button>
         </div>
-        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
-            <div id="reviewDetailsContent">
-                <!-- Content will be loaded dynamically -->
-            </div>
+        <div class="modal-body">
+            <form id="addApiKeyForm">
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-control" id="apiKeyName" placeholder="My API Key" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="apiKeyDescription" rows="3" placeholder="Description of what this key is for"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">User Email</label>
+                    <input type="email" class="form-control" id="apiKeyUserEmail" placeholder="user@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Rate Limit (requests/hour)</label>
+                    <input type="number" class="form-control" id="apiKeyRateLimit" value="1000" min="1" max="10000">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Scopes</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem;">
+                        <label><input type="checkbox" value="clubs:read"> clubs:read</label>
+                        <label><input type="checkbox" value="clubs:write"> clubs:write</label>
+                        <label><input type="checkbox" value="users:read"> users:read</label>
+                        <label><input type="checkbox" value="projects:read"> projects:read</label>
+                        <label><input type="checkbox" value="assignments:read"> assignments:read</label>
+                        <label><input type="checkbox" value="meetings:read"> meetings:read</label>
+                        <label><input type="checkbox" value="analytics:read"> analytics:read</label>
+                    </div>
+                </div>
+            </form>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('reviewDetailsModal')">Close</button>
-            <button class="btn btn-success" id="approveButton" onclick="approveSubmission()" style="display: none;">
-                <i class="fas fa-check"></i> Approve Grant
+            <button class="btn btn-secondary" onclick="closeModal('addApiKeyModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="createApiKey()">Create API Key</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="addOAuthAppModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Create OAuth Application</h3>
+            <button class="modal-close" onclick="closeModal('addOAuthAppModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="addOAuthAppForm">
+                <div class="form-group">
+                    <label class="form-label">Application Name</label>
+                    <input type="text" class="form-control" id="oauthAppName" placeholder="My Application" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="oauthAppDescription" rows="3" placeholder="What does this application do?"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">User Email</label>
+                    <input type="email" class="form-control" id="oauthAppUserEmail" placeholder="developer@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Redirect URIs (one per line)</label>
+                    <textarea class="form-control" id="oauthAppRedirectUris" rows="3" placeholder="https://example.com/auth/callback&#10;https://localhost:3000/callback"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Scopes</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem;">
+                        <label><input type="checkbox" value="clubs:read"> clubs:read</label>
+                        <label><input type="checkbox" value="clubs:write"> clubs:write</label>
+                        <label><input type="checkbox" value="users:read"> users:read</label>
+                        <label><input type="checkbox" value="projects:read"> projects:read</label>
+                        <label><input type="checkbox" value="assignments:read"> assignments:read</label>
+                        <label><input type="checkbox" value="meetings:read"> meetings:read</label>
+                        <label><input type="checkbox" value="analytics:read"> analytics:read</label>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('addOAuthAppModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="createOAuthApp()">Create Application</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="apiKeyCreatedModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>API Key Created</h3>
+            <button class="modal-close" onclick="closeModal('apiKeyCreatedModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p><strong>Important:</strong> Save this API key now. You won't be able to see it again!</p>
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; word-break: break-all; margin: 1rem 0;">
+                <span id="createdApiKey"></span>
+            </div>
+            <button class="btn btn-secondary" onclick="copyApiKey()" style="width: 100%;">
+                <i class="fas fa-copy"></i> Copy to Clipboard
             </button>
-            <button class="btn btn-danger" id="rejectButton" onclick="rejectSubmission()" style="display: none;">
-                <i class="fas fa-times"></i> Reject Grant
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="closeModal('apiKeyCreatedModal')">I've Saved It</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="oauthAppCreatedModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>OAuth Application Created</h3>
+            <button class="modal-close" onclick="closeModal('oauthAppCreatedModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p><strong>Important:</strong> Save these credentials now. You won't be able to see the client secret again!</p>
+            <div class="form-group">
+                <label class="form-label">Client ID</label>
+                <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; word-break: break-all;">
+                    <span id="createdClientId"></span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Client Secret</label>
+                <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; word-break: break-all;">
+                    <span id="createdClientSecret"></span>
+                </div>
+            </div>
+            <button class="btn btn-secondary" onclick="copyOAuthCredentials()" style="width: 100%;">
+                <i class="fas fa-copy"></i> Copy Credentials
             </button>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="closeModal('oauthAppCreatedModal')">I've Saved Them</button>
         </div>
     </div>
 </div>
@@ -961,38 +1114,37 @@
 let usersData = [];
 let clubsData = [];
 let adminsData = [];
-let reviewData = [];
-let currentSubmissionId = null;
 
 function showAdminSection(section) {
     document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-
+    
     document.getElementById(section).classList.add('active');
     document.querySelector(`[data-section="${section}"]`).classList.add('active');
-
+    
     if (section === 'users') {
         loadUsers();
     } else if (section === 'clubs') {
         loadClubs();
     } else if (section === 'admins') {
         loadAdmins();
-    } else if (section === 'review') {
-        loadProjectGrantSubmissions();
+    } else if (section === 'api') {
+        loadApiKeys();
+        loadOAuthApps();
     }
 }
 
 async function loadUsers() {
     const loading = document.getElementById('usersLoading');
     const table = document.getElementById('usersTable');
-
+    
     try {
         const response = await fetch('/api/admin/users');
         const data = await response.json();
         usersData = data.users;
-
+        
         renderUsersTable(usersData);
-
+        
         loading.style.display = 'none';
         table.style.display = 'table';
     } catch (error) {
@@ -1004,14 +1156,14 @@ async function loadUsers() {
 async function loadClubs() {
     const loading = document.getElementById('clubsLoading');
     const table = document.getElementById('clubsTable');
-
+    
     try {
         const response = await fetch('/api/admin/clubs');
         const data = await response.json();
         clubsData = data.clubs;
-
+        
         renderClubsTable(clubsData);
-
+        
         loading.style.display = 'none';
         table.style.display = 'table';
     } catch (error) {
@@ -1023,7 +1175,7 @@ async function loadClubs() {
 function renderUsersTable(users) {
     const tbody = document.getElementById('usersTableBody');
     tbody.innerHTML = '';
-
+    
     users.forEach(user => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1067,7 +1219,7 @@ function renderUsersTable(users) {
 function renderClubsTable(clubs) {
     const tbody = document.getElementById('clubsTableBody');
     tbody.innerHTML = '';
-
+    
     clubs.forEach(club => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1095,26 +1247,26 @@ function renderClubsTable(clubs) {
 function editUser(userId) {
     const user = usersData.find(u => u.id === userId);
     if (!user) return;
-
+    
     document.getElementById('editUserId').value = user.id;
     document.getElementById('editUsername').value = user.username;
     document.getElementById('editEmail').value = user.email;
     document.getElementById('editIsAdmin').checked = user.is_admin;
     document.getElementById('editIsSuspended').checked = user.is_suspended;
-
+    
     openModal('editUserModal');
 }
 
 function editClub(clubId) {
     const club = clubsData.find(c => c.id === clubId);
     if (!club) return;
-
+    
     document.getElementById('editClubId').value = club.id;
     document.getElementById('editClubName').value = club.name;
     document.getElementById('editClubDescription').value = club.description || '';
     document.getElementById('editClubLocation').value = club.location || '';
     document.getElementById('editClubBalance').value = club.balance;
-
+    
     openModal('editClubModal');
 }
 
@@ -1126,7 +1278,7 @@ async function saveUserChanges() {
         is_admin: document.getElementById('editIsAdmin').checked,
         is_suspended: document.getElementById('editIsSuspended').checked
     };
-
+    
     try {
         const response = await fetch(`/api/admin/users/${userId}`, {
             method: 'PUT',
@@ -1135,7 +1287,7 @@ async function saveUserChanges() {
             },
             body: JSON.stringify(userData)
         });
-
+        
         if (response.ok) {
             showToast('success', 'User updated successfully');
             closeModal('editUserModal');
@@ -1157,7 +1309,7 @@ async function saveClubChanges() {
         location: document.getElementById('editClubLocation').value,
         balance: parseFloat(document.getElementById('editClubBalance').value)
     };
-
+    
     try {
         const response = await fetch(`/api/admin/clubs/${clubId}`, {
             method: 'PUT',
@@ -1166,7 +1318,7 @@ async function saveClubChanges() {
             },
             body: JSON.stringify(clubData)
         });
-
+        
         if (response.ok) {
             showToast('success', 'Club updated successfully');
             closeModal('editClubModal');
@@ -1204,7 +1356,7 @@ async function executeConfirmedAction() {
             const response = await fetch(`/api/admin/users/${pendingUserId}`, {
                 method: 'DELETE'
             });
-
+            
             if (response.ok) {
                 showToast('success', 'User deleted successfully');
                 loadUsers();
@@ -1220,7 +1372,7 @@ async function executeConfirmedAction() {
             const response = await fetch(`/api/admin/clubs/${pendingUserId}`, {
                 method: 'DELETE'
             });
-
+            
             if (response.ok) {
                 showToast('success', 'Club deleted successfully');
                 loadClubs();
@@ -1236,7 +1388,7 @@ async function executeConfirmedAction() {
             const response = await fetch(`/api/admin/administrators/${pendingUserId}`, {
                 method: 'DELETE'
             });
-
+            
             if (response.ok) {
                 showToast('success', 'Administrator privileges removed successfully');
                 loadAdmins();
@@ -1247,16 +1399,12 @@ async function executeConfirmedAction() {
         } catch (error) {
             showToast('error', 'Failed to remove administrator');
         }
-    } else if (pendingAction === 'deleteSubmission') {
-        await executeDeleteSubmission();
     }
-
+    
     closeModal('confirmModal');
     pendingAction = null;
     pendingUserId = null;
     pendingUsername = null;
-    pendingSubmissionId = null;
-    pendingProjectName = null;
 }
 
 function openModal(modalId) {
@@ -1270,14 +1418,14 @@ function closeModal(modalId) {
 async function loadAdmins() {
     const loading = document.getElementById('adminsLoading');
     const table = document.getElementById('adminsTable');
-
+    
     try {
         const response = await fetch('/api/admin/administrators');
         const data = await response.json();
         adminsData = data.admins;
-
+        
         renderAdminsTable(adminsData);
-
+        
         loading.style.display = 'none';
         table.style.display = 'table';
     } catch (error) {
@@ -1289,7 +1437,7 @@ async function loadAdmins() {
 function renderAdminsTable(admins) {
     const tbody = document.getElementById('adminsTableBody');
     tbody.innerHTML = '';
-
+    
     admins.forEach(admin => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1326,24 +1474,24 @@ function renderAdminsTable(admins) {
 function editAdmin(adminId) {
     const admin = adminsData.find(a => a.id === adminId);
     if (!admin) return;
-
+    
     document.getElementById('editUserId').value = admin.id;
     document.getElementById('editUsername').value = admin.username;
     document.getElementById('editEmail').value = admin.email;
     document.getElementById('editIsAdmin').checked = admin.is_admin;
     document.getElementById('editIsSuspended').checked = admin.is_suspended;
-
+    
     openModal('editUserModal');
 }
 
 async function addNewAdmin() {
     const email = document.getElementById('addAdminEmail').value.trim();
-
+    
     if (!email) {
         showToast('error', 'Email address is required');
         return;
     }
-
+    
     try {
         const response = await fetch('/api/admin/administrators', {
             method: 'POST',
@@ -1354,7 +1502,7 @@ async function addNewAdmin() {
                 email: email
             })
         });
-
+        
         if (response.ok) {
             showToast('success', 'Administrator added successfully');
             closeModal('addAdminModal');
@@ -1409,8 +1557,6 @@ document.getElementById('adminSearch').addEventListener('input', function(e) {
 let pendingAction = null;
 let pendingUserId = null;
 let pendingUsername = null;
-let pendingSubmissionId = null;
-let pendingProjectName = null;
 
 function loginAsUser(userId, username) {
     document.getElementById('loginAsUsername').textContent = username;
@@ -1424,7 +1570,7 @@ async function executeLoginAs() {
         const response = await fetch(`/api/admin/login-as-user/${pendingUserId}`, {
             method: 'POST'
         });
-
+        
         if (response.ok) {
             window.location.href = '/dashboard';
         } else {
@@ -1447,12 +1593,12 @@ function resetUserPassword(userId, username) {
 
 async function executePasswordReset() {
     const newPassword = document.getElementById('newPassword').value;
-
+    
     if (!newPassword || newPassword.length < 6) {
         showToast('error', 'Password must be at least 6 characters long');
         return;
     }
-
+    
     try {
         const response = await fetch(`/api/admin/reset-password/${pendingUserId}`, {
             method: 'POST',
@@ -1463,7 +1609,7 @@ async function executePasswordReset() {
                 new_password: newPassword
             })
         });
-
+        
         if (response.ok) {
             showToast('success', `Password reset successfully for ${pendingUsername}`);
             closeModal('resetPasswordModal');
@@ -1476,65 +1622,65 @@ async function executePasswordReset() {
     }
 }
 
-async function loadProjectGrantSubmissions() {
-    const loading = document.getElementById('reviewLoading');
-    const table = document.getElementById('reviewTable');
-
+async function loadApiKeys() {
+    const loading = document.getElementById('apiKeysLoading');
+    const table = document.getElementById('apiKeysTable');
+    
     try {
-        const response = await fetch('/api/admin/pizza-grants');
+        const response = await fetch('/api/admin/api-keys');
         const data = await response.json();
-        reviewData = data.submissions || [];
-
-        renderReviewTable(reviewData);
-
+        
+        renderApiKeysTable(data.api_keys);
+        
         loading.style.display = 'none';
         table.style.display = 'table';
     } catch (error) {
-        console.error('Error loading project grant submissions:', error);
-        showToast('error', 'Failed to load project grant submissions');
-        loading.style.display = 'none';
-        document.getElementById('reviewTableBody').innerHTML = '<tr><td colspan="8" style="text-align: center; color: #ef4444;">Failed to load submissions. Check Airtable configuration.</td></tr>';
-        table.style.display = 'table';
+        console.error('Error loading API keys:', error);
+        showToast('error', 'Failed to load API keys');
     }
 }
 
-function renderReviewTable(submissions) {
-    const tbody = document.getElementById('reviewTableBody');
-    tbody.innerHTML = '';
-
-    if (!submissions || submissions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #64748b;">No project grant submissions found</td></tr>';
-        return;
+async function loadOAuthApps() {
+    const loading = document.getElementById('oauthAppsLoading');
+    const table = document.getElementById('oauthAppsTable');
+    
+    try {
+        const response = await fetch('/api/admin/oauth-applications');
+        const data = await response.json();
+        
+        renderOAuthAppsTable(data.oauth_applications);
+        
+        loading.style.display = 'none';
+        table.style.display = 'table';
+    } catch (error) {
+        console.error('Error loading OAuth apps:', error);
+        showToast('error', 'Failed to load OAuth applications');
     }
+}
 
-    submissions.forEach(submission => {
+function renderApiKeysTable(keys) {
+    const tbody = document.getElementById('apiKeysTableBody');
+    tbody.innerHTML = '';
+    
+    keys.forEach(key => {
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td><strong>${submission.project_name || 'N/A'}</strong></td>
-            <td>${submission.first_name} ${submission.last_name}<br><small style="color: #64748b;">${submission.email}</small></td>
-            <td>${submission.club_name || 'N/A'}</td>
-            <td><strong style="color: #10b981;">$${submission.grant_amount || '0'}</strong></td>
-            <td>${submission.hours || '0'} hrs</td>
+            <td><strong>${key.name}</strong></td>
+            <td>${key.user} (${key.user_email})</td>
             <td>
-                <span class="status-badge ${getStatusClass(submission.status)}">
-                    ${submission.status || 'Pending'}
+                <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+                    ${key.scopes.map(scope => `<span style="background: #e2e8f0; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">${scope}</span>`).join('')}
+                </div>
+            </td>
+            <td>
+                <span class="status-badge ${key.is_active ? 'status-active' : 'status-suspended'}">
+                    ${key.is_active ? 'Active' : 'Inactive'}
                 </span>
             </td>
-            <td>${submission.created_time ? new Date(submission.created_time).toLocaleDateString() : 'N/A'}</td>
+            <td>${key.last_used_at ? new Date(key.last_used_at).toLocaleDateString() : 'Never'}</td>
             <td>
                 <div class="action-buttons">
-                    <button class="btn-action btn-edit" onclick="viewSubmissionDetails('${submission.id}')">
-                        <i class="fas fa-eye"></i> View
-                    </button>
-                    ${submission.status === 'Pending' ? `
-                        <button class="btn-action btn-login" onclick="approveSubmissionQuick('${submission.id}')">
-                            <i class="fas fa-check"></i> Approve
-                        </button>
-                        <button class="btn-action btn-delete" onclick="rejectSubmissionQuick('${submission.id}')">
-                            <i class="fas fa-times"></i> Reject
-                        </button>
-                    ` : ''}
-                    <button class="btn-action btn-suspend" onclick="deleteSubmission('${submission.id}', '${submission.project_name || 'Unknown Project'}')">
+                    <button class="btn-action btn-delete" onclick="deleteApiKey(${key.id}, '${key.name}')">
                         <i class="fas fa-trash"></i> Delete
                     </button>
                 </div>
@@ -1544,199 +1690,185 @@ function renderReviewTable(submissions) {
     });
 }
 
-function getStatusClass(status) {
-    switch(status) {
-        case 'Approved': return 'status-active';
-        case 'Rejected': return 'status-suspended';
-        case 'Pending': return 'status-user';
-        default: return 'status-user';
-    }
-}
-
-async function viewSubmissionDetails(submissionId) {
-    const submission = reviewData.find(s => s.id === submissionId);
-    if (!submission) return;
-
-    currentSubmissionId = submissionId;
-
-    const content = document.getElementById('reviewDetailsContent');
-    content.innerHTML = `
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-            <div>
-                <h4 style="color: #1a202c; margin-bottom: 1rem;">Project Information</h4>
-                <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                    <p><strong>Project Name:</strong> ${submission.project_name || 'N/A'}</p>
-                    <p><strong>Description:</strong><br>${submission.description || 'No description provided'}</p>
-                    <p><strong>Hours Worked:</strong> ${submission.hours || '0'} hours</p>
-                    <p><strong>Grant Amount:</strong> <span style="color: #10b981; font-weight: bold;">$${submission.grant_amount || '0'}</span></p>
+function renderOAuthAppsTable(apps) {
+    const tbody = document.getElementById('oauthAppsTableBody');
+    tbody.innerHTML = '';
+    
+    apps.forEach(app => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><strong>${app.name}</strong></td>
+            <td style="font-family: monospace; font-size: 0.875rem;">${app.client_id}</td>
+            <td>${app.user} (${app.user_email})</td>
+            <td>
+                <span class="status-badge ${app.is_active ? 'status-active' : 'status-suspended'}">
+                    ${app.is_active ? 'Active' : 'Inactive'}
+                </span>
+            </td>
+            <td>${app.created_at ? new Date(app.created_at).toLocaleDateString() : 'Unknown'}</td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-action btn-delete" onclick="deleteOAuthApp(${app.id}, '${app.name}')">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
                 </div>
-
-                <h4 style="color: #1a202c; margin-bottom: 1rem;">Links</h4>
-                <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                    <p><strong>GitHub URL:</strong> ${submission.code_url ? `<a href="${submission.code_url}" target="_blank" style="color: #ec3750;">${submission.code_url}</a>` : 'Not provided'}</p>
-                    <p><strong>Live URL:</strong> ${submission.playable_url ? `<a href="${submission.playable_url}" target="_blank" style="color: #ec3750;">${submission.playable_url}</a>` : 'Not provided'}</p>
-                </div>
-            </div>
-
-            <div>
-                <h4 style="color: #1a202c; margin-bottom: 1rem;">Submitter Information</h4>
-                <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                    <p><strong>Name:</strong> ${submission.first_name} ${submission.last_name}</p>
-                    <p><strong>Email:</strong> ${submission.email}</p>
-                    <p><strong>GitHub Username:</strong> ${submission.github_username || 'N/A'}</p>
-                    <p><strong>Club:</strong> ${submission.club_name || 'N/A'}</p>
-                    <p><strong>Leader Email:</strong> ${submission.leader_email || 'N/A'}</p>
-                </div>
-
-                <h4 style="color: #1a202c; margin-bottom: 1rem;">Address</h4>
-                <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                    <p>${submission.address_1 || ''}</p>
-                    ${submission.address_2 ? `<p>${submission.address_2}</p>` : ''}
-                    <p>${submission.city || ''}, ${submission.state || ''} ${submission.zip || ''}</p>
-                    <p>${submission.country || ''}</p>
-                </div>
-            </div>
-        </div>
-
-        <div style="margin-top: 2rem;">
-            <h4 style="color: #1a202c; margin-bottom: 1rem;">Feedback</h4>
-            <div style="background: #f8fafc; padding: 1rem; border-radius: 8px;">
-                <p><strong>What are we doing well?</strong><br>${submission.doing_well || 'No feedback provided'}</p>
-                <p><strong>How can we improve?</strong><br>${submission.improve || 'No feedback provided'}</p>
-            </div>
-        </div>
-
-        ${submission.screenshot_url ? `
-            <div style="margin-top: 2rem;">
-                <h4 style="color: #1a202c; margin-bottom: 1rem;">Screenshot</h4>
-                <img src="${submission.screenshot_url}" alt="Project Screenshot" style="max-width: 100%; border-radius: 8px; border: 1px solid #e2e8f0;">
-            </div>
-        ` : ''}
-    `;
-
-    // Show/hide action buttons based on status
-    const approveButton = document.getElementById('approveButton');
-    const rejectButton = document.getElementById('rejectButton');
-
-    if (submission.status === 'Pending') {
-        approveButton.style.display = 'inline-flex';
-        rejectButton.style.display = 'inline-flex';
-    } else {
-        approveButton.style.display = 'none';
-        rejectButton.style.display = 'none';
-    }
-
-    openModal('reviewDetailsModal');
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
 }
 
-async function approveSubmissionQuick(submissionId) {
-    if (confirm('Are you sure you want to approve this grant?')) {
-        await processSubmission(submissionId, 'approve');
+async function createApiKey() {
+    const formData = {
+        name: document.getElementById('apiKeyName').value,
+        description: document.getElementById('apiKeyDescription').value,
+        user_email: document.getElementById('apiKeyUserEmail').value,
+        rate_limit: parseInt(document.getElementById('apiKeyRateLimit').value),
+        scopes: Array.from(document.querySelectorAll('#addApiKeyModal input[type="checkbox"]:checked')).map(cb => cb.value)
+    };
+    
+    if (!formData.name || !formData.user_email) {
+        showToast('error', 'Name and user email are required');
+        return;
     }
-}
-
-async function rejectSubmissionQuick(submissionId) {
-    if (confirm('Are you sure you want to reject this grant?')) {
-        await processSubmission(submissionId, 'reject');
-    }
-}
-
-async function approveSubmission() {
-    if (currentSubmissionId) {
-        await processSubmission(currentSubmissionId, 'approve');
-        closeModal('reviewDetailsModal');
-    }
-}
-
-async function rejectSubmission() {
-    if (currentSubmissionId) {
-        await processSubmission(currentSubmissionId, 'reject');
-        closeModal('reviewDetailsModal');
-    }
-}
-
-async function processSubmission(submissionId, action) {
+    
     try {
-        const response = await fetch('/api/admin/pizza-grants/review', {
+        const response = await fetch('/api/admin/api-keys', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                submission_id: submissionId,
-                action: action
-            })
+            body: JSON.stringify(formData)
         });
-
-        const data = await response.json();
-
+        
         if (response.ok) {
-            showToast('success', data.message || `Grant ${action}d successfully`);
-            loadProjectGrantSubmissions(); // Refresh the table
+            const data = await response.json();
+            
+            document.getElementById('createdApiKey').textContent = data.api_key;
+            closeModal('addApiKeyModal');
+            openModal('apiKeyCreatedModal');
+            
+            document.getElementById('addApiKeyForm').reset();
+            loadApiKeys();
         } else {
-            showToast('error', data.error || `Failed to ${action} grant`);
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to create API key');
         }
     } catch (error) {
-        console.error(`Error ${action}ing submission:`, error);
-        showToast('error', `Failed to ${action} grant`);
+        showToast('error', 'Failed to create API key');
     }
 }
 
-document.getElementById('reviewSearch').addEventListener('input', function(e) {
-    applySubmissionFilters();
-});
-
-function applySubmissionFilters() {
-    const searchTerm = document.getElementById('reviewSearch').value.toLowerCase();
-    const statusFilter = document.getElementById('statusFilter').value;
-
-    let filteredSubmissions = reviewData.filter(submission => {
-        const matchesSearch = !searchTerm || (
-            (submission.project_name && submission.project_name.toLowerCase().includes(searchTerm)) ||
-            (submission.first_name && submission.first_name.toLowerCase().includes(searchTerm)) ||
-            (submission.last_name && submission.last_name.toLowerCase().includes(searchTerm)) ||
-            (submission.email && submission.email.toLowerCase().includes(searchTerm)) ||
-            (submission.club_name && submission.club_name.toLowerCase().includes(searchTerm))
-        );
-
-        const matchesStatus = !statusFilter || submission.status === statusFilter;
-
-        return matchesSearch && matchesStatus;
-    });
-
-    renderReviewTable(filteredSubmissions);
-}
-
-function filterSubmissionsByStatus() {
-    applySubmissionFilters();
-}
-
-function deleteSubmission(submissionId, projectName) {
-    document.getElementById('confirmTitle').textContent = 'Delete Submission';
-    document.getElementById('confirmMessage').innerHTML = `Are you sure you want to permanently delete the submission for "<strong>${projectName}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This action cannot be undone and will remove the submission from Airtable.</span>`;
-    pendingAction = 'deleteSubmission';
-    pendingSubmissionId = submissionId;
-    pendingProjectName = projectName;
-    openModal('confirmModal');
-}
-
-async function executeDeleteSubmission() {
+async function createOAuthApp() {
+    const redirectUris = document.getElementById('oauthAppRedirectUris').value
+        .split('\n')
+        .map(uri => uri.trim())
+        .filter(uri => uri.length > 0);
+    
+    const formData = {
+        name: document.getElementById('oauthAppName').value,
+        description: document.getElementById('oauthAppDescription').value,
+        user_email: document.getElementById('oauthAppUserEmail').value,
+        redirect_uris: redirectUris,
+        scopes: Array.from(document.querySelectorAll('#addOAuthAppModal input[type="checkbox"]:checked')).map(cb => cb.value)
+    };
+    
+    if (!formData.name || !formData.user_email) {
+        showToast('error', 'Name and user email are required');
+        return;
+    }
+    
+    if (redirectUris.length === 0) {
+        showToast('error', 'At least one redirect URI is required');
+        return;
+    }
+    
     try {
-        const response = await fetch(`/api/admin/pizza-grants/${pendingSubmissionId}`, {
-            method: 'DELETE'
+        const response = await fetch('/api/admin/oauth-applications', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
         });
-
-        const data = await response.json();
-
+        
         if (response.ok) {
-            showToast('success', 'Submission deleted successfully');
-            loadProjectGrantSubmissions(); // Refresh the table
+            const data = await response.json();
+            
+            document.getElementById('createdClientId').textContent = data.client_id;
+            document.getElementById('createdClientSecret').textContent = data.client_secret;
+            closeModal('addOAuthAppModal');
+            openModal('oauthAppCreatedModal');
+            
+            document.getElementById('addOAuthAppForm').reset();
+            loadOAuthApps();
         } else {
-            showToast('error', data.error || 'Failed to delete submission');
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to create OAuth application');
         }
     } catch (error) {
-        console.error('Error deleting submission:', error);
-        showToast('error', 'Failed to delete submission');
+        showToast('error', 'Failed to create OAuth application');
+    }
+}
+
+function copyApiKey() {
+    const apiKey = document.getElementById('createdApiKey').textContent;
+    navigator.clipboard.writeText(apiKey).then(() => {
+        showToast('success', 'API key copied to clipboard');
+    });
+}
+
+function copyOAuthCredentials() {
+    const clientId = document.getElementById('createdClientId').textContent;
+    const clientSecret = document.getElementById('createdClientSecret').textContent;
+    const credentials = `Client ID: ${clientId}\nClient Secret: ${clientSecret}`;
+    
+    navigator.clipboard.writeText(credentials).then(() => {
+        showToast('success', 'Credentials copied to clipboard');
+    });
+}
+
+async function deleteApiKey(keyId, keyName) {
+    if (!confirm(`Are you sure you want to delete the API key "${keyName}"?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/admin/api-keys/${keyId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            showToast('success', 'API key deleted successfully');
+            loadApiKeys();
+        } else {
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to delete API key');
+        }
+    } catch (error) {
+        showToast('error', 'Failed to delete API key');
+    }
+}
+
+async function deleteOAuthApp(appId, appName) {
+    if (!confirm(`Are you sure you want to delete the OAuth application "${appName}"?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/admin/oauth-applications/${appId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            showToast('success', 'OAuth application deleted successfully');
+            loadOAuthApps();
+        } else {
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to delete OAuth application');
+        }
+    } catch (error) {
+        showToast('error', 'Failed to delete OAuth application');
     }
 }
 

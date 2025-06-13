@@ -69,16 +69,8 @@
                             <i class="fas fa-calendar-alt"></i> Schedule
                         </a></li>
                         <li><a href="#pizza" class="nav-link" data-section="pizza">
-                            <i class="fas fa-hand-holding-usd"></i> Project Grants
+                            <i class="fas fa-pizza-slice"></i> Pizza Grants
                         </a></li>
-                        {% if current_user.id == club.leader_id %}
-                        <li><a href="#shop" class="nav-link" data-section="shop">
-                            <i class="fas fa-shopping-cart"></i> Club Shop
-                        </a></li>
-                        <li><a href="#ysws" class="nav-link" data-section="ysws">
-                            <i class="fas fa-rocket"></i> Club YSWSs
-                        </a></li>
-                        {% endif %}
                         {% if current_user.id == club.leader_id %}
                         <li><a href="#settings" class="nav-link" data-section="settings">
                             <i class="fas fa-cogs"></i> Settings
@@ -90,17 +82,11 @@
 
             <div class="dashboard-main">
                 <section id="dashboard" class="club-section active">
-                    <div class="section-header" style="position: relative;">
+                    <div class="section-header">
                         <h2><i class="fas fa-tachometer-alt"></i> Dashboard</h2>
                         <p>Welcome to {{ club.name }}</p>
-                        {% if current_user.id == club.leader_id %}
-                        <button class="pizza-party-button" onclick="purchasePizza()" style="position: absolute; top: 0; right: 0; background: linear-gradient(135deg, #ec3750, #d63146); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0px)'">
-                            <i class="fas fa-pizza-slice"></i> Pizza Party
-                        </button>
-                        {% endif %}
                     </div>
 
-                    {% if current_user.id == club.leader_id %}
                     <div class="dashboard-cards">
                         <div class="dashboard-card">
                             <div class="dashboard-card-header">
@@ -174,8 +160,6 @@
                             </div>
                         </div>
                     </div>
-                    {% endif %}
-
                 </section>
 
                 <section id="stream" class="club-section">
@@ -319,7 +303,7 @@
                                 <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1rem;"><i class="fas fa-info-circle" style="color: #3b82f6;"></i> How to Set Up Hackatime</h4>
                                 <ol style="margin: 0; padding-left: 1.5rem; color: #4a5568; font-size: 0.9rem;">
                                     <li>Go to your <a href="/account" style="color: #ec3750; text-decoration: none;">Account Settings</a></li>
-                                    <li>Get your API key from <a href="https://hackatime.hackclub.com/my/settings" target="_blank" style="color: #ec3750; text-decoration: none;">Hackatime Settings</a></li>
+                                    <li>Get your API key from <a href="https://hackatime.hackclub.com" target="_blank" style="color: #ec3750; text-decoration: none;">hackatime.hackclub.com</a></li>
                                     <li>Install the Hackatime extension for your code editor</li>
                                     <li>Start coding and your time will be tracked automatically!</li>
                                 </ol>
@@ -402,225 +386,19 @@
                 <section id="pizza" class="club-section">
                     <div class="content-header">
                         <div>
-                            <h2><i class="fas fa-hand-holding-usd"></i> Project Grants</h2>
-                            <p>Submit projects for funding</p>
+                            <h2><i class="fas fa-pizza-slice"></i> Pizza Grants</h2>
+                            <p>Submit projects for pizza funding</p>
                         </div>
                         <button class="btn btn-primary" onclick="openPizzaGrantModal()">
                             <i class="fas fa-plus"></i> Submit Project
                         </button>
                     </div>
 
-                    <div class="card" style="margin-bottom: 2rem;">
-                        <div class="card-header">
-                            <h3><i class="fas fa-list"></i> Club Submissions</h3>
-                            <p style="margin: 0.5rem 0 0 0; color: #6b7280; font-size: 0.9rem;">Track your club's project grant submissions and their status</p>
-                        </div>
-                        <div class="card-body">
-                            <div id="clubSubmissionsList">
-                                <div class="empty-state">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                    <h3>Loading submissions...</h3>
-                                    <p>Fetching your club's project grant submissions</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="pizzaGrantsList" style="display: none;">
+                    <div id="pizzaGrantsList">
                         <div class="empty-state">
-                            <i class="fas fa-hand-holding-usd"></i>
+                            <i class="fas fa-pizza-slice"></i>
                             <h3>No submissions yet</h3>
-                            <p>Submit your coding projects to earn funding for the club!</p>
-                        </div>
-                    </div>
-                </section>
-
-                <section id="shop" class="club-section">
-                    <div class="content-header">
-                        <div>
-                            <h2><i class="fas fa-shopping-cart"></i> Club Shop</h2>
-                            <p>Spend your club balance on awesome items!</p>
-                        </div>
-                    </div>
-
-                    <div class="card" style="margin-bottom: 2rem;">
-                        <div class="card-header">
-                            <h3><i class="fas fa-wallet"></i> Club Balance</h3>
-                        </div>
-                        <div class="card-body" style="text-align: center; padding: 2rem;">
-                            <div style="font-size: 3rem; font-weight: bold; color: #ec3750; margin-bottom: 1rem;">
-                                ${{ "%.2f"|format(club.balance|float) }}
-                            </div>
-                            <p style="color: #6b7280; font-size: 1.1rem; margin-bottom: 2rem;">Available to spend on club items</p>
-
-                            <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 1.5rem;">
-                                <h4 style="margin: 0 0 1rem 0; color: #92400e; font-size: 1rem;"><i class="fas fa-hand-holding-usd" style="color: #f59e0b; margin-right: 0.5rem;"></i> Need More Club Balance?</h4>
-                                <p style="margin: 0 0 1rem 0; color: #92400e; font-size: 0.9rem;">Submit your coding projects in the <strong>Project Grants</strong> tab to earn more balance for your club! Each approved project adds funds that you can spend here.</p>
-                                <a href="#pizza" class="btn btn-sm" style="background: #f59e0b; color: white; border: none; text-decoration: none; display: inline-block; padding: 0.5rem 1rem; border-radius: 6px;" onclick="openTab('pizza')">
-                                    <i class="fas fa-arrow-right" style="margin-right: 0.5rem;"></i>Go to Project Grants
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-shopping-bag"></i> Available Items</h3>
-                            <p style="margin: 0.5rem 0 0 0; color: #6b7280; font-size: 0.9rem;">Use your club balance to purchase items for your club</p>
-                        </div>
-                        <div class="card-body">
-                            <div class="shop-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
-                                <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer;" onclick="purchasePizza()">
-                                    <div style="margin-bottom: 1rem;">
-                                        <img src="{{ url_for('static', filename='assets/pizza.png') }}" alt="Pizza" style="width: 80px; height: 80px; object-fit: contain;">
-                                    </div>
-                                    <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.25rem; font-weight: 600;">Pizza for your club!</h4>
-                                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5;">Get a virtual card to buy pizza for your club!</p>
-                                    <div style="background: #ec3750; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-block;">
-                                        <i class="fas fa-external-link-alt" style="margin-right: 0.5rem;"></i>
-                                        Order Now
-                                    </div>
-                                </div>
-
-                                <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer; position: relative;" onclick="window.open('https://forms.hackclub.com/stickers', '_blank')">
-                                    <div style="position: absolute; top: 10px; right: 10px; background: #10b981; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
-                                        FREE
-                                    </div>
-                                    <div style="margin-bottom: 1rem;">
-                                        <img src="{{ url_for('static', filename='assets/sticker.png') }}" alt="Hack Club Stickers" style="width: 80px; height: 80px; object-fit: contain;">
-                                    </div>
-                                    <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.25rem; font-weight: 600;">Hack Club Stickers</h4>
-                                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5;">Stickers for your club to enjoy!</p>
-                                    <div style="background: #ec3750; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-block;">
-                                        <i class="fas fa-external-link-alt" style="margin-right: 0.5rem;"></i>
-                                        Get Stickers
-                                    </div>
-                                </div>
-
-                                <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer; position: relative;" onclick="window.open('https://forms.hackclub.com/t/uzgyhTqvsFus', '_blank')">
-                                    <div style="position: absolute; top: 10px; right: 10px; background: #10b981; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
-                                        FREE
-                                    </div>
-                                    <div style="margin-bottom: 1rem;">
-                                        <img src="{{ url_for('static', filename='assets/poster.jpeg') }}" alt="Club Posters" style="width: 80px; height: 80px; object-fit: contain;">
-                                    </div>
-                                    <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.25rem; font-weight: 600;">Club Posters</h4>
-                                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5;">Cool posters to decorate your club space!</p>
-                                    <div style="background: #ec3750; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-block;">
-                                        <i class="fas fa-external-link-alt" style="margin-right: 0.5rem;"></i>
-                                        Get Posters
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; margin-top: 2rem;">
-                                <h4 style="margin: 0 0 1rem 0; color: #1a202c; font-size: 1rem;"><i class="fas fa-info-circle" style="color: #3b82f6; margin-right: 0.5rem;"></i> More Items Coming Soon!</h4>
-                                <p style="margin: 0; color: #4a5568; font-size: 0.9rem;">We're working on adding more exciting items you can purchase with your club balance. Stay tuned for hardware, swag, and other cool club perks!</p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section id="ysws" class="club-section">
-                    <div class="content-header">
-                        <div>
-                            <h2><i class="fas fa-rocket"></i> Club YSWSs (You Ship We Ship)</h2>
-                            <p>Run workshops and get amazing rewards for your club!</p>
-                        </div>
-                    </div>
-
-                    <div style="text-align: center; margin-bottom: 2rem;">
-                        <button class="btn btn-primary" style="background: linear-gradient(135deg, #ec3750, #d63146); border: none; padding: 1rem 2rem; font-size: 1.1rem; font-weight: 600; border-radius: 12px; box-shadow: 0 4px 12px rgba(236, 55, 80, 0.3); transition: all 0.3s ease;" onclick="openTab('pizza')" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(236, 55, 80, 0.4)'" onmouseout="this.style.transform='translateY(0px)'; this.style.boxShadow='0 4px 12px rgba(236, 55, 80, 0.3)'">
-                            <i class="fas fa-hand-holding-usd" style="margin-right: 0.75rem; font-size: 1.2rem;"></i>
-                            Project Grants YSWS
-                        </button>
-                        <p style="margin-top: 0.75rem; color: #6b7280; font-size: 0.95rem;">Submit your coding projects and earn grants for your club!</p>
-                    </div>
-
-                    <div class="card" style="margin-bottom: 2rem;">
-                        <div class="card-header">
-                            <h3><i class="fas fa-chalkboard-teacher"></i> Workshops & Programs</h3>
-                            <p style="margin: 0.5rem 0 0 0; color: #6b7280; font-size: 0.9rem;">Run these workshops at your club and get rewarded!</p>
-                        </div>
-                        <div class="card-body">
-                            <div class="shop-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-                                <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer;" onclick="window.open('https://workshops.hackclub.com/', '_blank')">
-                                    <div style="margin-bottom: 1rem;">
-                                        <i class="fas fa-graduation-cap" style="font-size: 80px; color: #ec3750;"></i>
-                                    </div>
-                                    <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.25rem; font-weight: 600;">View All Workshops</h4>
-                                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5;">Browse all available workshops and tutorials</p>
-                                    <div style="background: #ec3750; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-block;">
-                                        <i class="fas fa-external-link-alt" style="margin-right: 0.5rem;"></i>
-                                        Browse Workshops
-                                    </div>
-                                </div>
-
-                                <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer;" onclick="window.open('https://forms.hackclub.com/t/5r7VGppu9wus', '_blank')">
-                                    <div style="margin-bottom: 1rem;">
-                                        <img src="{{ url_for('static', filename='assets/boba.png') }}" alt="Boba Drops" style="width: 80px; height: 80px; object-fit: contain;">
-                                    </div>
-                                    <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.25rem; font-weight: 600;">Boba Drops</h4>
-                                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5;">Run a personal website workshop and get Boba on Hack Club for every participant!</p>
-                                    <div style="background: #ec3750; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-block;">
-                                        <i class="fas fa-external-link-alt" style="margin-right: 0.5rem;"></i>
-                                        Get Boba
-                                    </div>
-                                </div>
-
-                                <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer;" onclick="window.open('https://forms.hackclub.com/swirl-workshop', '_blank')">
-                                    <div style="margin-bottom: 1rem;">
-                                        <img src="{{ url_for('static', filename='assets/swirl.png') }}" alt="Swirl" style="width: 80px; height: 80px; object-fit: contain;">
-                                    </div>
-                                    <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.25rem; font-weight: 600;">Swirl</h4>
-                                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5.: Run a personal website workshop and get ice cream for the workshop!</p>
-                                    <div style="background: #ec3750; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-block;">
-                                        <i class="fas fa-external-link-alt" style="margin-right: 0.5rem;"></i>
-                                        Get Ice Cream
-                                    </div>
-                                </div>
-
-                                <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer;" onclick="window.open('https://forms.hackclub.com/toppings-workshop', '_blank')">
-                                    <div style="margin-bottom: 1rem;">
-                                        <img src="{{ url_for('static', filename='assets/toppings.png') }}" alt="Toppings" style="width: 80px; height: 80px; object-fit: contain;">
-                                    </div>
-                                    <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.25rem; font-weight: 600;">Toppings</h4>
-                                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5;">Run a personal website workshop and get toppings for your Boba or Ice Cream!</p>
-                                    <div style="background: #ec3750; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-block;">
-                                        <i class="fas fa-external-link-alt" style="margin-right: 0.5rem;"></i>
-                                        Get Toppings
-                                    </div>
-                                </div>
-
-                                <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer;" onclick="window.open('https://toppings.hackclub.com/', '_blank')">
-                                    <div style="margin-bottom: 1rem;">
-                                        <img src="{{ url_for('static', filename='assets/grublogo.png') }}" alt="Grub" style="width: 80px; height: 80px; object-fit: contain;">
-                                    </div>
-                                    <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.25rem; font-weight: 600;">Grub</h4>
-                                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5;">Run a Tailwind CSS workshop and get grant to buy Junk Food for your club!</p>
-                                    <div style="background: #ec3750; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-block;">
-                                        <i class="fas fa-external-link-alt" style="margin-right: 0.5rem;"></i>
-                                        Get Grant
-                                    </div>
-                                </div>
-
-                                <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer;" onclick="window.open('https://workshops.hackclub.com/sprig/', '_blank')">
-                                    <div style="margin-bottom: 1rem;">
-                                        <img src="{{ url_for('static', filename='assets/sprig.png') }}" alt="Sprig" style="width: 80px; height: 80px; object-fit: contain;">
-                                    </div>
-                                    <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.25rem; font-weight: 600;">Sprig</h4>
-                                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5;">Develop a JS game and get a console!</p>
-                                    <div style="background: #ec3750; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-block;">
-                                        <i class="fas fa-external-link-alt" style="margin-right: 0.5rem;"></i>
-                                        Build Game
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem;">
-                                <h4 style="margin: 0 0 1rem 0; color: #1a202c; font-size: 1rem;"><i class="fas fa-lightbulb" style="color: #3b82f6; margin-right: 0.5rem;"></i> How YSWS Works</h4>
-                                <p style="margin: 0; color: #4a5568; font-size: 0.9rem;">YSWS (You Ship We Ship) programs reward your club for running workshops and building projects. Complete workshops, submit your work, and get amazing rewards like food, hardware, and more delivered to your club!</p>
-                            </div>
+                            <p>Submit your coding projects to earn pizza for the club!</p>
                         </div>
                     </div>
                 </section>
@@ -656,33 +434,6 @@
                                     <i class="fas fa-save"></i> Save Changes
                                 </button>
                             </form>
-                        </div>
-                    </div>
-
-                    <div class="card" style="margin-top: 2rem;">
-                        <div class="card-header">
-                            <h3 style="color: #dc3545;"><i class="fas fa-crown"></i> Leadership Transfer</h3>
-                            <p style="margin: 0.5rem 0 0 0; color: #6b7280; font-size: 0.9rem;">Transfer club leadership to another member</p>
-                        </div>
-                        <div class="card-body">
-                            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
-                                <p style="margin: 0; color: #856404; font-size: 0.9rem;">
-                                    <i class="fas fa-exclamation-triangle" style="color: #f39c12; margin-right: 0.5rem;"></i>
-                                    <strong>Warning:</strong> This action will permanently transfer club leadership. You will become a regular member.
-                                </p>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Select New Leader</label>
-                                <select class="form-control" id="newLeaderSelect">
-                                    <option value="">Choose a member to become the new leader</option>
-                                    {% for membership in club.members %}
-                                    <option value="{{ membership.user.id }}">{{ membership.user.username }} ({{ membership.user.email }})</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <button class="btn" style="background-color: #dc3545; color: white;" onclick="initiateLeadershipTransfer()">
-                                <i class="fas fa-exchange-alt"></i> Transfer Leadership
-                            </button>
                         </div>
                     </div>
                 </section>
@@ -864,57 +615,10 @@
     </div>
 </div>
 
-<div id="transferLeadershipModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 style="color: #dc3545;"><i class="fas fa-crown"></i> Transfer Leadership</h3>
-            <button class="close" onclick="document.getElementById('transferLeadershipModal').style.display='none'">&times;</button>
-        </div>
-        <div class="modal-body">
-            <div style="background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
-                <p style="margin: 0; color: #721c24; font-weight: 600;">
-                    <i class="fas fa-exclamation-triangle" style="color: #dc3545; margin-right: 0.5rem;"></i>
-                    Are you sure you want to transfer leadership?
-                </p>
-            </div>
-            <p style="margin-bottom: 1rem; color: #495057;">
-                You are about to transfer leadership of <strong>{{ club.name }}</strong> to:
-            </p>
-            <div style="background: #e9ecef; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <div style="width: 40px; height: 40px; background: #6c757d; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;" id="newLeaderAvatar">
-                        ?
-                    </div>
-                    <div>
-                        <div style="font-weight: 600; color: #212529;" id="newLeaderName">Select a member</div>
-                        <div style="font-size: 0.875rem; color: #6c757d;" id="newLeaderEmail"></div>
-                    </div>
-                </div>
-            </div>
-            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
-                <p style="margin: 0; color: #856404; font-size: 0.9rem;">
-                    <i class="fas fa-info-circle" style="color: #f39c12; margin-right: 0.5rem;"></i>
-                    After transfer, you will become a regular member and will no longer have leader privileges.
-                </p>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Type "TRANSFER" to confirm:</label>
-                <input type="text" class="form-control" id="transferConfirmationInput" placeholder="Type TRANSFER to confirm">
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="document.getElementById('transferLeadershipModal').style.display='none'">Cancel</button>
-            <button id="confirmTransferButton" class="btn" style="background-color: #dc3545; color: white;" onclick="confirmLeadershipTransfer()" disabled>
-                <i class="fas fa-exchange-alt"></i> Transfer Leadership
-            </button>
-        </div>
-    </div>
-</div>
-
 <div id="pizzaGrantModal" class="modal">
     <div class="modal-content" style="max-width: 800px;">
         <div class="modal-header">
-            <h3>Submit Project for Grant</h3>
+            <h3>Submit Project for Pizza Grant</h3>
             <button class="close" onclick="document.getElementById('pizzaGrantModal').style.display='none'">&times;</button>
         </div>
         <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
@@ -1045,6 +749,7 @@
                 </div>
 
                 <div class="form-group">
+Adding the missing country field in the pizza grant form.```text
                     <label class="form-label">Country *</label>
                     <input type="text" class="form-control" id="grantCountry" required>
                 </div>
@@ -1062,18 +767,6 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<style>
-    .dashboard-header {
-        text-align: center;
-        margin-bottom: 3rem;
-        padding: 2rem;
-        background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
-        border-radius: 20px;
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255,255,255,0.1);
-        position: relative;
-    }
-</style>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
 <script src="{{ url_for('static', filename='js/dash.js') }}"></script>
 {% endblock %}
