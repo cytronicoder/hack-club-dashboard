@@ -1,0 +1,339 @@
+
+{% extends "base.html" %}
+
+{% block title %}Verify Club Leader - Hack Clubs Dash{% endblock %}
+
+{% block extra_head %}
+<style>
+    .auth-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+        position: relative;
+    }
+
+    .auth-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('{{ url_for("static", filename="assets/Dinos.jpg") }}') center/cover;
+        filter: blur(3px);
+        z-index: 0;
+    }
+
+    .auth-container::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 1;
+    }
+
+    .auth-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        padding: 3rem;
+        width: 100%;
+        max-width: 500px;
+        border: 1px solid #e1e8ed;
+        position: relative;
+        z-index: 2;
+    }
+
+    .auth-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .auth-header h1 {
+        color: #1a202c;
+        margin-bottom: 0.5rem;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+
+    .auth-header p {
+        color: #718096;
+        margin: 0;
+        font-size: 0.95rem;
+    }
+
+    .auth-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .form-group {
+        position: relative;
+    }
+
+    .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #2d3748;
+        font-size: 0.875rem;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+        background: white;
+        color: #2d3748;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #ec3750;
+        box-shadow: 0 0 0 3px rgba(236, 55, 80, 0.1);
+        transform: translateY(-1px);
+    }
+
+    .form-control::placeholder {
+        color: #a0aec0;
+    }
+
+    .btn-auth {
+        background: linear-gradient(135deg, #ec3750, #d63146);
+        color: white;
+        border: none;
+        padding: 1rem;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .btn-auth:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(236, 55, 80, 0.3);
+    }
+
+    .btn-auth:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .auth-footer {
+        text-align: center;
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .auth-footer a {
+        color: #ec3750;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .auth-footer a:hover {
+        text-decoration: underline;
+    }
+
+    .auth-logo {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #ec3750, #d63146);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        color: white;
+        font-size: 1.5rem;
+    }
+
+    .verification-info {
+        background: #f7fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        color: #4a5568;
+        font-size: 0.875rem;
+        line-height: 1.5;
+    }
+
+    .verification-info h3 {
+        margin: 0 0 0.5rem 0;
+        color: #2d3748;
+        font-size: 1rem;
+    }
+
+    .error-message {
+        background: #fed7d7;
+        border: 1px solid #feb2b2;
+        color: #c53030;
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        font-size: 0.875rem;
+    }
+
+    .success-message {
+        background: #c6f6d5;
+        border: 1px solid #9ae6b4;
+        color: #2f855a;
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="auth-logo">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <h1>Verify Club Leadership</h1>
+            <p>Confirm your role as a club leader</p>
+        </div>
+
+        <div class="verification-info">
+            <h3><i class="fas fa-info-circle"></i> Leader Verification Required</h3>
+            <p>To create a club as a leader, we need to verify your leadership status. Please provide your email address and the exact name of your club as registered with Hack Club.</p>
+        </div>
+
+        <div id="error-message" class="error-message" style="display: none;"></div>
+        <div id="success-message" class="success-message" style="display: none;"></div>
+
+        <form id="verification-form" class="auth-form">
+            <div class="form-group">
+                <label class="form-label">Your Email Address</label>
+                <input type="email" class="form-control" id="email" placeholder="Enter your registered email" required>
+                <small style="color: #64748b; font-size: 0.75rem; margin-top: 0.25rem; display: block;">
+                    This should match the email in your Hack Club leader registration
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Club Name</label>
+                <input type="text" class="form-control" id="club_name" placeholder="Enter your exact club name" required>
+                <small style="color: #64748b; font-size: 0.75rem; margin-top: 0.25rem; display: block;">
+                    Use the exact club name as registered (e.g., "Hack Club Kathmandu")
+                </small>
+            </div>
+            
+            <button type="submit" class="btn-auth" id="verify-btn">
+                <i class="fas fa-check-circle"></i> Verify Leadership
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            {% if current_user.is_authenticated %}
+                <p>Changed your mind? <a href="{{ url_for('dashboard') }}">Back to dashboard</a></p>
+            {% else %}
+                <p>Not a club leader? <a href="{{ url_for('signup') }}">Go back to regular signup</a></p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('verification-form');
+    if (!form) return;
+    
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const errorDiv = document.getElementById('error-message');
+        const successDiv = document.getElementById('success-message');
+        const verifyBtn = document.getElementById('verify-btn');
+        
+        // Hide previous messages with null checks
+        if (errorDiv) {
+            errorDiv.style.display = 'none';
+        }
+        if (successDiv) {
+            successDiv.style.display = 'none';
+        }
+        
+        // Disable button with null check
+        if (verifyBtn) {
+            verifyBtn.disabled = true;
+            verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+        }
+        
+        const emailInput = document.getElementById('email');
+        const clubNameInput = document.getElementById('club_name');
+        
+        if (!emailInput || !clubNameInput) {
+            console.error('Required form inputs not found');
+            return;
+        }
+        
+        const formData = {
+            email: emailInput.value,
+            club_name: clubNameInput.value
+        };
+        
+        try {
+            const response = await fetch('/verify-leader', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                if (successDiv) {
+                    successDiv.textContent = result.message;
+                    successDiv.style.display = 'block';
+                }
+                
+                // Redirect after a short delay
+                setTimeout(() => {
+                    window.location.href = '/complete-leader-signup';
+                }, 1500);
+            } else {
+                if (errorDiv) {
+                    errorDiv.textContent = result.error || 'Verification failed';
+                    errorDiv.style.display = 'block';
+                }
+            }
+        } catch (error) {
+            console.error('Verification error:', error);
+            if (errorDiv) {
+                errorDiv.textContent = 'Network error. Please try again.';
+                errorDiv.style.display = 'block';
+            }
+        }
+        
+        // Re-enable button with null check
+        if (verifyBtn) {
+            verifyBtn.disabled = false;
+            verifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verify Leadership';
+        }
+    });
+});
+</script>
+{% endblock %}
