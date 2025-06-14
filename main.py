@@ -2459,8 +2459,9 @@ def admin_delete_pizza_grant(submission_id):
 @limiter.limit("100 per hour")
 def api_get_clubs():
     page = request.args.get('page', 1, type=int)
-    per_page = min(request.args.get('per_page', 20, type=int), 100)
+    per_page = request.args.get('per_page', 20, type=int)
     search = request.args.get('search', '').strip()
+    all_clubs = request.args.get('all', '').lower() == 'true'
 
     query = Club.query
 
@@ -2474,40 +2475,66 @@ def api_get_clubs():
             )
         )
 
-    clubs_paginated = query.paginate(
-        page=page, 
-        per_page=per_page, 
-        error_out=False
-    )
+    if all_clubs:
+        # Return all clubs without pagination
+        clubs = query.all()
+        clubs_data = []
+        for club in clubs:
+            clubs_data.append({
+                'id': club.id,
+                'name': club.name,
+                'description': club.description,
+                'location': club.location,
+                'leader': {
+                    'id': club.leader.id,
+                    'username': club.leader.username,
+                    'email': club.leader.email
+                },
+                'member_count': len(club.members) + 1,
+                'balance': float(club.balance),
+                'created_at': club.created_at.isoformat() if club.created_at else None
+            })
 
-    clubs_data = []
-    for club in clubs_paginated.items:
-        clubs_data.append({
-            'id': club.id,
-            'name': club.name,
-            'description': club.description,
-            'location': club.location,
-            'leader': {
-                'id': club.leader.id,
-                'username': club.leader.username,
-                'email': club.leader.email
-            },
-            'member_count': len(club.members) + 1,
-            'balance': float(club.balance),
-            'created_at': club.created_at.isoformat() if club.created_at else None
+        return jsonify({
+            'clubs': clubs_data,
+            'total': len(clubs_data)
         })
+    else:
+        # Use pagination with no upper limit on per_page
+        clubs_paginated = query.paginate(
+            page=page, 
+            per_page=per_page, 
+            error_out=False
+        )
 
-    return jsonify({
-        'clubs': clubs_data,
-        'pagination': {
-            'page': page,
-            'per_page': per_page,
-            'total': clubs_paginated.total,
-            'pages': clubs_paginated.pages,
-            'has_next': clubs_paginated.has_next,
-            'has_prev': clubs_paginated.has_prev
-        }
-    })
+        clubs_data = []
+        for club in clubs_paginated.items:
+            clubs_data.append({
+                'id': club.id,
+                'name': club.name,
+                'description': club.description,
+                'location': club.location,
+                'leader': {
+                    'id': club.leader.id,
+                    'username': club.leader.username,
+                    'email': club.leader.email
+                },
+                'member_count': len(club.members) + 1,
+                'balance': float(club.balance),
+                'created_at': club.created_at.isoformat() if club.created_at else None
+            })
+
+        return jsonify({
+            'clubs': clubs_data,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': clubs_paginated.total,
+                'pages': clubs_paginated.pages,
+                'has_next': clubs_paginated.has_next,
+                'has_prev': clubs_paginated.has_prev
+            }
+        })
 
 @app.route('/api/v1/clubs/<int:club_id>', methods=['GET'])
 @api_key_required(['clubs:read'])

@@ -288,7 +288,7 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
                 <tr>
                     <td>per_page</td>
                     <td><span class="param-type">integer</span></td>
-                    <td>Items per page (max: 100, default: 20)</td>
+                    <td>Items per page (default: 20, no upper limit)</td>
                     <td>No</td>
                 </tr>
                 <tr>
@@ -297,9 +297,16 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
                     <td>Search term for club name or location</td>
                     <td>No</td>
                 </tr>
+                <tr>
+                    <td>all</td>
+                    <td><span class="param-type">boolean</span></td>
+                    <td>Set to "true" to return all clubs without pagination</td>
+                    <td>No</td>
+                </tr>
             </table>
 
             <div class="code-block">
+// Standard paginated response
 {
   "clubs": [
     {
@@ -325,6 +332,14 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
     "has_next": true,
     "has_prev": false
   }
+}
+
+// Response when using ?all=true
+{
+  "clubs": [
+    // ... all clubs in the database
+  ],
+  "total": 150
 }
             </div>
         </div>
