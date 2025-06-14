@@ -2176,23 +2176,141 @@ async function createOAuthApp() {
 }
 
 function editApiKey(apiKeyId) {
-    // Implement edit API key functionality
-    showToast('info', 'Edit API Key functionality is not yet implemented');
+    const apiKey = apiKeysData.find(k => k.id === apiKeyId);
+    if (!apiKey) return;
+
+    const newName = prompt('API Key Name:', apiKey.name);
+    if (newName === null) return;
+
+    const newDescription = prompt('Description:', apiKey.description || '');
+    if (newDescription === null) return;
+
+    const newRateLimit = prompt('Rate Limit (requests per hour):', apiKey.rate_limit);
+    if (newRateLimit === null) return;
+
+    const isActive = confirm('Is this API key active?');
+
+    updateApiKey(apiKeyId, {
+        name: newName,
+        description: newDescription,
+        rate_limit: parseInt(newRateLimit),
+        is_active: isActive
+    });
+}
+
+async function updateApiKey(apiKeyId, updateData) {
+    try {
+        const response = await fetch(`/api/admin/api-keys/${apiKeyId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+        });
+
+        if (response.ok) {
+            showToast('success', 'API key updated successfully');
+            loadApiKeys();
+        } else {
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to update API key');
+        }
+    } catch (error) {
+        showToast('error', 'Failed to update API key');
+    }
 }
 
 function deleteApiKey(apiKeyId, apiKeyName) {
-    // Implement delete API key functionality
-    showToast('info', 'Delete API Key functionality is not yet implemented');
+    if (confirm(`Are you sure you want to delete API key "${apiKeyName}"? This action cannot be undone.`)) {
+        executeDeleteApiKey(apiKeyId);
+    }
+}
+
+async function executeDeleteApiKey(apiKeyId) {
+    try {
+        const response = await fetch(`/api/admin/api-keys/${apiKeyId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showToast('success', 'API key deleted successfully');
+            loadApiKeys();
+        } else {
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to delete API key');
+        }
+    } catch (error) {
+        showToast('error', 'Failed to delete API key');
+    }
 }
 
 function editOAuthApp(oauthAppId) {
-    // Implement edit OAuth application functionality
-    showToast('info', 'Edit OAuth Application functionality is not yet implemented');
+    const oauthApp = oauthAppsData.find(a => a.id === oauthAppId);
+    if (!oauthApp) return;
+
+    const newName = prompt('Application Name:', oauthApp.name);
+    if (newName === null) return;
+
+    const newDescription = prompt('Description:', oauthApp.description || '');
+    if (newDescription === null) return;
+
+    const newRedirectUris = prompt('Redirect URIs (comma-separated):', oauthApp.redirect_uris.join(', '));
+    if (newRedirectUris === null) return;
+
+    const isActive = confirm('Is this OAuth application active?');
+
+    updateOAuthApp(oauthAppId, {
+        name: newName,
+        description: newDescription,
+        redirect_uris: newRedirectUris.split(',').map(uri => uri.trim()),
+        is_active: isActive
+    });
+}
+
+async function updateOAuthApp(oauthAppId, updateData) {
+    try {
+        const response = await fetch(`/api/admin/oauth-applications/${oauthAppId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+        });
+
+        if (response.ok) {
+            showToast('success', 'OAuth application updated successfully');
+            loadOAuthApps();
+        } else {
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to update OAuth application');
+        }
+    } catch (error) {
+        showToast('error', 'Failed to update OAuth application');
+    }
 }
 
 function deleteOAuthApp(oauthAppId, oauthAppName) {
-    // Implement delete OAuth application functionality
-    showToast('info', 'Delete OAuth Application functionality is not yet implemented');
+    if (confirm(`Are you sure you want to delete OAuth application "${oauthAppName}"? This will also delete all related tokens and authorization codes. This action cannot be undone.`)) {
+        executeDeleteOAuthApp(oauthAppId);
+    }
+}
+
+async function executeDeleteOAuthApp(oauthAppId) {
+    try {
+        const response = await fetch(`/api/admin/oauth-applications/${oauthAppId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showToast('success', 'OAuth application deleted successfully');
+            loadOAuthApps();
+        } else {
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to delete OAuth application');
+        }
+    } catch (error) {
+        showToast('error', 'Failed to delete OAuth application');
+    }
 }
 
     document.addEventListener('click', function(e) {
