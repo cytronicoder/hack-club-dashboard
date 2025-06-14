@@ -1111,6 +1111,76 @@
     </div>
 </div>
 
+<div class="modal-backdrop" id="editApiKeyModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit API Key</h3>
+            <button class="modal-close" onclick="closeModal('editApiKeyModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="editApiKeyForm">
+                <input type="hidden" id="editApiKeyId">
+                <div class="form-group">
+                    <label class="form-label">Key Name</label>
+                    <input type="text" class="form-control" id="editApiKeyName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-control" id="editApiKeyDescription">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Rate Limit (requests per hour)</label>
+                    <input type="number" class="form-control" id="editApiKeyRateLimit" min="1" max="10000">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" id="editApiKeyActive"> Active
+                    </label>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('editApiKeyModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveApiKeyChanges()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="editOAuthAppModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit OAuth Application</h3>
+            <button class="modal-close" onclick="closeModal('editOAuthAppModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="editOAuthAppForm">
+                <input type="hidden" id="editOAuthAppId">
+                <div class="form-group">
+                    <label class="form-label">Application Name</label>
+                    <input type="text" class="form-control" id="editOAuthAppName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-control" id="editOAuthAppDescription">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Redirect URIs</label>
+                    <input type="text" class="form-control" id="editOAuthAppRedirectUris" placeholder="Enter redirect URIs (comma-separated)" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" id="editOAuthAppActive"> Active
+                    </label>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('editOAuthAppModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveOAuthAppChanges()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
 <div class="modal-backdrop" id="apiKeyModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -1486,6 +1556,10 @@ async function executeConfirmedAction() {
         }
     } else if (pendingAction === 'deleteSubmission') {
         await executeDeleteSubmission();
+    } else if (pendingAction === 'deleteApiKey') {
+        await executeDeleteApiKey(pendingUserId);
+    } else if (pendingAction === 'deleteOAuthApp') {
+        await executeDeleteOAuthApp(pendingUserId);
     }
 
     closeModal('confirmModal');
@@ -2176,23 +2250,181 @@ async function createOAuthApp() {
 }
 
 function editApiKey(apiKeyId) {
-    // Implement edit API key functionality
-    showToast('info', 'Edit API Key functionality is not yet implemented');
+    const apiKey = apiKeysData.find(k => k.id === apiKeyId);
+    if (!apiKey) return;
+
+    document.getElementById('editApiKeyId').value = apiKey.id;
+    document.getElementById('editApiKeyName').value = apiKey.name;
+    document.getElementById('editApiKeyDescription').value = apiKey.description || '';
+    document.getElementById('editApiKeyRateLimit').value = apiKey.rate_limit;
+    document.getElementById('editApiKeyActive').checked = apiKey.is_active;
+
+    openModal('editApiKeyModal');
+}
+
+function saveApiKeyChanges() {
+    const apiKeyId = document.getElementById('editApiKeyId').value;
+    const name = document.getElementById('editApiKeyName').value.trim();
+    const description = document.getElementById('editApiKeyDescription').value.trim();
+    const rateLimit = parseInt(document.getElementById('editApiKeyRateLimit').value);
+    const isActive = document.getElementById('editApiKeyActive').checked;
+
+    if (!name) {
+        showToast('error', 'API Key name is required');
+        return;
+    }
+
+    if (!rateLimit || rateLimit < 1 || rateLimit > 10000) {
+        showToast('error', 'Rate limit must be between 1 and 10000');
+        return;
+    }
+
+    updateApiKey(apiKeyId, {
+        name: name,
+        description: description,
+        rate_limit: rateLimit,
+        is_active: isActive
+    });
+
+    closeModal('editApiKeyModal');
+}
+
+async function updateApiKey(apiKeyId, updateData) {
+    try {
+        const response = await fetch(`/api/admin/api-keys/${apiKeyId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+        });
+
+        if (response.ok) {
+            showToast('success', 'API key updated successfully');
+            loadApiKeys();
+        } else {
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to update API key');
+        }
+    } catch (error) {
+        showToast('error', 'Failed to update API key');
+    }
 }
 
 function deleteApiKey(apiKeyId, apiKeyName) {
-    // Implement delete API key functionality
-    showToast('info', 'Delete API Key functionality is not yet implemented');
+    document.getElementById('confirmTitle').textContent = 'Delete API Key';
+    document.getElementById('confirmMessage').innerHTML = `Are you sure you want to delete API key "<strong>${apiKeyName}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This action cannot be undone.</span>`;
+    pendingAction = 'deleteApiKey';
+    pendingUserId = apiKeyId;
+    pendingUsername = apiKeyName;
+    openModal('confirmModal');
+}
+
+async function executeDeleteApiKey(apiKeyId) {
+    try {
+        const response = await fetch(`/api/admin/api-keys/${apiKeyId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showToast('success', 'API key deleted successfully');
+            loadApiKeys();
+        } else {
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to delete API key');
+        }
+    } catch (error) {
+        showToast('error', 'Failed to delete API key');
+    }
 }
 
 function editOAuthApp(oauthAppId) {
-    // Implement edit OAuth application functionality
-    showToast('info', 'Edit OAuth Application functionality is not yet implemented');
+    const oauthApp = oauthAppsData.find(a => a.id === oauthAppId);
+    if (!oauthApp) return;
+
+    document.getElementById('editOAuthAppId').value = oauthApp.id;
+    document.getElementById('editOAuthAppName').value = oauthApp.name;
+    document.getElementById('editOAuthAppDescription').value = oauthApp.description || '';
+    document.getElementById('editOAuthAppRedirectUris').value = oauthApp.redirect_uris.join(', ');
+    document.getElementById('editOAuthAppActive').checked = oauthApp.is_active;
+
+    openModal('editOAuthAppModal');
+}
+
+function saveOAuthAppChanges() {
+    const oauthAppId = document.getElementById('editOAuthAppId').value;
+    const name = document.getElementById('editOAuthAppName').value.trim();
+    const description = document.getElementById('editOAuthAppDescription').value.trim();
+    const redirectUris = document.getElementById('editOAuthAppRedirectUris').value.trim();
+    const isActive = document.getElementById('editOAuthAppActive').checked;
+
+    if (!name) {
+        showToast('error', 'Application name is required');
+        return;
+    }
+
+    if (!redirectUris) {
+        showToast('error', 'Redirect URIs are required');
+        return;
+    }
+
+    updateOAuthApp(oauthAppId, {
+        name: name,
+        description: description,
+        redirect_uris: redirectUris.split(',').map(uri => uri.trim()),
+        is_active: isActive
+    });
+
+    closeModal('editOAuthAppModal');
+}
+
+async function updateOAuthApp(oauthAppId, updateData) {
+    try {
+        const response = await fetch(`/api/admin/oauth-applications/${oauthAppId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+        });
+
+        if (response.ok) {
+            showToast('success', 'OAuth application updated successfully');
+            loadOAuthApps();
+        } else {
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to update OAuth application');
+        }
+    } catch (error) {
+        showToast('error', 'Failed to update OAuth application');
+    }
 }
 
 function deleteOAuthApp(oauthAppId, oauthAppName) {
-    // Implement delete OAuth application functionality
-    showToast('info', 'Delete OAuth Application functionality is not yet implemented');
+    document.getElementById('confirmTitle').textContent = 'Delete OAuth Application';
+    document.getElementById('confirmMessage').innerHTML = `Are you sure you want to delete OAuth application "<strong>${oauthAppName}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This will also delete all related tokens and authorization codes. This action cannot be undone.</span>`;
+    pendingAction = 'deleteOAuthApp';
+    pendingUserId = oauthAppId;
+    pendingUsername = oauthAppName;
+    openModal('confirmModal');
+}
+
+async function executeDeleteOAuthApp(oauthAppId) {
+    try {
+        const response = await fetch(`/api/admin/oauth-applications/${oauthAppId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showToast('success', 'OAuth application deleted successfully');
+            loadOAuthApps();
+        } else {
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to delete OAuth application');
+        }
+    } catch (error) {
+        showToast('error', 'Failed to delete OAuth application');
+    }
 }
 
     document.addEventListener('click', function(e) {

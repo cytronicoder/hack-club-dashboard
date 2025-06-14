@@ -2180,6 +2180,54 @@ def admin_remove_administrator(admin_id):
 
     return jsonify({'message': 'Administrator privileges removed successfully'})
 
+@app.route('/api/admin/login-as-user/<int:user_id>', methods=['POST'])
+@login_required
+@limiter.limit("10 per hour")
+def admin_login_as_user(user_id):
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    user = User.query.get_or_404(user_id)
+
+    # Don't allow logging in as super admin
+    if user.email == 'ethan@hackclub.com':
+        return jsonify({'error': 'Cannot login as super admin'}), 400
+
+    # Log out current user and log in as the target user
+    logout_user()
+    login_user(user, remember=False)
+
+    app.logger.info(f"Admin logged in as user {user.username} (ID: {user.id})")
+
+    return jsonify({'message': f'Successfully logged in as {user.username}'})
+
+@app.route('/api/admin/reset-password/<int:user_id>', methods=['POST'])
+@login_required
+@limiter.limit("10 per hour")
+def admin_reset_password(user_id):
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    user = User.query.get_or_404(user_id)
+    data = request.get_json()
+    new_password = data.get('new_password')
+
+    if not new_password or len(new_password) < 6:
+        return jsonify({'error': 'Password must be at least 6 characters long'}), 400
+
+    # Don't allow resetting super admin password
+    if user.email == 'ethan@hackclub.com':
+        return jsonify({'error': 'Cannot reset super admin password'}), 400
+
+    user.set_password(new_password)
+    db.session.commit()
+
+    app.logger.info(f"Admin reset password for user {user.username} (ID: {user.id})")
+
+    return jsonify({'message': 'Password reset successfully'})
+
 # API Key Management
 @app.route('/api/admin/api-keys', methods=['GET'])
 @app.route('/api/admin/apikeys', methods=['GET'])
@@ -2272,19 +2320,37 @@ def admin_create_api_key():
         'api_key': api_key.key
     })
 
-@app.route('/api/admin/api-keys/<int:key_id>', methods=['DELETE'])
+@app.route('/api/admin/api-keys/<int:key_id>', methods=['PUT', 'DELETE'])
 @login_required
 @limiter.limit("50 per hour")
-def admin_delete_api_key(key_id):
+def admin_manage_api_key(key_id):
     current_user = get_current_user()
     if not current_user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
     api_key = APIKey.query.get_or_404(key_id)
-    db.session.delete(api_key)
-    db.session.commit()
 
-    return jsonify({'message': 'API key deleted successfully'})
+    if request.method == 'DELETE':
+        db.session.delete(api_key)
+        db.session.commit()
+        return jsonify({'message': 'API key deleted successfully'})
+
+    if request.method == 'PUT':
+        data = request.get_json()
+        
+        if 'name' in data:
+            api_key.name = data['name']
+        if 'description' in data:
+            api_key.description = data['description']
+        if 'is_active' in data:
+            api_key.is_active = bool(data['is_active'])
+        if 'rate_limit' in data:
+            api_key.rate_limit = int(data['rate_limit'])
+        if 'scopes' in data:
+            api_key.set_scopes(data['scopes'])
+
+        db.session.commit()
+        return jsonify({'message': 'API key updated successfully'})
 
 # OAuth Application Management
 @app.route('/api/admin/oauth-applications', methods=['GET'])
@@ -2363,24 +2429,41 @@ def admin_create_oauth_app():
         'client_secret': oauth_app.client_secret
     })
 
-@app.route('/api/admin/oauth-applications/<int:app_id>', methods=['DELETE'])
+@app.route('/api/admin/oauth-applications/<int:app_id>', methods=['PUT', 'DELETE'])
 @login_required
 @limiter.limit("50 per hour")
-def admin_delete_oauth_app(app_id):
+def admin_manage_oauth_app(app_id):
     current_user = get_current_user()
     if not current_user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
     oauth_app = OAuthApplication.query.get_or_404(app_id)
 
-    # Delete related tokens and authorization codes
-    OAuthToken.query.filter_by(application_id=app_id).delete()
-    OAuthAuthorizationCode.query.filter_by(application_id=app_id).delete()
+    if request.method == 'DELETE':
+        # Delete related tokens and authorization codes
+        OAuthToken.query.filter_by(application_id=app_id).delete()
+        OAuthAuthorizationCode.query.filter_by(application_id=app_id).delete()
 
-    db.session.delete(oauth_app)
-    db.session.commit()
+        db.session.delete(oauth_app)
+        db.session.commit()
+        return jsonify({'message': 'OAuth application deleted successfully'})
 
-    return jsonify({'message': 'OAuth application deleted successfully'})
+    if request.method == 'PUT':
+        data = request.get_json()
+        
+        if 'name' in data:
+            oauth_app.name = data['name']
+        if 'description' in data:
+            oauth_app.description = data['description']
+        if 'is_active' in data:
+            oauth_app.is_active = bool(data['is_active'])
+        if 'redirect_uris' in data:
+            oauth_app.set_redirect_uris(data['redirect_uris'])
+        if 'scopes' in data:
+            oauth_app.set_scopes(data['scopes'])
+
+        db.session.commit()
+        return jsonify({'message': 'OAuth application updated successfully'})
 
 # Admin Pizza Grant Management
 @app.route('/api/admin/pizza-grants', methods=['GET'])
