@@ -871,6 +871,14 @@ def login():
             app.logger.info(f"Session created for user {user.username}: session_id={session.get('user_id')}, logged_in={session.get('logged_in')}")
             flash(f'Welcome back, {user.username}!', 'success')
 
+            # Check for pending OAuth flow
+            oauth_params = session.get('oauth_params')
+            if oauth_params:
+                session.pop('oauth_params', None)
+                # Redirect back to OAuth authorize with original params
+                query_string = '&'.join([f"{k}={v}" for k, v in oauth_params.items()])
+                return redirect(url_for('oauth_authorize') + f'?{query_string}')
+
             # Check for pending join code
             pending_join_code = session.get('pending_join_code')
             if pending_join_code:
@@ -2788,7 +2796,7 @@ def api_get_analytics():
     return jsonify({'analytics': analytics_data})
 
 # OAuth Endpoints
-@app.route('/oauth/authorize', methods=['GET'])
+@app.route('/oauth/authorize', methods=['GET', 'POST'])
 @limiter.limit("60 per minute")
 def oauth_authorize():
     client_id = request.args.get('client_id')
@@ -2827,26 +2835,66 @@ def oauth_authorize():
     if invalid_scopes:
         return jsonify({'error': f'Invalid scopes: {", ".join(invalid_scopes)}'}), 400
 
-    # Generate authorization code
     current_user = get_current_user()
-    auth_code = OAuthAuthorizationCode(
-        user_id=current_user.id,
-        application_id=oauth_app.id,
-        redirect_uri=redirect_uri,
-        state=state
-    )
-    auth_code.generate_code()
-    auth_code.set_scopes(requested_scopes)
 
-    db.session.add(auth_code)
-    db.session.commit()
+    # Handle POST request (user approved/denied)
+    if request.method == 'POST':
+        action = request.form.get('action')
+        
+        if action == 'deny':
+            # Redirect back with error
+            error_url = f"{redirect_uri}?error=access_denied"
+            if state:
+                error_url += f"&state={state}"
+            return redirect(error_url)
+        
+        elif action == 'approve':
+            # Generate authorization code
+            auth_code = OAuthAuthorizationCode(
+                user_id=current_user.id,
+                application_id=oauth_app.id,
+                redirect_uri=redirect_uri,
+                state=state
+            )
+            auth_code.generate_code()
+            auth_code.set_scopes(requested_scopes)
 
-    # Redirect back to client with authorization code
-    redirect_url = f"{redirect_uri}?code={auth_code.code}"
-    if state:
-        redirect_url += f"&state={state}"
+            db.session.add(auth_code)
+            db.session.commit()
 
-    return redirect(redirect_url)
+            # Redirect back to client with authorization code
+            redirect_url = f"{redirect_uri}?code={auth_code.code}"
+            if state:
+                redirect_url += f"&state={state}"
+
+            return redirect(redirect_url)
+
+    # Show consent page
+    scope_descriptions = {
+        'clubs:read': 'View your clubs and club information',
+        'clubs:write': 'Create and manage clubs on your behalf',
+        'users:read': 'View your profile information',
+        'projects:read': 'View your projects and club projects',
+        'assignments:read': 'View club assignments',
+        'meetings:read': 'View club meetings',
+        'analytics:read': 'View analytics and statistics'
+    }
+
+    scopes_with_descriptions = []
+    for scope_name in requested_scopes:
+        scopes_with_descriptions.append({
+            'name': scope_name,
+            'description': scope_descriptions.get(scope_name, f'Access {scope_name}')
+        })
+
+    return render_template('oauth_consent.html', 
+                         app=oauth_app, 
+                         scopes=scopes_with_descriptions,
+                         client_id=client_id,
+                         redirect_uri=redirect_uri,
+                         response_type=response_type,
+                         scope=scope,
+                         state=state)
 
 @app.route('/oauth/token', methods=['POST'])
 @limiter.limit("60 per minute")
