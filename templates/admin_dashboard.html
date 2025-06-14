@@ -1217,6 +1217,55 @@
     </div>
 </div>
 
+<div class="modal-backdrop" id="oauthCredentialsModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-shield-alt"></i> Your New OAuth Application</h3>
+            <button class="modal-close" onclick="closeModal('oauthCredentialsModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem;">
+                <div style="color: #0c4a6e; margin-bottom: 1rem;">
+                    <i class="fas fa-info-circle"></i> <strong>Important:</strong> Copy these credentials now as the client secret won't be shown again!
+                </div>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #374151;">Client ID</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="text" id="generatedClientId" readonly style="flex: 1; padding: 0.75rem; border: 2px solid #0ea5e9; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 0.875rem; background: white;">
+                        <button class="btn btn-primary" onclick="copyClientId()" style="padding: 0.75rem 1rem;">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                </div>
+                
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #374151;">Client Secret</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="text" id="generatedClientSecret" readonly style="flex: 1; padding: 0.75rem; border: 2px solid #0ea5e9; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 0.875rem; background: white;">
+                        <button class="btn btn-primary" onclick="copyClientSecret()" style="padding: 0.75rem 1rem;">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                </div>
+                
+                <div style="color: #64748b; font-size: 0.875rem; margin-top: 1rem;">
+                    Store these credentials securely - you'll need them to authenticate your OAuth application.
+                </div>
+            </div>
+            
+            <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem;">
+                <div style="color: #92400e; font-size: 0.875rem;">
+                    <i class="fas fa-exclamation-triangle"></i> These credentials provide access to your account. Keep them secret and don't share them publicly.
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="closeModal('oauthCredentialsModal')">I've Copied the Credentials</button>
+        </div>
+    </div>
+</div>
+
 <script>
 let usersData = [];
 let clubsData = [];
@@ -2231,18 +2280,23 @@ async function createOAuthApp() {
             },
             body: JSON.stringify({
                 name: oauthAppName,
-                redirect_uris: oauthAppRedirectUris.split(',')
+                redirect_uris: oauthAppRedirectUris.split(',').map(uri => uri.trim())
             })
         });
 
+        const data = await response.json();
+
         if (response.ok) {
-            showToast('success', 'OAuth Application created successfully');
             closeModal('addOAuthAppModal');
             document.getElementById('addOAuthAppForm').reset();
             loadOAuthApps();
+            
+            // Show the generated credentials in a modal
+            document.getElementById('generatedClientId').value = data.client_id;
+            document.getElementById('generatedClientSecret').value = data.client_secret;
+            openModal('oauthCredentialsModal');
         } else {
-            const error = await response.json();
-            showToast('error', error.error || 'Failed to create OAuth Application');
+            showToast('error', data.error || 'Failed to create OAuth Application');
         }
     } catch (error) {
         showToast('error', 'Failed to create OAuth Application');
@@ -2460,6 +2514,60 @@ function copyApiKey() {
             showToast('success', 'API key copied to clipboard!');
         } catch (err) {
             showToast('error', 'Failed to copy API key. Please select and copy manually.');
+        }
+    });
+}
+
+function copyClientId() {
+    const clientIdInput = document.getElementById('generatedClientId');
+    clientIdInput.select();
+    clientIdInput.setSelectionRange(0, 99999);
+    
+    navigator.clipboard.writeText(clientIdInput.value).then(() => {
+        showToast('success', 'Client ID copied to clipboard!');
+        
+        const copyButton = event.target.closest('button');
+        const originalHtml = copyButton.innerHTML;
+        copyButton.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        copyButton.style.background = '#10b981';
+        
+        setTimeout(() => {
+            copyButton.innerHTML = originalHtml;
+            copyButton.style.background = '#ec3750';
+        }, 2000);
+    }).catch(() => {
+        try {
+            document.execCommand('copy');
+            showToast('success', 'Client ID copied to clipboard!');
+        } catch (err) {
+            showToast('error', 'Failed to copy Client ID. Please select and copy manually.');
+        }
+    });
+}
+
+function copyClientSecret() {
+    const clientSecretInput = document.getElementById('generatedClientSecret');
+    clientSecretInput.select();
+    clientSecretInput.setSelectionRange(0, 99999);
+    
+    navigator.clipboard.writeText(clientSecretInput.value).then(() => {
+        showToast('success', 'Client Secret copied to clipboard!');
+        
+        const copyButton = event.target.closest('button');
+        const originalHtml = copyButton.innerHTML;
+        copyButton.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        copyButton.style.background = '#10b981';
+        
+        setTimeout(() => {
+            copyButton.innerHTML = originalHtml;
+            copyButton.style.background = '#ec3750';
+        }, 2000);
+    }).catch(() => {
+        try {
+            document.execCommand('copy');
+            showToast('success', 'Client Secret copied to clipboard!');
+        } catch (err) {
+            showToast('error', 'Failed to copy Client Secret. Please select and copy manually.');
         }
     });
 }
