@@ -643,51 +643,189 @@ X-RateLimit-Reset: 1609459200
 
     <div class="docs-section">
         <h2>Error Responses</h2>
-        <p>The API uses standard HTTP status codes and returns error details in JSON format:</p>
+        <p>The API provides detailed error information to help you diagnose and fix issues quickly. All errors include:</p>
+        <ul>
+            <li><strong>error</strong>: Human-readable error description</li>
+            <li><strong>error_code</strong>: Machine-readable error identifier</li>
+            <li><strong>message</strong>: Detailed explanation of what went wrong</li>
+            <li><strong>how_to_fix</strong>: Specific instructions on how to resolve the issue</li>
+        </ul>
         
+        <h3>Example Error Response</h3>
         <div class="code-block">
 {
-  "error": "Invalid API key",
-  "code": "UNAUTHORIZED",
-  "message": "The provided API key is invalid or has been revoked"
+  "error": "Invalid API key format",
+  "error_code": "INVALID_KEY_FORMAT",
+  "message": "API key appears to be malformed or too short",
+  "how_to_fix": "Ensure you are using the complete API key provided by your administrator"
 }
         </div>
 
-        <h3>Common Status Codes</h3>
+        <h3>Authentication Error Codes</h3>
+        <table class="params-table">
+            <tr>
+                <th>Error Code</th>
+                <th>Status</th>
+                <th>Description</th>
+                <th>Common Causes</th>
+            </tr>
+            <tr>
+                <td>MISSING_AUTH_HEADER</td>
+                <td>401</td>
+                <td>Authorization header is missing</td>
+                <td>Forgot to include Authorization header</td>
+            </tr>
+            <tr>
+                <td>INVALID_AUTH_FORMAT</td>
+                <td>401</td>
+                <td>Authorization header format is incorrect</td>
+                <td>Not using "Bearer TOKEN" format</td>
+            </tr>
+            <tr>
+                <td>INVALID_KEY_FORMAT</td>
+                <td>401</td>
+                <td>API key appears malformed</td>
+                <td>Truncated or corrupted API key</td>
+            </tr>
+            <tr>
+                <td>INVALID_API_KEY</td>
+                <td>401</td>
+                <td>API key doesn't exist</td>
+                <td>Wrong key or key was deleted</td>
+            </tr>
+            <tr>
+                <td>KEY_DISABLED</td>
+                <td>401</td>
+                <td>API key has been disabled</td>
+                <td>Administrator disabled the key</td>
+            </tr>
+            <tr>
+                <td>INSUFFICIENT_SCOPES</td>
+                <td>403</td>
+                <td>API key lacks required permissions</td>
+                <td>Key doesn't have needed scopes</td>
+            </tr>
+        </table>
+
+        <h3>OAuth Error Codes</h3>
+        <table class="params-table">
+            <tr>
+                <th>Error Code</th>
+                <th>Status</th>
+                <th>Description</th>
+                <th>Common Causes</th>
+            </tr>
+            <tr>
+                <td>MISSING_CLIENT_ID</td>
+                <td>400</td>
+                <td>client_id parameter missing</td>
+                <td>Forgot client_id in authorization URL</td>
+            </tr>
+            <tr>
+                <td>INVALID_CLIENT_ID</td>
+                <td>400</td>
+                <td>client_id doesn't exist</td>
+                <td>Wrong client_id or app deleted</td>
+            </tr>
+            <tr>
+                <td>CLIENT_DISABLED</td>
+                <td>400</td>
+                <td>OAuth application is disabled</td>
+                <td>Administrator disabled the app</td>
+            </tr>
+            <tr>
+                <td>INVALID_REDIRECT_URI</td>
+                <td>400</td>
+                <td>redirect_uri not registered</td>
+                <td>Using unregistered redirect URI</td>
+            </tr>
+            <tr>
+                <td>INVALID_SCOPES</td>
+                <td>400</td>
+                <td>Requesting unauthorized scopes</td>
+                <td>App not configured for requested scopes</td>
+            </tr>
+            <tr>
+                <td>TOKEN_EXPIRED</td>
+                <td>401</td>
+                <td>Access token has expired</td>
+                <td>Token older than 1 hour</td>
+            </tr>
+            <tr>
+                <td>TOKEN_REVOKED</td>
+                <td>401</td>
+                <td>Access token was revoked</td>
+                <td>User or admin revoked token</td>
+            </tr>
+            <tr>
+                <td>CODE_EXPIRED</td>
+                <td>400</td>
+                <td>Authorization code expired</td>
+                <td>Code older than 10 minutes</td>
+            </tr>
+            <tr>
+                <td>CODE_ALREADY_USED</td>
+                <td>400</td>
+                <td>Authorization code already used</td>
+                <td>Codes can only be used once</td>
+            </tr>
+        </table>
+
+        <h3>HTTP Status Codes</h3>
         <table class="params-table">
             <tr>
                 <th>Status Code</th>
                 <th>Description</th>
+                <th>When It Occurs</th>
             </tr>
             <tr>
                 <td>200</td>
                 <td>Success</td>
+                <td>Request completed successfully</td>
             </tr>
             <tr>
                 <td>400</td>
-                <td>Bad Request - Invalid parameters</td>
+                <td>Bad Request</td>
+                <td>Invalid parameters or malformed request</td>
             </tr>
             <tr>
                 <td>401</td>
-                <td>Unauthorized - Invalid or missing API key</td>
+                <td>Unauthorized</td>
+                <td>Authentication failed or missing</td>
             </tr>
             <tr>
                 <td>403</td>
-                <td>Forbidden - Insufficient permissions</td>
+                <td>Forbidden</td>
+                <td>Authenticated but insufficient permissions</td>
             </tr>
             <tr>
                 <td>404</td>
-                <td>Not Found - Resource doesn't exist</td>
+                <td>Not Found</td>
+                <td>Resource doesn't exist</td>
             </tr>
             <tr>
                 <td>429</td>
-                <td>Too Many Requests - Rate limit exceeded</td>
+                <td>Too Many Requests</td>
+                <td>Rate limit exceeded</td>
             </tr>
             <tr>
                 <td>500</td>
                 <td>Internal Server Error</td>
+                <td>Unexpected server error</td>
             </tr>
         </table>
+
+        <h3>Troubleshooting Tips</h3>
+        <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 1rem; margin: 1rem 0;">
+            <h4 style="color: #0c4a6e; margin-top: 0;">Common Issues and Solutions</h4>
+            <ul style="margin-bottom: 0;">
+                <li><strong>401 errors:</strong> Check your Authorization header format and API key validity</li>
+                <li><strong>403 errors:</strong> Verify your API key has the required scopes</li>
+                <li><strong>OAuth issues:</strong> Ensure redirect URIs match exactly (including http/https)</li>
+                <li><strong>Token expiration:</strong> Implement refresh token logic for long-running applications</li>
+                <li><strong>Rate limits:</strong> Implement exponential backoff and respect rate limit headers</li>
+            </ul>
+        </div>
     </div>
 </div>
 {% endblock %}

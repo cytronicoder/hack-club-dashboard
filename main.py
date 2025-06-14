@@ -296,24 +296,80 @@ def api_key_required(scopes=None):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             auth_header = request.headers.get('Authorization')
-            if not auth_header or not auth_header.startswith('Bearer '):
-                return jsonify({'error': 'API key required'}), 401
+            if not auth_header:
+                return jsonify({
+                    'error': 'Missing Authorization header',
+                    'error_code': 'MISSING_AUTH_HEADER',
+                    'message': 'The Authorization header is required for API access',
+                    'how_to_fix': 'Include the Authorization header in your request: "Authorization: Bearer YOUR_API_KEY"'
+                }), 401
+            
+            if not auth_header.startswith('Bearer '):
+                return jsonify({
+                    'error': 'Invalid Authorization header format',
+                    'error_code': 'INVALID_AUTH_FORMAT',
+                    'message': 'Authorization header must use Bearer token format',
+                    'how_to_fix': 'Use the format: "Authorization: Bearer YOUR_API_KEY"',
+                    'received': f'Authorization: {auth_header[:50]}...' if len(auth_header) > 50 else f'Authorization: {auth_header}'
+                }), 401
 
-            api_key = auth_header.split(' ')[1]
+            try:
+                api_key = auth_header.split(' ')[1]
+            except IndexError:
+                return jsonify({
+                    'error': 'Malformed Authorization header',
+                    'error_code': 'MALFORMED_AUTH_HEADER',
+                    'message': 'Authorization header is missing the API key',
+                    'how_to_fix': 'Ensure your header follows the format: "Authorization: Bearer YOUR_API_KEY"'
+                }), 401
+
+            if not api_key or len(api_key) < 10:
+                return jsonify({
+                    'error': 'Invalid API key format',
+                    'error_code': 'INVALID_KEY_FORMAT',
+                    'message': 'API key appears to be malformed or too short',
+                    'how_to_fix': 'Ensure you are using the complete API key provided by your administrator'
+                }), 401
+
             key_obj = APIKey.query.filter_by(key=api_key, is_active=True).first()
 
             if not key_obj:
-                return jsonify({'error': 'Invalid API key'}), 401
+                # Check if key exists but is inactive
+                inactive_key = APIKey.query.filter_by(key=api_key, is_active=False).first()
+                if inactive_key:
+                    return jsonify({
+                        'error': 'API key is disabled',
+                        'error_code': 'KEY_DISABLED',
+                        'message': 'This API key has been disabled by an administrator',
+                        'how_to_fix': 'Contact your administrator to reactivate the API key or request a new one'
+                    }), 401
+                else:
+                    return jsonify({
+                        'error': 'Invalid API key',
+                        'error_code': 'INVALID_API_KEY',
+                        'message': 'The provided API key does not exist or has been revoked',
+                        'how_to_fix': 'Verify your API key is correct, or contact your administrator for a new one'
+                    }), 401
 
             # Check scopes if provided
             if scopes:
                 key_scopes = key_obj.get_scopes()
                 if not any(scope in key_scopes for scope in scopes):
-                    return jsonify({'error': 'Insufficient permissions'}), 403
+                    return jsonify({
+                        'error': 'Insufficient permissions',
+                        'error_code': 'INSUFFICIENT_SCOPES',
+                        'message': f'API key does not have required scopes: {", ".join(scopes)}',
+                        'required_scopes': scopes,
+                        'available_scopes': key_scopes,
+                        'how_to_fix': 'Contact your administrator to add the required scopes to your API key'
+                    }), 403
 
             # Update last used timestamp
-            key_obj.last_used_at = datetime.now(timezone.utc)
-            db.session.commit()
+            try:
+                key_obj.last_used_at = datetime.now(timezone.utc)
+                db.session.commit()
+            except Exception as e:
+                app.logger.error(f"Failed to update API key last_used_at: {e}")
 
             # Add key info to request context
             request.api_key = key_obj
@@ -326,27 +382,86 @@ def oauth_required(scopes=None):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             auth_header = request.headers.get('Authorization')
-            if not auth_header or not auth_header.startswith('Bearer '):
-                return jsonify({'error': 'OAuth token required'}), 401
+            if not auth_header:
+                return jsonify({
+                    'error': 'Missing Authorization header',
+                    'error_code': 'MISSING_AUTH_HEADER',
+                    'message': 'OAuth access token is required',
+                    'how_to_fix': 'Include the Authorization header: "Authorization: Bearer YOUR_ACCESS_TOKEN"'
+                }), 401
+            
+            if not auth_header.startswith('Bearer '):
+                return jsonify({
+                    'error': 'Invalid Authorization header format',
+                    'error_code': 'INVALID_AUTH_FORMAT',
+                    'message': 'Authorization header must use Bearer token format for OAuth',
+                    'how_to_fix': 'Use the format: "Authorization: Bearer YOUR_ACCESS_TOKEN"',
+                    'received': f'Authorization: {auth_header[:50]}...' if len(auth_header) > 50 else f'Authorization: {auth_header}'
+                }), 401
 
-            access_token = auth_header.split(' ')[1]
+            try:
+                access_token = auth_header.split(' ')[1]
+            except IndexError:
+                return jsonify({
+                    'error': 'Malformed Authorization header',
+                    'error_code': 'MALFORMED_AUTH_HEADER',
+                    'message': 'Authorization header is missing the access token',
+                    'how_to_fix': 'Ensure your header follows the format: "Authorization: Bearer YOUR_ACCESS_TOKEN"'
+                }), 401
+
+            if not access_token or len(access_token) < 10:
+                return jsonify({
+                    'error': 'Invalid access token format',
+                    'error_code': 'INVALID_TOKEN_FORMAT',
+                    'message': 'Access token appears to be malformed or too short',
+                    'how_to_fix': 'Ensure you are using the complete access token from the OAuth flow'
+                }), 401
+
             token_obj = OAuthToken.query.filter_by(
                 access_token=access_token, 
                 is_active=True
             ).first()
 
             if not token_obj:
-                return jsonify({'error': 'Invalid OAuth token'}), 401
+                # Check if token exists but is inactive
+                inactive_token = OAuthToken.query.filter_by(access_token=access_token, is_active=False).first()
+                if inactive_token:
+                    return jsonify({
+                        'error': 'Access token revoked',
+                        'error_code': 'TOKEN_REVOKED',
+                        'message': 'This access token has been revoked',
+                        'how_to_fix': 'Obtain a new access token by repeating the OAuth authorization flow'
+                    }), 401
+                else:
+                    return jsonify({
+                        'error': 'Invalid OAuth token',
+                        'error_code': 'INVALID_ACCESS_TOKEN',
+                        'message': 'The provided access token does not exist',
+                        'how_to_fix': 'Verify your access token is correct, or obtain a new one through the OAuth flow'
+                    }), 401
 
             # Check if token is expired
             if token_obj.expires_at < datetime.now(timezone.utc):
-                return jsonify({'error': 'OAuth token expired'}), 401
+                return jsonify({
+                    'error': 'OAuth token expired',
+                    'error_code': 'TOKEN_EXPIRED',
+                    'message': f'Access token expired at {token_obj.expires_at.isoformat()}',
+                    'expires_at': token_obj.expires_at.isoformat(),
+                    'how_to_fix': 'Use your refresh token to obtain a new access token, or repeat the OAuth authorization flow'
+                }), 401
 
             # Check scopes if provided
             if scopes:
                 token_scopes = token_obj.get_scopes()
                 if not any(scope in token_scopes for scope in scopes):
-                    return jsonify({'error': 'Insufficient permissions'}), 403
+                    return jsonify({
+                        'error': 'Insufficient permissions',
+                        'error_code': 'INSUFFICIENT_SCOPES',
+                        'message': f'Access token does not have required scopes: {", ".join(scopes)}',
+                        'required_scopes': scopes,
+                        'available_scopes': token_scopes,
+                        'how_to_fix': 'Request authorization with the required scopes during the OAuth flow'
+                    }), 403
 
             # Add token and user info to request context
             request.oauth_token = token_obj
@@ -2805,16 +2920,62 @@ def oauth_authorize():
     scope = request.args.get('scope', '')
     state = request.args.get('state', '')
 
-    if not client_id or not redirect_uri or response_type != 'code':
-        return jsonify({'error': 'Invalid OAuth parameters'}), 400
+    # Validate required parameters
+    if not client_id:
+        return jsonify({
+            'error': 'Missing client_id parameter',
+            'error_code': 'MISSING_CLIENT_ID',
+            'message': 'The client_id parameter is required for OAuth authorization',
+            'how_to_fix': 'Include client_id in your authorization URL query parameters'
+        }), 400
+
+    if not redirect_uri:
+        return jsonify({
+            'error': 'Missing redirect_uri parameter',
+            'error_code': 'MISSING_REDIRECT_URI',
+            'message': 'The redirect_uri parameter is required for OAuth authorization',
+            'how_to_fix': 'Include redirect_uri in your authorization URL query parameters'
+        }), 400
+
+    if not response_type or response_type != 'code':
+        return jsonify({
+            'error': 'Invalid response_type parameter',
+            'error_code': 'INVALID_RESPONSE_TYPE',
+            'message': 'Only "code" response_type is supported for OAuth authorization',
+            'received': response_type,
+            'how_to_fix': 'Set response_type=code in your authorization URL'
+        }), 400
 
     oauth_app = OAuthApplication.query.filter_by(client_id=client_id, is_active=True).first()
     if not oauth_app:
-        return jsonify({'error': 'Invalid client_id'}), 400
+        # Check if client exists but is inactive
+        inactive_app = OAuthApplication.query.filter_by(client_id=client_id, is_active=False).first()
+        if inactive_app:
+            return jsonify({
+                'error': 'OAuth application disabled',
+                'error_code': 'CLIENT_DISABLED',
+                'message': 'This OAuth application has been disabled',
+                'how_to_fix': 'Contact the application administrator to reactivate the OAuth application'
+            }), 400
+        else:
+            return jsonify({
+                'error': 'Invalid client_id',
+                'error_code': 'INVALID_CLIENT_ID',
+                'message': 'The provided client_id does not exist',
+                'how_to_fix': 'Verify your client_id is correct or register a new OAuth application'
+            }), 400
 
     # Check if redirect_uri is allowed
-    if redirect_uri not in oauth_app.get_redirect_uris():
-        return jsonify({'error': 'Invalid redirect_uri'}), 400
+    allowed_redirect_uris = oauth_app.get_redirect_uris()
+    if redirect_uri not in allowed_redirect_uris:
+        return jsonify({
+            'error': 'Invalid redirect_uri',
+            'error_code': 'INVALID_REDIRECT_URI',
+            'message': 'The redirect_uri is not registered for this OAuth application',
+            'provided_uri': redirect_uri,
+            'allowed_uris': allowed_redirect_uris,
+            'how_to_fix': 'Use one of the registered redirect URIs or update your OAuth application configuration'
+        }), 400
 
     # Check if user is authenticated
     if not is_authenticated():
@@ -2833,7 +2994,14 @@ def oauth_authorize():
     allowed_scopes = oauth_app.get_scopes()
     invalid_scopes = [s for s in requested_scopes if s not in allowed_scopes]
     if invalid_scopes:
-        return jsonify({'error': f'Invalid scopes: {", ".join(invalid_scopes)}'}), 400
+        return jsonify({
+            'error': 'Invalid scopes requested',
+            'error_code': 'INVALID_SCOPES',
+            'message': f'The following scopes are not allowed for this application: {", ".join(invalid_scopes)}',
+            'invalid_scopes': invalid_scopes,
+            'allowed_scopes': allowed_scopes,
+            'how_to_fix': 'Request only scopes that are configured for this OAuth application'
+        }), 400
 
     current_user = get_current_user()
 
@@ -2905,21 +3073,61 @@ def oauth_token():
     code = request.form.get('code')
     redirect_uri = request.form.get('redirect_uri')
 
-    if grant_type != 'authorization_code':
-        return jsonify({'error': 'Unsupported grant_type'}), 400
+    if not grant_type:
+        return jsonify({
+            'error': 'Missing grant_type parameter',
+            'error_code': 'MISSING_GRANT_TYPE',
+            'message': 'The grant_type parameter is required',
+            'how_to_fix': 'Include grant_type=authorization_code in your POST request'
+        }), 400
 
-    if not all([client_id, client_secret, code, redirect_uri]):
-        return jsonify({'error': 'Missing required parameters'}), 400
+    if grant_type != 'authorization_code':
+        return jsonify({
+            'error': 'Unsupported grant_type',
+            'error_code': 'UNSUPPORTED_GRANT_TYPE',
+            'message': 'Only "authorization_code" grant type is supported',
+            'received': grant_type,
+            'supported_types': ['authorization_code'],
+            'how_to_fix': 'Use grant_type=authorization_code in your request'
+        }), 400
+
+    missing_params = []
+    if not client_id:
+        missing_params.append('client_id')
+    if not client_secret:
+        missing_params.append('client_secret')
+    if not code:
+        missing_params.append('code')
+    if not redirect_uri:
+        missing_params.append('redirect_uri')
+
+    if missing_params:
+        return jsonify({
+            'error': 'Missing required parameters',
+            'error_code': 'MISSING_PARAMETERS',
+            'message': f'The following parameters are required: {", ".join(missing_params)}',
+            'missing_parameters': missing_params,
+            'how_to_fix': 'Include all required parameters in your POST request body'
+        }), 400
 
     # Verify client credentials
-    oauth_app = OAuthApplication.query.filter_by(
-        client_id=client_id,
-        client_secret=client_secret,
-        is_active=True
-    ).first()
-
+    oauth_app = OAuthApplication.query.filter_by(client_id=client_id, is_active=True).first()
+    
     if not oauth_app:
-        return jsonify({'error': 'Invalid client credentials'}), 401
+        return jsonify({
+            'error': 'Invalid client_id',
+            'error_code': 'INVALID_CLIENT_ID',
+            'message': 'The provided client_id does not exist or is disabled',
+            'how_to_fix': 'Verify your client_id is correct and the OAuth application is active'
+        }), 401
+
+    if oauth_app.client_secret != client_secret:
+        return jsonify({
+            'error': 'Invalid client credentials',
+            'error_code': 'INVALID_CLIENT_SECRET',
+            'message': 'The provided client_secret is incorrect',
+            'how_to_fix': 'Verify your client_secret is correct'
+        }), 401
 
     # Verify authorization code
     auth_code = OAuthAuthorizationCode.query.filter_by(
@@ -2930,11 +3138,53 @@ def oauth_token():
     ).first()
 
     if not auth_code:
-        return jsonify({'error': 'Invalid authorization code'}), 400
+        # Check for more specific error cases
+        used_code = OAuthAuthorizationCode.query.filter_by(
+            code=code,
+            application_id=oauth_app.id,
+            used=True
+        ).first()
+        
+        if used_code:
+            return jsonify({
+                'error': 'Authorization code already used',
+                'error_code': 'CODE_ALREADY_USED',
+                'message': 'This authorization code has already been exchanged for tokens',
+                'how_to_fix': 'Authorization codes can only be used once. Start a new OAuth flow to get a fresh code'
+            }), 400
+
+        wrong_redirect = OAuthAuthorizationCode.query.filter_by(
+            code=code,
+            application_id=oauth_app.id,
+            used=False
+        ).first()
+        
+        if wrong_redirect and wrong_redirect.redirect_uri != redirect_uri:
+            return jsonify({
+                'error': 'Redirect URI mismatch',
+                'error_code': 'REDIRECT_URI_MISMATCH',
+                'message': 'The redirect_uri does not match the one used during authorization',
+                'expected': wrong_redirect.redirect_uri,
+                'received': redirect_uri,
+                'how_to_fix': 'Use the same redirect_uri that was used in the authorization request'
+            }), 400
+
+        return jsonify({
+            'error': 'Invalid authorization code',
+            'error_code': 'INVALID_AUTHORIZATION_CODE',
+            'message': 'The provided authorization code is invalid or does not exist',
+            'how_to_fix': 'Verify the authorization code is correct and has not expired'
+        }), 400
 
     # Check if code is expired
     if auth_code.expires_at < datetime.now(timezone.utc):
-        return jsonify({'error': 'Authorization code expired'}), 400
+        return jsonify({
+            'error': 'Authorization code expired',
+            'error_code': 'CODE_EXPIRED',
+            'message': f'Authorization code expired at {auth_code.expires_at.isoformat()}',
+            'expires_at': auth_code.expires_at.isoformat(),
+            'how_to_fix': 'Authorization codes expire after 10 minutes. Start a new OAuth flow to get a fresh code'
+        }), 400
 
     # Mark code as used
     auth_code.used = True
