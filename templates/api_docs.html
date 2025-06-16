@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 
 {% block title %}API Documentation - Hack Club Dashboard{% endblock %}
@@ -182,6 +181,191 @@
         color: #0c4a6e;
         margin-bottom: 1rem;
     }
+
+    .auth-overview {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 2rem;
+        margin: 2rem 0;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    }
+
+    .auth-overview-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .auth-overview-header h3 {
+        color: #1a202c;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .auth-overview-header p {
+        color: #64748b;
+        margin: 0;
+        font-size: 0.95rem;
+    }
+
+    .auth-comparison {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+    }
+
+    .auth-method {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .auth-method:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+
+    .auth-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #f1f5f9;
+    }
+
+    .admin-header {
+        border-left: 4px solid #dc2626;
+        padding-left: 1rem;
+        margin-left: -1rem;
+    }
+
+    .oauth-header {
+        border-left: 4px solid #059669;
+        padding-left: 1rem;
+        margin-left: -1rem;
+    }
+
+    .auth-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        margin-right: 1rem;
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+    }
+
+    .oauth-header .auth-icon {
+        background: linear-gradient(135deg, #059669, #047857);
+    }
+
+    .auth-title h4 {
+        margin: 0 0 0.25rem 0;
+        color: #1a202c;
+        font-size: 1.25rem;
+    }
+
+    .auth-title span {
+        font-size: 0.875rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    .auth-features {
+        margin-bottom: 1.5rem;
+    }
+
+    .feature-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.75rem;
+        font-size: 0.9rem;
+        color: #374151;
+    }
+
+    .feature-item i {
+        margin-right: 0.75rem;
+        width: 20px;
+        text-align: center;
+        color: #6b7280;
+    }
+
+    .auth-endpoints,
+    .auth-usecase {
+        font-size: 0.85rem;
+        color: #374151;
+        margin-bottom: 0.75rem;
+        padding: 0.5rem;
+        background: #f8fafc;
+        border-radius: 6px;
+    }
+
+    .auth-endpoints strong,
+    .auth-usecase strong {
+        color: #1a202c;
+    }
+
+    .decision-guide {
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        border: 1px solid #f59e0b;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 2rem 0;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
+    }
+
+    .decision-guide h4 {
+        color: #92400e;
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .decision-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+
+    .decision-item {
+        background: rgba(255, 255, 255, 0.7);
+        border-radius: 8px;
+        padding: 1rem;
+        border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .decision-item h5 {
+        margin: 0 0 0.75rem 0;
+        color: #1e40af;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.95rem;
+    }
+
+    .decision-item ul {
+        margin: 0;
+        padding-left: 1.5rem;
+    }
+
+    .decision-item li {
+        margin-bottom: 0.5rem;
+        color: #374151;
+        font-size: 0.875rem;
+    }
 </style>
 {% endblock %}
 
@@ -216,11 +400,168 @@
 
     <div class="docs-section" id="authentication">
         <h2>Authentication</h2>
-        <p>The Hack Club Dashboard API uses API keys for authentication. Include your API key in the Authorization header of your requests.</p>
-        
+        <p>The Hack Club Dashboard API supports two authentication systems, each designed for different use cases. Understanding which to use is crucial for building successful integrations.</p>
+
+        <div class="auth-overview">
+            <div class="auth-overview-header">
+                <h3><i class="fas fa-shield-alt"></i> Authentication Overview</h3>
+                <p>Choose the right authentication method for your use case</p>
+            </div>
+
+            <div class="auth-comparison">
+                <div class="auth-method">
+                    <div class="auth-header admin-header">
+                        <div class="auth-icon">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                        <div class="auth-title">
+                            <h4>Admin API Keys</h4>
+                            <span>For platform administration</span>
+                        </div>
+                    </div>
+                    <div class="auth-features">
+                        <div class="feature-item">
+                            <i class="fas fa-globe"></i>
+                            <span>Platform-wide access</span>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-database"></i>
+                            <span>Access to all clubs, users, analytics</span>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-search"></i>
+                            <span>Search/lookup functionality</span>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-infinity"></i>
+                            <span>No expiration (until revoked)</span>
+                        </div>
+                    </div>
+                    <div class="auth-endpoints">
+                        <strong>Endpoints:</strong> /api/v1/clubs, /api/v1/users, /api/v1/analytics
+                    </div>
+                    <div class="auth-usecase">
+                        <strong>Use case:</strong> Admin tools, monitoring, search
+                    </div>
+                </div>
+
+                <div class="auth-method">
+                    <div class="auth-header oauth-header">
+                        <div class="auth-icon">
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                        <div class="auth-title">
+                            <h4>OAuth Access Tokens</h4>
+                            <span>For user-facing applications</span>
+                        </div>
+                    </div>
+                    <div class="auth-features">
+                        <div class="feature-item">
+                            <i class="fas fa-user"></i>
+                            <span>User-specific data access</span>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-lock"></i>
+                            <span>Limited to user's own data</span>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-handshake"></i>
+                            <span>Requires user consent</span>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-clock"></i>
+                            <span>Expires after 1 hour (refreshable)</span>
+                        </div>
+                    </div>
+                    <div class="auth-endpoints">
+                        <strong>Endpoints:</strong> /oauth/user, /oauth/user/clubs, /oauth/user/projects
+                    </div>
+                    <div class="auth-usecase">
+                        <strong>Use case:</strong> Personal apps, user dashboards
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="decision-guide">
+            <h4><i class="fas fa-compass"></i> Quick Decision Guide</h4>
+            <div class="decision-grid">
+                <div class="decision-item">
+                    <h5><i class="fas fa-tools"></i> Use Admin API when:</h5>
+                    <ul>
+                        <li>Need to search users/clubs</li>
+                        <li>Building admin dashboards</li>
+                        <li>Need platform-wide data</li>
+                    </ul>
+                </div>
+                <div class="decision-item">
+                    <h5><i class="fas fa-user-friends"></i> Use OAuth when:</h5>
+                    <ul>
+                        <li>Building user-facing apps</li>
+                        <li>Users access their own data</li>
+                        <li>Need user consent/login</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <h3>1. Admin API Keys (Platform-wide Access)</h3>
+        <p>For accessing platform-wide data like all clubs, analytics, and administrative functions. These keys are created by administrators and have broad access to the platform.</p>
+
         <div class="code-block">
-curl -H "Authorization: Bearer YOUR_API_KEY" \
-     {{ request.host_url }}api/v1/clubs
+# Search for clubs (admin key required)
+curl -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
+  "{{ request.host_url }}api/v1/clubs"
+
+# Get analytics (admin key required)
+curl -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
+  "{{ request.host_url }}api/v1/analytics/overview"
+
+# Search users by name (admin key required)
+curl -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
+  "{{ request.host_url }}api/v1/users/search?q=john"
+        </div>
+
+        <h3>2. OAuth Access Tokens (User-scoped Access)</h3>
+        <p>For accessing user-specific data on behalf of an authenticated user. These tokens are obtained through the OAuth flow and are limited to the user's own data and the scopes they've granted.</p>
+
+        <p><strong>What OAuth tokens can access:</strong></p>
+        <ul>
+            <li><strong>User Profile:</strong> Basic user information (name, email, username)</li>
+            <li><strong>User's Clubs:</strong> Only clubs where the user is a member or leader</li>
+            <li><strong>User's Projects:</strong> Projects created by the user across their clubs</li>
+            <li><strong>User's Assignments:</strong> Assignments from clubs the user belongs to</li>
+            <li><strong>User's Meetings:</strong> Meetings from clubs the user belongs to</li>
+        </ul>
+
+        <p><strong>What OAuth tokens CANNOT access:</strong></p>
+        <ul>
+            <li>Other users' data or profiles</li>
+            <li>Clubs the user doesn't belong to</li>
+            <li>Platform-wide analytics or statistics</li>
+            <li>Search functionality across all users/clubs</li>
+        </ul>
+
+        <div class="code-block">
+# Get authenticated user's info (OAuth token)
+curl -H "Authorization: Bearer OAUTH_ACCESS_TOKEN" \
+  "{{ request.host_url }}oauth/user"
+
+# Get user's clubs (OAuth token with clubs:read scope)
+curl -H "Authorization: Bearer OAUTH_ACCESS_TOKEN" \
+  "{{ request.host_url }}oauth/user/clubs"
+
+# Get user's projects (OAuth token with projects:read scope)
+curl -H "Authorization: Bearer OAUTH_ACCESS_TOKEN" \
+  "{{ request.host_url }}oauth/user/projects"
+
+# Get user's assignments (OAuth token with assignments:read scope)
+curl -H "Authorization: Bearer OAUTH_ACCESS_TOKEN" \
+  "{{ request.host_url }}oauth/user/assignments"
+
+# Get user's meetings (OAuth token with meetings:read scope)
+curl -H "Authorization: Bearer OAUTH_ACCESS_TOKEN" \
+  "{{ request.host_url }}oauth/user/meetings"
         </div>
 
         <h3>API Key Scopes</h3>
@@ -267,10 +608,10 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
             <div class="endpoint-header">
                 <span class="method get">GET</span>
                 <span class="endpoint-url">/api/v1/clubs</span>
-                <span class="auth-badge">API Key Required</span>
+                <span class="auth-badge">Admin API Key Required</span>
             </div>
-            <p>Get a list of all clubs with pagination support.</p>
-            
+            <p>Get a list of all clubs with pagination support. <strong>Requires admin API key</strong> - this endpoint provides platform-wide club data.</p>
+
             <h4>Query Parameters</h4>
             <table class="params-table">
                 <tr>
@@ -347,11 +688,67 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
         <div class="endpoint">
             <div class="endpoint-header">
                 <span class="method get">GET</span>
+                <span class="endpoint-url">/api/v1/clubs/search</span>
+                <span class="auth-badge">Admin API Key Required</span>
+            </div>
+            <p>Search for clubs by name, location, or description. Useful for finding club IDs when you only know the club name.</p>
+
+            <h4>Query Parameters</h4>
+            <table class="params-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Required</th>
+                </tr>
+                <tr>
+                    <td>q</td>
+                    <td><span class="param-type">string</span></td>
+                    <td>Search query (searches name, location, description)</td>
+                    <td><span class="required">Yes</span></td>
+                </tr>
+                <tr>
+                    <td>limit</td>
+                    <td><span class="param-type">integer</span></td>
+                    <td>Maximum results to return (default: 20, max: 100)</td>
+                    <td>No</td>
+                </tr>
+            </table>
+
+            <div class="code-block">
+GET /api/v1/clubs/search?q=tech&limit=10
+
+{
+  "clubs": [
+    {
+      "id": 1,
+      "name": "Tech High Hack Club",
+      "location": "San Francisco, CA",
+      "description": "A club for passionate young programmers",
+      "leader": {
+        "id": 5,
+        "username": "alex_codes",
+        "email": "alex@example.com"
+      },
+      "member_count": 25,
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "total_results": 1,
+  "search_query": "tech",
+  "limit": 10
+}
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
                 <span class="endpoint-url">/api/v1/clubs/{id}</span>
                 <span class="auth-badge">API Key Required</span>
             </div>
             <p>Get detailed information about a specific club. If the club isn't in our database, we'll check Airtable as a fallback.</p>
-            
+
             <div class="code-block">
 {
   "club": {
@@ -381,7 +778,7 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
                 <span class="auth-badge">API Key Required</span>
             </div>
             <p>Get all members of a specific club.</p>
-            
+
             <div class="code-block">
 {
   "members": [
@@ -415,7 +812,7 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
                 <span class="auth-badge">API Key Required</span>
             </div>
             <p>Get all projects from a specific club.</p>
-            
+
             <div class="code-block">
 {
   "projects": [
@@ -445,11 +842,65 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
         <div class="endpoint">
             <div class="endpoint-header">
                 <span class="method get">GET</span>
-                <span class="endpoint-url">/api/v1/users/{id}</span>
-                <span class="auth-badge">API Key Required</span>
+                <span class="endpoint-url">/api/v1/users/search</span>
+                <span class="auth-badge">Admin API Key Required</span>
             </div>
-            <p>Get information about a specific user.</p>
-            
+            <p>Search for users by username, email, first name, or last name. Useful for finding user IDs when you only know their name or email.</p>
+
+            <h4>Query Parameters</h4>
+            <table class="params-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Required</th>
+                </tr>
+                <tr>
+                    <td>q</td>
+                    <td><span class="param-type">string</span></td>
+                    <td>Search query (searches username, email, first/last name)</td>
+                    <td><span class="required">Yes</span></td>
+                </tr>
+                <tr>
+                    <td>limit</td>
+                    <td><span class="param-type">integer</span></td>
+                    <td>Maximum results to return (default: 20, max: 100)</td>
+                    <td>No</td>
+                </tr>
+            </table>
+
+            <div class="code-block">
+GET /api/v1/users/search?q=alex&limit=10
+
+{
+  "users": [
+    {
+      "id": 5,
+      "username": "alex_codes",
+      "email": "alex@example.com",
+      "full_name": "Alex Johnson",
+      "is_admin": false,
+      "clubs_led": 1,
+      "clubs_joined": 2,
+      "created_at": "2024-01-10T08:00:00Z",
+      "last_login": "2024-02-15T14:30:00Z"
+    }
+  ],
+  "total_results": 1,
+  "search_query": "alex",
+  "limit": 10
+}
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-url">/api/v1/users/{id}</span>
+                <span class="auth-badge">Admin API Key Required</span>
+            </div>
+            <p>Get detailed information about a specific user by ID.</p>
+
             <div class="code-block">
 {
   "user": {
@@ -474,10 +925,10 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
             <div class="endpoint-header">
                 <span class="method get">GET</span>
                 <span class="endpoint-url">/api/v1/analytics/overview</span>
-                <span class="auth-badge">API Key Required</span>
+                <span class="auth-badge">Admin API Key Required</span>
             </div>
-            <p>Get platform-wide analytics and statistics.</p>
-            
+            <p>Get platform-wide analytics and statistics. <strong>Requires admin API key</strong> - provides sensitive platform metrics.</p>
+
             <div class="code-block">
 {
   "analytics": {
@@ -505,7 +956,7 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
         <p>Use OAuth to allow users to authenticate with their Hack Club Dashboard accounts in your application.</p>
 
         <h3>Authorization Code Flow</h3>
-        
+
         <div class="endpoint">
             <div class="endpoint-header">
                 <span class="method get">GET</span>
@@ -513,7 +964,7 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
                 <span class="auth-badge oauth">OAuth</span>
             </div>
             <p>Start the OAuth authorization flow.</p>
-            
+
             <h4>Query Parameters</h4>
             <table class="params-table">
                 <tr>
@@ -538,7 +989,7 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
                     <td>response_type</td>
                     <td><span class="param-type">string</span></td>
                     <td>Must be "code"</td>
-                    <td><span class="required">Yes</span></td>
+<td><span class="required">Yes</span></td>
                 </tr>
                 <tr>
                     <td>scope</td>
@@ -562,7 +1013,7 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
                 <span class="auth-badge oauth">OAuth</span>
             </div>
             <p>Exchange authorization code for access token.</p>
-            
+
             <div class="code-block">
 curl -X POST {{ request.host_url }}oauth/token \
   -d "grant_type=authorization_code" \
@@ -590,13 +1041,13 @@ curl -X POST {{ request.host_url }}oauth/token \
                 <span class="endpoint-url">/oauth/user</span>
                 <span class="auth-badge oauth">OAuth Token Required</span>
             </div>
-            <p>Get the authenticated user's information.</p>
-            
+            <p>Get the authenticated user's information. This endpoint uses OAuth access tokens and returns data for the authenticated user only.</p>
+
             <div class="code-block">
 {
   "user": {
     "id": 5,
-    "username": "alex_codes",
+    "username": "alex_codes", 
     "email": "alex@example.com",
     "first_name": "Alex",
     "last_name": "Johnson"
@@ -604,12 +1055,179 @@ curl -X POST {{ request.host_url }}oauth/token \
 }
             </div>
         </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-url">/oauth/user/clubs</span>
+                <span class="auth-badge oauth">OAuth Token Required (clubs:read scope)</span>
+            </div>
+            <p>Get all clubs that the authenticated user is a member of or leads. Returns both clubs they lead and clubs they've joined.</p>
+
+            <div class="code-block">
+{
+  "clubs": [
+    {
+      "id": 1,
+      "name": "Tech High Hack Club",
+      "description": "A club for passionate young programmers",
+      "location": "San Francisco, CA",
+      "member_count": 25,
+      "balance": 150.00,
+      "role": "leader",
+      "joined_at": "2024-01-15T10:30:00Z"
+    },
+    {
+      "id": 8,
+      "name": "Downtown Coders",
+      "description": "Community coding group",
+      "location": "Oakland, CA", 
+      "member_count": 18,
+      "role": "member",
+      "joined_at": "2024-02-20T15:45:00Z"
+    }
+  ],
+  "total_clubs": 2,
+  "clubs_led": 1,
+  "clubs_joined": 1
+}
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-url">/oauth/user/projects</span>
+                <span class="auth-badge oauth">OAuth Token Required (projects:read scope)</span>
+            </div>
+            <p>Get all projects created by the authenticated user across all their clubs.</p>
+
+            <div class="code-block">
+{
+  "projects": [
+    {
+      "id": 15,
+      "name": "Weather App",
+      "description": "A simple weather forecasting application",
+      "url": "https://weather-app.example.com",
+      "github_url": "https://github.com/user/weather-app",
+      "featured": true,
+      "club": {
+        "id": 1,
+        "name": "Tech High Hack Club"
+      },
+      "created_at": "2024-02-01T09:00:00Z",
+      "updated_at": "2024-02-15T16:30:00Z"
+    }
+  ],
+  "total_projects": 1
+}
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-url">/oauth/user/assignments</span>
+                <span class="auth-badge oauth">OAuth Token Required (assignments:read scope)</span>
+            </div>
+            <p>Get all assignments from clubs where the authenticated user is a member or leader.</p>
+
+            <div class="code-block">
+{
+  "assignments": [
+    {
+      "id": 23,
+      "title": "Build a Personal Website",
+      "description": "Create a portfolio website using HTML, CSS, and JavaScript",
+      "due_date": "2024-03-15T23:59:59Z",
+      "status": "active",
+      "club": {
+        "id": 1,
+        "name": "Tech High Hack Club"
+      },
+      "created_at": "2024-02-20T14:30:00Z"
+    }
+  ],
+  "total_assignments": 1
+}
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-url">/oauth/user/meetings</span>
+                <span class="auth-badge oauth">OAuth Token Required (meetings:read scope)</span>
+            </div>
+            <p>Get all meetings from clubs where the authenticated user is a member or leader.</p>
+
+            <div class="code-block">
+{
+  "meetings": [
+    {
+      "id": 42,
+      "title": "Weekly Hack Session",
+      "description": "Work on personal projects and help each other debug code",
+      "scheduled_time": "2024-03-08T16:00:00Z",
+      "location": "Room 204, Tech High School",
+      "meeting_type": "in-person",
+      "club": {
+        "id": 1,
+        "name": "Tech High Hack Club"
+      },
+      "created_at": "2024-02-25T10:15:00Z"
+    }
+  ],
+  "total_meetings": 1
+}
+            </div>
+        </div>
+
+        <h3>OAuth vs Admin API Comparison</h3>
+        <table class="params-table">
+            <tr>
+                <th>Feature</th>
+                <th>OAuth Access Token</th>
+                <th>Admin API Key</th>
+            </tr>
+            <tr>
+                <td>Data Access</td>
+                <td>User-specific data only</td>
+                <td>Platform-wide data</td>
+            </tr>
+            <tr>
+                <td>Lifespan</td>
+                <td>1 hour (refreshable)</td>
+                <td>Permanent (until revoked)</td>
+            </tr>
+            <tr>
+                <td>Creation</td>
+                <td>User grants via OAuth flow</td>
+                <td>Admin creates via dashboard</td>
+            </tr>
+            <tr>
+                <td>Use Cases</td>
+                <td>User apps, personal dashboards</td>
+                <td>Admin tools, analytics platforms</td>
+            </tr>
+            <tr>
+                <td>Available Endpoints</td>
+                <td>/oauth/user<br>/oauth/user/clubs<br>/oauth/user/projects<br>/oauth/user/assignments<br>/oauth/user/meetings</td>
+                <td>/api/v1/clubs<br>/api/v1/clubs/search<br>/api/v1/users/search<br>/api/v1/analytics</td>
+            </tr>
+            <tr>
+                <td>What You Can Do</td>
+                <td>• Get user profile<br>• Access user's own clubs<br>• View user's projects<br>• See assignments from user's clubs<br>• View meetings from user's clubs</td>
+                <td>• Search all clubs by name<br>• Get platform analytics<br>• Search users by name/email<br>• Access any club's data<br>• Get platform-wide statistics</td>
+            </tr>
+        </table>
     </div>
 
     <div class="docs-section" id="rate-limits">
         <h2>Rate Limits</h2>
         <p>API endpoints have the following rate limits:</p>
-        
+
         <table class="params-table">
             <tr>
                 <th>Endpoint Type</th>
@@ -650,7 +1268,7 @@ X-RateLimit-Reset: 1609459200
             <li><strong>message</strong>: Detailed explanation of what went wrong</li>
             <li><strong>how_to_fix</strong>: Specific instructions on how to resolve the issue</li>
         </ul>
-        
+
         <h3>Example Error Response</h3>
         <div class="code-block">
 {

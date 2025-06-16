@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 
 {% block title %}Complete Your Signup - Hack Clubs Dash{% endblock %}
@@ -259,7 +258,7 @@
                 <label class="form-label">Username *</label>
                 <input type="text" class="form-control" id="username" placeholder="Choose a username" required minlength="3" maxlength="30">
             </div>
-            
+
             <div class="form-group">
                 <label class="form-label">Email Address *</label>
                 <input type="email" class="form-control" id="email" value="{{ slack_data.email or '' }}" placeholder="Enter your email" required>
@@ -270,7 +269,7 @@
                     <label class="form-label">First Name *</label>
                     <input type="text" class="form-control" id="firstName" value="{{ slack_data.first_name or '' }}" placeholder="Enter your first name" required maxlength="50">
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label">Last Name</label>
                     <input type="text" class="form-control" id="lastName" value="{{ slack_data.last_name or '' }}" placeholder="Enter your last name" maxlength="50">
@@ -291,11 +290,15 @@
             <div class="checkbox-group">
                 <input type="checkbox" id="isLeader">
                 <label for="isLeader">
-                    I want to create and lead a club 
+                    I'm a registered club leader and want to link my club
                     <span class="leader-badge">Leader</span>
                 </label>
             </div>
-            
+
+            <div id="leader-info" style="display: none; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 1rem; font-size: 0.875rem; color: #856404; margin-top: 1rem;">
+                <i class="fas fa-info-circle"></i> <strong>Leader Verification Required:</strong> Your account will be created first, then you'll need to verify your leadership status with your registered email and club name before your club is created.
+            </div>
+
             <button type="submit" class="btn-auth" id="submitBtn">
                 <i class="fas fa-user-plus"></i> Complete Signup
             </button>
@@ -306,11 +309,27 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('completeSignupForm');
+    const isLeaderCheckbox = document.getElementById('isLeader');
+    const leaderOptions = document.getElementById('leaderOptions');
+    const verifyExistingCheckbox = document.getElementById('verifyExisting');
+
     if (!form) return;
-    
+
+    // Show/hide leader info
+    const leaderInfo = document.getElementById('leader-info');
+    if (isLeaderCheckbox && leaderInfo) {
+        isLeaderCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                leaderInfo.style.display = 'block';
+            } else {
+                leaderInfo.style.display = 'none';
+            }
+        });
+    }
+
     form.addEventListener('submit', function(e) {
         e.preventDefault();
-        
+
         const submitBtn = document.getElementById('submitBtn');
         const usernameInput = document.getElementById('username');
         const emailInput = document.getElementById('email');
@@ -318,19 +337,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const lastNameInput = document.getElementById('lastName');
         const birthdayInput = document.getElementById('birthday');
         const isLeaderCheckbox = document.getElementById('isLeader');
-        
+
         if (!submitBtn || !usernameInput || !emailInput || !firstNameInput || !isLeaderCheckbox) {
             console.error('Required form elements not found');
             return;
         }
-        
+
         const originalText = submitBtn.innerHTML;
-        
+
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
-        
+
         const passwordInput = document.getElementById('password');
-        
+
         if (!passwordInput) {
             console.error('Password input not found');
             submitBtn.disabled = false;
@@ -347,7 +366,7 @@ document.addEventListener('DOMContentLoaded', function() {
             password: passwordInput.value,
             is_leader: isLeaderCheckbox.checked
         };
-        
+
         fetch('/complete-slack-signup', {
             method: 'POST',
             headers: {
@@ -362,7 +381,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     showToast('success', data.message, 'Account Created');
                 }
                 setTimeout(() => {
-                    window.location.href = '/dashboard';
+                    window.location.href = data.redirect || '/dashboard';
                 }, 1500);
             } else {
                 if (typeof showToast === 'function') {

@@ -1553,11 +1553,16 @@ function updateClubSettings() {
         if (data.error) {
             showToast('error', data.error, 'Error');
         } else {
-            showToast('success', 'Club settings updated successfully!', 'Updated');
+            showToast('success', 'Club settings updated and synced with Airtable!', 'Updated');
             // Update the club header if name changed
             const clubHeader = document.querySelector('.club-info h1');
             if (clubHeader) {
                 clubHeader.textContent = clubName.trim();
+            }
+            // Update location display if it exists
+            const locationElement = document.querySelector('.club-meta .location');
+            if (locationElement && clubLocation.trim()) {
+                locationElement.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${clubLocation.trim()}`;
             }
         }
     })
@@ -1571,25 +1576,25 @@ function updateClubSettings() {
 function initiateLeadershipTransfer() {
     const newLeaderSelect = document.getElementById('newLeaderSelect');
     const selectedValue = newLeaderSelect.value;
-    
+
     if (!selectedValue) {
         showToast('error', 'Please select a member to transfer leadership to', 'Validation Error');
         return;
     }
-    
+
     const selectedOption = newLeaderSelect.options[newLeaderSelect.selectedIndex];
     const newLeaderName = selectedOption.text.split(' (')[0];
     const newLeaderEmail = selectedOption.text.match(/\((.*?)\)/)[1];
-    
+
     // Update modal content
     document.getElementById('newLeaderName').textContent = newLeaderName;
     document.getElementById('newLeaderEmail').textContent = newLeaderEmail;
     document.getElementById('newLeaderAvatar').textContent = newLeaderName.charAt(0).toUpperCase();
-    
+
     // Reset confirmation input
     document.getElementById('transferConfirmationInput').value = '';
     document.getElementById('confirmTransferButton').disabled = true;
-    
+
     // Show modal
     document.getElementById('transferLeadershipModal').style.display = 'block';
 }
@@ -1597,18 +1602,18 @@ function initiateLeadershipTransfer() {
 function confirmLeadershipTransfer() {
     const newLeaderSelect = document.getElementById('newLeaderSelect');
     const newLeaderId = newLeaderSelect.value;
-    
+
     if (!newLeaderId) {
         showToast('error', 'No leader selected', 'Error');
         return;
     }
-    
+
     const confirmButton = document.getElementById('confirmTransferButton');
     const originalText = confirmButton.innerHTML;
-    
+
     confirmButton.disabled = true;
     confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Transferring...';
-    
+
     fetch(`/api/clubs/${clubId}/transfer-leadership`, {
         method: 'POST',
         headers: {
@@ -1622,7 +1627,7 @@ function confirmLeadershipTransfer() {
     .then(data => {
         confirmButton.disabled = false;
         confirmButton.innerHTML = originalText;
-        
+
         if (data.error) {
             showToast('error', data.error, 'Error');
         } else {
@@ -1645,7 +1650,7 @@ function confirmLeadershipTransfer() {
 document.addEventListener('DOMContentLoaded', function() {
     const transferInput = document.getElementById('transferConfirmationInput');
     const confirmButton = document.getElementById('confirmTransferButton');
-    
+
     if (transferInput && confirmButton) {
         transferInput.addEventListener('input', function() {
             const isValid = this.value.trim().toUpperCase() === 'TRANSFER';
@@ -1654,7 +1659,330 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-        
+
+
+function loadClubPizzaGrants() {
+    if (!clubId) {
+        console.warn('loadClubPizzaGrants: clubId is missing. Skipping fetch.');
+        const submissionsList = document.getElementById('clubSubmissionsList');
+        if (submissionsList) submissionsList.textContent = 'Error: Club information is unavailable to load submissions.';
+        return;
+    }
+
+    const submissionsList = document.getElementById('clubSubmissionsList');
+
+    fetch(`/api/clubs/${clubId}/pizza-grants`)
+        .then(response => response.json())
+        .then(data => {
+            submissionsList.innerHTML = '';
+
+            if (data.error) {
+                const errorState = createElement('div', 'empty-state');
+                const errorIcon = createElement('i', 'fas fa-exclamation-triangle');
+                errorIcon.style.color = '#f59e0b';
+                const errorTitle = createElement('h3', '', 'Error loading submissions');
+                const errorDescription = createElement('p', '', data.error);
+
+                errorState.appendChild(errorIcon);
+                errorState.appendChild(errorTitle);
+                errorState.appendChild(errorDescription);
+                submissionsList.appendChild(errorState);
+                return;
+            }
+
+            if (data.submissions && data.submissions.length > 0) {
+                data.submissions.forEach(submission => {
+                    const card = createElement('div', 'card');
+                    card.style.marginBottom = '1rem';
+
+                    const cardHeader = createElement('div', 'card-header');
+                    cardHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: flex-start;';
+
+                    const headerDiv = createElement('div');
+                    const title = createElement('h3', '', submission.project_name || 'Untitled Project');
+                    title.style.cssText = 'margin: 0; font-size: 1.125rem; color: #1f2937;';
+
+                    const statusSpan = createElement('span', '', submission.status || 'Pending');
+                    let statusColor = '#6b7280'; // Default gray
+                    if (submission.status === 'Approved') statusColor = '#10b981'; // Green
+                    else if (submission.status === 'Rejected') statusColor = '#ef4444'; // Red
+
+                    statusSpan.style.cssText = `background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; margin-top: 0.5rem; display: inline-block;`;
+
+                    headerDiv.appendChild(title);
+                    headerDiv.appendChild(statusSpan);
+                    cardHeader.appendChild(headerDiv);
+
+                    const grantAmountDiv = createElement('div');
+                    grantAmountDiv.style.cssText = 'text-align: right;';
+                    const grantAmount = createElement('div', '', submission.grant_amount || '$0');
+                    grantAmount.style.cssText = 'font-size: 1.5rem; font-weight: bold; color: #ec3750;';
+                    const grantLabel = createElement('div', '', 'Grant Amount');
+                    grantLabel.style.cssText = 'font-size: 0.75rem; color: #6b7280; text-transform: uppercase;';
+                    grantAmountDiv.appendChild(grantAmount);
+                    grantAmountDiv.appendChild(grantLabel);
+                    cardHeader.appendChild(grantAmountDiv);
+
+                    const cardBody = createElement('div', 'card-body');
+
+                    if (submission.description) {
+                        const description = createElement('p', '', submission.description);
+                        description.style.cssText = 'margin-bottom: 1rem; color: #6b7280;';
+                        cardBody.appendChild(description);
+                    }
+
+                    const infoDiv = createElement('div');
+                    infoDiv.style.cssText = 'display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.875rem; color: #6b7280;';
+
+                    const submitterSpan = createElement('span');
+                    submitterSpan.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
+                    const submitterIcon = createElement('i', 'fas fa-user');
+                    submitterSpan.appendChild(submitterIcon);
+                    submitterSpan.appendChild(document.createTextNode(' ' + (submission.first_name && submission.last_name ? 
+                        `${submission.first_name} ${submission.last_name}` : submission.github_username || 'Unknown')));
+                    infoDiv.appendChild(submitterSpan);
+
+                    if (submission.hours) {
+                        const hoursSpan = createElement('span');
+                        hoursSpan.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
+                        const hoursIcon = createElement('i', 'fas fa-clock');
+                        hoursSpan.appendChild(hoursIcon);
+                        hoursSpan.appendChild(document.createTextNode(' ' + submission.hours + ' hours'));
+                        infoDiv.appendChild(hoursSpan);
+                    }
+
+                    if (submission.created_time) {
+                        const dateSpan = createElement('span');
+                        dateSpan.style.cssText = 'display: flex; align-items: center; gap: 0.25rem;';
+                        const dateIcon = createElement('i', 'fas fa-calendar');
+                        dateSpan.appendChild(dateIcon);
+                        dateSpan.appendChild(document.createTextNode(' ' + new Date(submission.created_time).toLocaleDateString()));
+                        infoDiv.appendChild(dateSpan);
+                    }
+
+                    cardBody.appendChild(infoDiv);
+
+                    if (submission.code_url || submission.playable_url) {
+                        const linksDiv = createElement('div');
+                        linksDiv.style.cssText = 'margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;';
+
+                        if (submission.code_url) {
+                            const codeLink = createElement('a');
+                            codeLink.href = submission.code_url;
+                            codeLink.target = '_blank';
+                            codeLink.className = 'btn btn-secondary btn-sm';
+                            codeLink.innerHTML = '<i class="fab fa-github"></i> Code';
+                            linksDiv.appendChild(codeLink);
+                        }
+
+                        if (submission.playable_url) {
+                            const liveLink = createElement('a');
+                            liveLink.href = submission.playable_url;
+                            liveLink.target = '_blank';
+                            liveLink.className = 'btn btn-secondary btn-sm';
+                            liveLink.innerHTML = '<i class="fas fa-external-link-alt"></i> Live Demo';
+                            linksDiv.appendChild(liveLink);
+                        }
+
+                        cardBody.appendChild(linksDiv);
+                    }
+
+                    card.appendChild(cardHeader);
+                    card.appendChild(cardBody);
+                    submissionsList.appendChild(card);
+                });
+            } else {
+                const emptyState = createElement('div', 'empty-state');
+                const icon = createElement('i', 'fas fa-pizza-slice');
+                const title = createElement('h3', '', 'No submissions yet');
+                const description = createElement('p', '', 'Submit your coding projects to earn pizza for the club!');
+
+                emptyState.appendChild(icon);
+                emptyState.appendChild(title);
+                emptyState.appendChild(description);
+                submissionsList.appendChild(emptyState);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading club pizza grants:', error);
+            submissionsList.innerHTML = '';
+            const errorState = createElement('div', 'empty-state');
+            const errorIcon = createElement('i', 'fas fa-exclamation-triangle');
+            errorIcon.style.color = '#ef4444';
+            const errorTitle = createElement('h3', '', 'Error loading submissions');
+            const errorDescription = createElement('p', '', 'Failed to fetch pizza grant submissions. Please try again.');
+
+            errorState.appendChild(errorIcon);
+            errorState.appendChild(errorTitle);
+            errorState.appendChild(errorDescription);
+            submissionsList.appendChild(errorState);
+
+            showToast('error', 'Failed to load pizza grant submissions', 'Error');
+        });
+}
+
+function loadShop() {
+    const shopList = document.getElementById('shopList');
+    shopList.innerHTML = '';
+
+    // Fetch club balance
+    fetch(`/api/clubs/${clubId}/balance`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showToast('error', data.error || 'Failed to load club balance', 'Error');
+            } else {
+                const balanceDiv = createElement('div');
+                balanceDiv.style.cssText = 'font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem;';
+                balanceDiv.textContent = `Club Balance: $${data.balance}`;
+                shopList.appendChild(balanceDiv);
+            }
+        })
+        .catch(error => {
+            showToast('error', 'Error loading club balance', 'Error');
+        });
+
+    // Define shop items
+    const shopItems = [
+        {
+            name: 'Pizza for your club!',
+            description: 'Get a virtual card to buy pizza for your club!',
+            action: 'purchasePizza'
+        }
+    ];
+
+    shopItems.forEach(item => {
+        const shopItemDiv = createElement('div', 'shop-item');
+        shopItemDiv.style.cssText = 'border: 1px solid #e2e8f0; padding: 1rem; margin-bottom: 1rem; border-radius: 0.375rem; cursor: pointer; transition: all 0.2s ease-in-out;';
+
+        const itemName = createElement('h3', '', item.name);
+        itemName.style.cssText = 'font-size: 1rem; margin-bottom: 0.5rem;';
+        shopItemDiv.appendChild(itemName);
+
+        const itemDescription = createElement('p', '', item.description);
+        itemDescription.style.cssText = 'color: #6b7280; font-size: 0.875rem;';
+        shopItemDiv.appendChild(itemDescription);
+
+        shopItemDiv.onclick = () => {
+            window[item.action]();
+        };
+
+        shopList.appendChild(shopItemDiv);
+    });
+}
+
+function purchasePizza() {
+    // Redirect to pizza order form
+    window.location.href = `/pizza-order/${clubId}`;
+}
+
+// Add hover effect styles for shop items
+document.addEventListener('DOMContentLoaded', function() {
+    const shopItems = document.querySelectorAll('.shop-item');
+    shopItems.forEach(item => {
+        item.addEventListener('mouseenter', function() {
+            this.style.borderColor = '#ec3750';
+            this.style.transform = 'translateY(-4px)';
+            this.style.boxShadow = '0 8px 25px rgba(236, 55, 80, 0.15)';
+        });
+
+        item.addEventListener('mouseleave', function() {
+            this.style.borderColor = '#e2e8f0';
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+        });
+    });
+});
+
+
+
+function initiateLeadershipTransfer() {
+    const newLeaderSelect = document.getElementById('newLeaderSelect');
+    const selectedValue = newLeaderSelect.value;
+
+    if (!selectedValue) {
+        showToast('error', 'Please select a member to transfer leadership to', 'Validation Error');
+        return;
+    }
+
+    const selectedOption = newLeaderSelect.options[newLeaderSelect.selectedIndex];
+    const newLeaderName = selectedOption.text.split(' (')[0];
+    const newLeaderEmail = selectedOption.text.match(/\((.*?)\)/)[1];
+
+    // Update modal content
+    document.getElementById('newLeaderName').textContent = newLeaderName;
+    document.getElementById('newLeaderEmail').textContent = newLeaderEmail;
+    document.getElementById('newLeaderAvatar').textContent = newLeaderName.charAt(0).toUpperCase();
+
+    // Reset confirmation input
+    document.getElementById('transferConfirmationInput').value = '';
+    document.getElementById('confirmTransferButton').disabled = true;
+
+    // Show modal
+    document.getElementById('transferLeadershipModal').style.display = 'block';
+}
+
+function confirmLeadershipTransfer() {
+    const newLeaderSelect = document.getElementById('newLeaderSelect');
+    const newLeaderId = newLeaderSelect.value;
+
+    if (!newLeaderId) {
+        showToast('error', 'No leader selected', 'Error');
+        return;
+    }
+
+    const confirmButton = document.getElementById('confirmTransferButton');
+    const originalText = confirmButton.innerHTML;
+
+    confirmButton.disabled = true;
+    confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Transferring...';
+
+    fetch(`/api/clubs/${clubId}/transfer-leadership`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            new_leader_id: newLeaderId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        confirmButton.disabled = false;
+        confirmButton.innerHTML = originalText;
+
+        if (data.error) {
+            showToast('error', data.error, 'Error');
+        } else {
+            showToast('success', 'Leadership transferred successfully!', 'Success');
+            document.getElementById('transferLeadershipModal').style.display = 'none';
+            // Redirect to dashboard after a short delay
+            setTimeout(() => {
+                window.location.href = '/dashboard';
+            }, 2000);
+        }
+    })
+    .catch(error => {
+        confirmButton.disabled = false;
+        confirmButton.innerHTML = originalText;
+        showToast('error', 'Error transferring leadership', 'Error');
+    });
+}
+
+// Add event listener for confirmation input
+document.addEventListener('DOMContentLoaded', function() {
+    const transferInput = document.getElementById('transferConfirmationInput');
+    const confirmButton = document.getElementById('confirmTransferButton');
+
+    if (transferInput && confirmButton) {
+        transferInput.addEventListener('input', function() {
+            const isValid = this.value.trim().toUpperCase() === 'TRANSFER';
+            confirmButton.disabled = !isValid;
+        });
+    }
+});
+
+
 
 function loadClubPizzaGrants() {
     if (!clubId) {

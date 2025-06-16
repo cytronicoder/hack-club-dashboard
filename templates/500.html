@@ -3,16 +3,303 @@
 
 {% block title %}Server Error - Hack Club Dashboard{% endblock %}
 
+{% block extra_head %}
+<style>
+    .error-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+        background: linear-gradient(135deg, #ef4444, #dc2626, #991b1b);
+        background-size: 400% 400%;
+        animation: gradientShift 8s ease infinite;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .error-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="15" y="15" width="10" height="10" fill="rgba(255,255,255,0.1)" transform="rotate(45 20 20)"/><rect x="70" y="30" width="8" height="8" fill="rgba(255,255,255,0.1)" transform="rotate(45 74 34)"/><rect x="40" y="70" width="6" height="6" fill="rgba(255,255,255,0.1)" transform="rotate(45 43 73)"/></svg>');
+        animation: float 6s ease-in-out infinite;
+        pointer-events: none;
+    }
+
+    @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-15px) rotate(2deg); }
+    }
+
+    @keyframes glitch {
+        0%, 100% { transform: translateX(0); }
+        10% { transform: translateX(-2px) skew(-0.5deg); }
+        20% { transform: translateX(2px) skew(0.5deg); }
+        30% { transform: translateX(-1px) skew(-0.2deg); }
+        40% { transform: translateX(1px) skew(0.2deg); }
+        50% { transform: translateX(-0.5px) skew(-0.1deg); }
+        60% { transform: translateX(0.5px) skew(0.1deg); }
+        70% { transform: translateX(0); }
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+
+    .error-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 24px;
+        padding: 3rem;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1), 0 8px 25px rgba(239, 68, 68, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        position: relative;
+        z-index: 2;
+        max-width: 500px;
+        width: 100%;
+        animation: slideUp 0.8s ease-out;
+    }
+
+    .error-number {
+        font-size: 8rem;
+        font-weight: 900;
+        color: #ef4444;
+        margin-bottom: 1rem;
+        text-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
+        animation: glitch 3s infinite;
+        line-height: 1;
+    }
+
+    .error-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        color: #ef4444;
+        animation: pulse 2s infinite;
+    }
+
+    .error-title {
+        font-size: 2.5rem;
+        color: #1a202c;
+        margin-bottom: 1rem;
+        font-weight: 700;
+    }
+
+    .error-description {
+        color: #64748b;
+        margin-bottom: 2.5rem;
+        font-size: 1.2rem;
+        line-height: 1.6;
+    }
+
+    .btn-group {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem 2rem;
+        border: none;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        transition: left 0.5s;
+    }
+
+    .btn:hover::before {
+        left: 100%;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #ec3750, #d63146);
+        color: white;
+        box-shadow: 0 4px 15px rgba(236, 55, 80, 0.3);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(236, 55, 80, 0.4);
+    }
+
+    .btn-secondary {
+        background: linear-gradient(135deg, #6b7280, #4b5563);
+        color: white;
+        box-shadow: 0 4px 15px rgba(107, 114, 128, 0.3);
+    }
+
+    .btn-secondary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(107, 114, 128, 0.4);
+    }
+
+    .btn-refresh {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-refresh:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+    }
+
+    .error-info {
+        margin-top: 2rem;
+        padding: 1.5rem;
+        background: #fef2f2;
+        border-radius: 12px;
+        border-left: 4px solid #ef4444;
+        text-align: left;
+    }
+
+    .error-info h3 {
+        margin: 0 0 1rem 0;
+        color: #991b1b;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .error-info p {
+        margin: 0 0 0.5rem 0;
+        color: #7f1d1d;
+        font-size: 0.9rem;
+    }
+
+    .status-section {
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .status-section h4 {
+        color: #374151;
+        margin-bottom: 1rem;
+        font-size: 1rem;
+    }
+
+    .status-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .status-action {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #6b7280;
+        text-decoration: none;
+        padding: 0.75rem;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        font-size: 0.9rem;
+        border: 1px solid #e5e7eb;
+    }
+
+    .status-action:hover {
+        background: #f3f4f6;
+        color: #ef4444;
+        border-color: #ef4444;
+        transform: translateY(-1px);
+    }
+
+    .error-id {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        background: #f8fafc;
+        border-radius: 8px;
+        font-family: 'Monaco', 'Consolas', monospace;
+        font-size: 0.8rem;
+        color: #64748b;
+    }
+
+    @media (max-width: 768px) {
+        .error-card {
+            padding: 2rem 1.5rem;
+            margin: 1rem;
+        }
+
+        .error-number {
+            font-size: 6rem;
+        }
+
+        .error-title {
+            font-size: 2rem;
+        }
+
+        .btn-group {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .btn {
+            width: 100%;
+            max-width: 250px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container">
-    <div style="text-align: center; padding: 4rem 2rem; min-height: 60vh; display: flex; flex-direction: column; justify-content: center;">
-        <div style="font-size: 6rem; font-weight: 900; color: #ef4444; margin-bottom: 1rem;">500</div>
-        <h1 style="font-size: 2rem; color: #1a202c; margin-bottom: 1rem;">Internal Server Error</h1>
-        <p style="color: #64748b; margin-bottom: 2rem; font-size: 1.1rem;">
-            Something went wrong on our end. Please try again later.
+<div class="error-container">
+    <div class="error-card">
+        <div class="error-icon">⚠️</div>
+        <div class="error-number">500</div>
+        <h1 class="error-title">Server Error</h1>
+        <p class="error-description">
+            Oops! Something went wrong on our end. Our servers encountered an unexpected error 
+            while processing your request. Don't worry, our team has been notified!
         </p>
-        <div>
-            <a href="{{ url_for('index') }}" class="btn btn-primary" style="margin-right: 1rem;">
+
+        <div class="btn-group">
+            <button onclick="window.location.reload()" class="btn btn-refresh">
+                <i class="fas fa-redo"></i> Try Again
+            </button>
+            <a href="{{ url_for('index') }}" class="btn btn-primary">
                 <i class="fas fa-home"></i> Go Home
             </a>
             {% if current_user and current_user.id %}
@@ -21,6 +308,45 @@
             </a>
             {% endif %}
         </div>
+
+        <div class="error-info">
+            <h3><i class="fas fa-info-circle"></i> What happened?</h3>
+            <p>• The server encountered an unexpected condition</p>
+            <p>• This is likely a temporary issue that will resolve itself</p>
+            <p>• Our development team has been automatically notified</p>
+            <p>• You can try refreshing the page or coming back later</p>
+        </div>
+
+        <div class="status-section">
+            <h4>What you can do:</h4>
+            <div class="status-actions">
+                <button onclick="window.location.reload()" class="status-action">
+                    <i class="fas fa-sync-alt"></i> Refresh page
+                </button>
+                <a href="javascript:history.back()" class="status-action">
+                    <i class="fas fa-arrow-left"></i> Go back
+                </a>
+                <a href="{{ url_for('index') }}#contact" class="status-action">
+                    <i class="fas fa-envelope"></i> Report issue
+                </a>
+                <a href="https://status.hackclub.com" target="_blank" class="status-action">
+                    <i class="fas fa-heartbeat"></i> Check status
+                </a>
+            </div>
+        </div>
+
+        <div class="error-id">
+            Error ID: {{ request.environ.get('REQUEST_ID', 'HC-' + moment().format('YYYYMMDD-HHmmss')) }}
+        </div>
     </div>
 </div>
+
+<script>
+// Auto-retry after 30 seconds
+setTimeout(() => {
+    if (confirm('Would you like to automatically retry loading the page?')) {
+        window.location.reload();
+    }
+}, 30000);
+</script>
 {% endblock %}
