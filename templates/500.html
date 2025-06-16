@@ -336,7 +336,7 @@
         </div>
 
         <div class="error-id">
-            Error ID: {{ request.environ.get('REQUEST_ID', 'HC-' + moment().format('YYYYMMDD-HHmmss')) }}
+            Error ID: {{ request.environ.get('REQUEST_ID', 'HC-ERROR-' + (moment().format('YYYYMMDD-HHmmss') if moment is defined else '500')) }}
         </div>
     </div>
 </div>
