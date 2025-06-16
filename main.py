@@ -592,6 +592,8 @@ def get_current_user():
         app.logger.error(f"Error getting current user: {e}")
         try:
             db.session.rollback()
+            # Create a new session for retry
+            db.session.close()
             user = db.session.get(User, int(user_id))
             if not user:
                 session.clear()
@@ -3762,7 +3764,22 @@ def oauth_authorize():
             'how_to_fix': 'Set response_type=code in your authorization URL'
         }), 400
 
-    oauth_app = OAuthApplication.query.filter_by(client_id=client_id, is_active=True).first()
+    try:
+        oauth_app = OAuthApplication.query.filter_by(client_id=client_id, is_active=True).first()
+    except Exception as e:
+        app.logger.error(f"Database error in oauth_authorize: {e}")
+        try:
+            db.session.rollback()
+            oauth_app = OAuthApplication.query.filter_by(client_id=client_id, is_active=True).first()
+        except Exception as e2:
+            app.logger.error(f"Database retry failed in oauth_authorize: {e2}")
+            return jsonify({
+                'error': 'Database connection error',
+                'error_code': 'DATABASE_ERROR',
+                'message': 'Temporary database issue, please try again',
+                'how_to_fix': 'Wait a moment and retry your request'
+            }), 500
+    
     if not oauth_app:
         # Check if client exists but is inactive
         inactive_app = OAuthApplication.query.filter_by(client_id=client_id, is_active=False).first()
