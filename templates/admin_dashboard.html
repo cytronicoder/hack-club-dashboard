@@ -522,6 +522,36 @@
     @keyframes spin {
         to { transform: rotate(360deg); }
     }
+
+    .redirect-uris code {
+        background: #f3f4f6;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        word-break: break-all;
+    }
+
+    .scope-tag {
+        display: inline-block;
+        background: #dbeafe;
+        color: #1e40af;
+        padding: 0.125rem 0.375rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        margin: 0.125rem;
+        font-weight: 500;
+    }
+
+    .scopes-list {
+        line-height: 1.8;
+    }
+
+    .form-help {
+        color: #6b7280;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+        display: block;
+    }
 </style>
 {% endblock %}
 
@@ -545,9 +575,11 @@
         <button class="admin-tab" onclick="showAdminSection('activity')" data-section="activity">
             <i class="fas fa-stream"></i> Activity
         </button>
+        {% if current_user.email == 'ethan@hackclub.com' %}
         <button class="admin-tab" onclick="showAdminSection('admins')" data-section="admins">
             <i class="fas fa-crown"></i> Admins
         </button>
+        {% endif %}
         <button class="admin-tab" onclick="showAdminSection('review')" data-section="review">
             <i class="fas fa-hand-holding-usd"></i> Project Grant Review
         </button>
@@ -665,7 +697,12 @@
         <div class="data-table">
             <div class="table-header">
                 <h3>Club Management</h3>
-                <input type="text" class="search-box" placeholder="Search clubs..." id="clubSearch">
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <input type="text" class="search-box" placeholder="Search clubs..." id="clubSearch">
+                    <button class="btn btn-primary" onclick="openModal('createClubModal')">
+                        <i class="fas fa-plus"></i> Create Club
+                    </button>
+                </div>
             </div>
             <div class="table-content">
                 <div class="loading" id="clubsLoading">
@@ -842,9 +879,9 @@
                             <tr>
                                 <th>Name</th>
                                 <th>Client ID</th>
-                                <th>User</th>
+                                <th>Owner</th>
+                                <th>Scopes</th>
                                 <th>Status</th>
-                                <th>Created</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -925,7 +962,9 @@
                     <textarea class="form-control" id="editClubDescription" rows="3"></textarea>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Location</label>
+                    <label class="form-label">
+                    <input type="text" class="form-control" id="editClubLocation">```text
+                    </label>
                     <input type="text" class="form-control" id="editClubLocation">
                 </div>
                 <div class="form-group">
@@ -959,6 +998,49 @@
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('addAdminModal')">Cancel</button>
             <button class="btn btn-primary" onclick="addNewAdmin()">Add Administrator</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="createClubModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Create New Club</h3>
+            <button class="modal-close" onclick="closeModal('createClubModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+                <div style="color: #92400e; font-size: 0.875rem;">
+                    <i class="fas fa-exclamation-triangle"></i> <strong>Important:</strong> This will create a standalone club that is not connected to the official Hack Club directory. To connect to an official club, use the leader verification process instead.
+                </div>
+            </div>
+            <form id="createClubForm">
+                <div class="form-group">
+                    <label class="form-label">Club Name</label>
+                    <input type="text" class="form-control" id="createClubName" placeholder="Enter club name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="createClubDescription" rows="3" placeholder="Enter club description"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Location</label>
+                    <input type="text" class="form-control" id="createClubLocation" placeholder="Enter club location">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Leader Email</label>
+                    <input type="email" class="form-control" id="createClubLeaderEmail" placeholder="Enter leader's email" required>
+                    <small style="color: #64748b; font-size: 0.875rem;">The user must already have an account.</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Initial Balance</label>
+                    <input type="number" class="form-control" id="createClubBalance" placeholder="0.00" step="0.01" min="0" value="0">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('createClubModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="createNewClub()">Create Club</button>
         </div>
     </div>
 </div>
@@ -1013,6 +1095,41 @@
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('loginAsModal')">Cancel</button>
             <button class="btn btn-primary" onclick="executeLoginAs()">Login as User</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="suspendUserModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="suspendModalTitle">Suspend User</h3>
+            <button class="modal-close" onclick="closeModal('suspendUserModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="suspendModalMessage">Are you sure you want to suspend "<span id="suspendUsername"></span>"?</p>
+            <div id="leaderSuspendOptions" style="display: none;">
+                <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin: 1rem 0;">
+                    <div style="color: #92400e; font-size: 0.875rem; margin-bottom: 1rem;">
+                        <i class="fas fa-exclamation-triangle"></i> <strong>Club Leader Suspension Options:</strong>
+                    </div>
+                    <div style="margin-bottom: 0.75rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" id="suspendClubMembers" style="accent-color: #ec3750;">
+                            <span>Suspend all club members</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" id="suspendClub" style="accent-color: #ec3750;">
+                            <span>Suspend the entire club</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('suspendUserModal')">Cancel</button>
+            <button class="btn btn-primary" id="suspendConfirmButton" onclick="executeSuspendUser()">Suspend User</button>
         </div>
     </div>
 </div>
@@ -1102,6 +1219,19 @@
                     <label class="form-label">Redirect URIs</label>
                     <input type="text" class="form-control" id="oauthAppRedirectUris" placeholder="Enter redirect URIs (comma-separated)" required>
                 </div>
+                <div class="form-group">
+                    <label class="form-label">Scopes</label>
+                    <select class="form-control" id="oauthAppScopes" multiple required style="height: 120px;">
+                        <option value="clubs:read">Read Clubs</option>
+                        <option value="clubs:write">Write Clubs</option>
+                        <option value="users:read">Read Users</option>
+                        <option value="projects:read">Read Projects</option>
+                        <option value="assignments:read">Read Assignments</option>
+                        <option value="meetings:read">Read Meetings</option>
+                        <option value="analytics:read">Read Analytics</option>
+                    </select>
+                    <small class="form-help">Hold Ctrl/Cmd to select multiple scopes</small>
+                </div>
             </form>
         </div>
         <div class="modal-footer">
@@ -1167,6 +1297,19 @@
                     <label class="form-label">Redirect URIs</label>
                     <input type="text" class="form-control" id="editOAuthAppRedirectUris" placeholder="Enter redirect URIs (comma-separated)" required>
                 </div>
+                 <div class="form-group">
+                    <label class="form-label">Scopes</label>
+                    <select class="form-control" id="editOAuthAppScopes" multiple required style="height: 120px;">
+                        <option value="clubs:read">Read Clubs</option>
+                        <option value="clubs:write">Write Clubs</option>
+                        <option value="users:read">Read Users</option>
+                        <option value="projects:read">Read Projects</option>
+                        <option value="assignments:read">Read Assignments</option>
+                        <option value="meetings:read">Read Meetings</option>
+                        <option value="analytics:read">Read Analytics</option>
+                    </select>
+                    <small class="form-help">Hold Ctrl/Cmd to select multiple scopes</small>
+                </div>
                 <div class="form-group">
                     <label class="form-label">
                         <input type="checkbox" id="editOAuthAppActive"> Active
@@ -1192,19 +1335,19 @@
                 <div style="color: #0c4a6e; margin-bottom: 1rem;">
                     <i class="fas fa-info-circle"></i> <strong>Important:</strong> Copy this API key now as it won't be shown again!
                 </div>
-                
+
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
                     <input type="text" id="generatedApiKey" readonly style="flex: 1; padding: 0.75rem; border: 2px solid #0ea5e9; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 0.875rem; background: white;">
                     <button class="btn btn-primary" onclick="copyApiKey()" style="padding: 0.75rem 1rem;">
                         <i class="fas fa-copy"></i> Copy
                     </button>
                 </div>
-                
+
                 <div style="color: #64748b; font-size: 0.875rem; margin-top: 0.5rem;">
                     Store this key securely - you'll need it to authenticate API requests.
                 </div>
             </div>
-            
+
             <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem;">
                 <div style="color: #92400e; font-size: 0.875rem;">
                     <i class="fas fa-exclamation-triangle"></i> This key provides access to your account. Keep it secret and don't share it publicly.
@@ -1228,7 +1371,7 @@
                 <div style="color: #0c4a6e; margin-bottom: 1rem;">
                     <i class="fas fa-info-circle"></i> <strong>Important:</strong> Copy these credentials now as the client secret won't be shown again!
                 </div>
-                
+
                 <div style="margin-bottom: 1rem;">
                     <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #374151;">Client ID</label>
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -1238,7 +1381,7 @@
                         </button>
                     </div>
                 </div>
-                
+
                 <div>
                     <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #374151;">Client Secret</label>
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -1248,12 +1391,12 @@
                         </button>
                     </div>
                 </div>
-                
+
                 <div style="color: #64748b; font-size: 0.875rem; margin-top: 1rem;">
                     Store these credentials securely - you'll need them to authenticate your OAuth application.
                 </div>
             </div>
-            
+
             <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem;">
                 <div style="color: #92400e; font-size: 0.875rem;">
                     <i class="fas fa-exclamation-triangle"></i> These credentials provide access to your account. Keep them secret and don't share them publicly.
@@ -1280,37 +1423,47 @@ let apiKeysData = [];
 let projectGrantSubmissions = [];
 let currentLoginAsUserId = null;
 let currentResetPasswordUserId = null;
+let currentSuspendUserId = null;
+let currentSuspendUsername = null;
+let isClubLeader = false;
 
 function showAdminSection(section) {
     // Hide all sections
     document.querySelectorAll('.admin-section').forEach(sec => {
         sec.style.display = 'none';
     });
-    
+
     // Remove active class from all tabs
     document.querySelectorAll('.admin-tab').forEach(tab => {
         tab.classList.remove('active');
     });
-    
+
     // Show the selected section
     const selectedSection = document.getElementById(section);
     if (selectedSection) {
         selectedSection.style.display = 'block';
     }
-    
+
     // Add active class to the clicked tab
     const activeTab = document.querySelector(`.admin-tab[data-section="${section}"]`);
     if (activeTab) {
         activeTab.classList.add('active');
     }
-    
+
     // Load data if needed
     if (section === 'users') {
         loadUsers();
     } else if (section === 'clubs') {
         loadClubs();
     } else if (section === 'admins') {
+        // Only super admins can access this section
+        {% if current_user.email == 'ethan@hackclub.com' %}
         loadAdmins();
+        {% else %}
+        showToast('error', 'Access denied: Super admin privileges required');
+        showAdminSection('overview');
+        return;
+        {% endif %}
     } else if (section === 'review') {
         loadProjectGrantSubmissions();
     } else if (section === 'api') {
@@ -1409,6 +1562,9 @@ function renderUsersTable(users) {
                     </button>
                     <button class="btn-action btn-reset" onclick="resetUserPassword(${user.id}, '${user.username}')">
                         <i class="fas fa-key"></i> Reset Pwd
+                    </button>
+                    <button class="btn-action btn-suspend" onclick="suspendUser(${user.id}, '${user.username}', ${user.clubs_led > 0})" ${user.is_suspended ? 'style="background: #10b981;"' : ''}>
+                        <i class="fas fa-ban"></i> ${user.is_suspended ? 'Unsuspend' : 'Suspend'}
                     </button>
                     <button class="btn-action btn-delete" onclick="deleteUser(${user.id}, '${user.username}')">
                         <i class="fas fa-trash"></i> Delete
@@ -1581,8 +1737,7 @@ async function executeConfirmedAction() {
                 showToast('success', 'Club deleted successfully');
                 loadClubs();
             } else {
-                const error = await response.json();
-                showToast('error', error.error || 'Failed to delete club');
+                const error = await response.json();                showToast('error', error.error || 'Failed to delete club');
             }
         } catch (error) {
             showToast('error', 'Failed to delete club');
@@ -1728,6 +1883,52 @@ async function addNewAdmin() {
     }
 }
 
+async function createNewClub() {
+    const clubName = document.getElementById('createClubName').value.trim();
+    const clubDescription = document.getElementById('createClubDescription').value.trim();
+    const clubLocation = document.getElementById('createClubLocation').value.trim();
+    const leaderEmail = document.getElementById('createClubLeaderEmail').value.trim();
+    const initialBalance = parseFloat(document.getElementById('createClubBalance').value) || 0;
+
+    if (!clubName) {
+        showToast('error', 'Club name is required');
+        return;
+    }
+
+    if (!leaderEmail) {
+        showToast('error', 'Leader email is required');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/admin/clubs', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: clubName,
+                description: clubDescription,
+                location: clubLocation,
+                leader_email: leaderEmail,
+                balance: initialBalance
+            })
+        });
+
+        if (response.ok) {
+            showToast('success', 'Club created successfully');
+            closeModal('createClubModal');
+            document.getElementById('createClubForm').reset();
+            loadClubs();
+        } else {
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to create club');
+        }
+    } catch (error) {
+        showToast('error', 'Failed to create club');
+    }
+}
+
 function removeAdmin(adminId, username) {
     document.getElementById('confirmTitle').textContent = 'Remove Administrator';
     document.getElementById('confirmMessage').innerHTML = `Are you sure you want to remove administrator privileges from "<strong>${username}</strong>"?`;
@@ -1832,6 +2033,75 @@ async function executePasswordReset() {
         }
     } catch (error) {
         showToast('error', 'Failed to reset password');
+    }
+}
+
+function suspendUser(userId, username, isLeader) {
+    const user = usersData.find(u => u.id === userId);
+    if (!user) return;
+
+    currentSuspendUserId = userId;
+    currentSuspendUsername = username;
+    isClubLeader = isLeader;
+
+    document.getElementById('suspendUsername').textContent = username;
+    
+    if (user.is_suspended) {
+        document.getElementById('suspendModalTitle').textContent = 'Unsuspend User';
+        document.getElementById('suspendModalMessage').innerHTML = `Are you sure you want to unsuspend "<span id="suspendUsername">${username}</span>"?`;
+        document.getElementById('suspendConfirmButton').textContent = 'Unsuspend User';
+        document.getElementById('leaderSuspendOptions').style.display = 'none';
+    } else {
+        document.getElementById('suspendModalTitle').textContent = 'Suspend User';
+        document.getElementById('suspendModalMessage').innerHTML = `Are you sure you want to suspend "<span id="suspendUsername">${username}</span>"?`;
+        document.getElementById('suspendConfirmButton').textContent = 'Suspend User';
+        
+        if (isLeader) {
+            document.getElementById('leaderSuspendOptions').style.display = 'block';
+        } else {
+            document.getElementById('leaderSuspendOptions').style.display = 'none';
+        }
+    }
+
+    openModal('suspendUserModal');
+}
+
+async function executeSuspendUser() {
+    const user = usersData.find(u => u.id === currentSuspendUserId);
+    if (!user) return;
+
+    const suspendClubMembers = document.getElementById('suspendClubMembers').checked;
+    const suspendClub = document.getElementById('suspendClub').checked;
+
+    try {
+        const requestBody = {
+            is_suspended: !user.is_suspended
+        };
+
+        if (isClubLeader && !user.is_suspended) {
+            requestBody.suspend_club_members = suspendClubMembers;
+            requestBody.suspend_club = suspendClub;
+        }
+
+        const response = await fetch(`/api/admin/users/${currentSuspendUserId}/suspend`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            showToast('success', data.message || `User ${user.is_suspended ? 'unsuspended' : 'suspended'} successfully`);
+            closeModal('suspendUserModal');
+            loadUsers();
+        } else {
+            showToast('error', data.error || `Failed to ${user.is_suspended ? 'unsuspend' : 'suspend'} user`);
+        }
+    } catch (error) {
+        showToast('error', `Failed to ${user.is_suspended ? 'unsuspend' : 'suspend'} user`);
     }
 }
 
@@ -2170,20 +2440,29 @@ function renderApiKeysTable(apiKeys) {
 
 function renderOAuthAppsTable(oauthApps) {
     const tbody = document.getElementById('oauthAppsTableBody');
-    tbody.innerHTML = '';
+    tbody.innerHTML = ``;
 
     oauthApps.forEach(oauthApp => {
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td><strong>${oauthApp.name}</strong></td>
-            <td>${oauthApp.client_id}</td>
+            <td>
+                <div class="item-info">
+                    <strong>${oauthApp.name}</strong>
+                    <small>${oauthApp.description || 'No description'}</small>
+                </div>
+            </td>
+            <td><code>${oauthApp.client_id}</code></td>
             <td>${oauthApp.user}</td>
             <td>
-                <span class="status-badge ${oauthApp.is_active ? 'status-active' : 'status-suspended'}">
-                    ${oauthApp.is_active ? 'Active' : 'Suspended'}
+                <div class="scopes-list">
+                    ${oauthApp.scopes.map(scope => `<span class="scope-tag">${scope}</span>`).join(' ')}
+                </div>
+            </td>
+            <td>
+                <span class="status-badge ${oauthApp.is_active ? 'status-active' : 'status-inactive'}">
+                    ${oauthApp.is_active ? 'Active' : 'Inactive'}
                 </span>
             </td>
-            <td>${oauthApp.created_at ? new Date(oauthApp.created_at).toLocaleDateString() : 'Unknown'}</td>
             <td>
                 <div class="action-buttons">
                     <button class="btn-action btn-edit" onclick="editOAuthApp(${oauthApp.id})">
@@ -2245,7 +2524,7 @@ async function createApiKey() {
             closeModal('addApiKeyModal');
             document.getElementById('addApiKeyForm').reset();
             loadApiKeys();
-            
+
             // Show the generated API key in a modal
             document.getElementById('generatedApiKey').value = data.api_key;
             openModal('apiKeyModal');
@@ -2261,14 +2540,20 @@ async function createApiKey() {
 async function createOAuthApp() {
     const oauthAppName = document.getElementById('oauthAppName').value.trim();
     const oauthAppRedirectUris = document.getElementById('oauthAppRedirectUris').value.trim();
+    const oauthAppScopes = Array.from(document.getElementById('oauthAppScopes').selectedOptions).map(option => option.value);
 
     if (!oauthAppName) {
-        showToast('error', 'OAuth Application name is required');
+        showToast('error', 'Application name is required');
         return;
     }
 
     if (!oauthAppRedirectUris) {
-        showToast('error', 'OAuth Application redirect URIs are required');
+        showToast('error', 'Redirect URIs are required');
+        return;
+    }
+
+    if (oauthAppScopes.length === 0) {
+        showToast('error', 'At least one scope is required');
         return;
     }
 
@@ -2280,7 +2565,8 @@ async function createOAuthApp() {
             },
             body: JSON.stringify({
                 name: oauthAppName,
-                redirect_uris: oauthAppRedirectUris.split(',').map(uri => uri.trim())
+                redirect_uris: oauthAppRedirectUris.split(',').map(uri => uri.trim()),
+                scopes: oauthAppScopes
             })
         });
 
@@ -2290,13 +2576,13 @@ async function createOAuthApp() {
             closeModal('addOAuthAppModal');
             document.getElementById('addOAuthAppForm').reset();
             loadOAuthApps();
-            
-            // Show the generated credentials in a modal
+
             document.getElementById('generatedClientId').value = data.client_id;
             document.getElementById('generatedClientSecret').value = data.client_secret;
             openModal('oauthCredentialsModal');
         } else {
-            showToast('error', data.error || 'Failed to create OAuth Application');
+            const error = await response.json();
+            showToast('error', error.error || 'Failed to create OAuth Application');
         }
     } catch (error) {
         showToast('error', 'Failed to create OAuth Application');
@@ -2393,14 +2679,20 @@ async function executeDeleteApiKey(apiKeyId) {
 }
 
 function editOAuthApp(oauthAppId) {
-    const oauthApp = oauthAppsData.find(a => a.id === oauthAppId);
+    const oauthApp = oauthAppsData.find(app => app.id === oauthAppId);
     if (!oauthApp) return;
 
     document.getElementById('editOAuthAppId').value = oauthApp.id;
     document.getElementById('editOAuthAppName').value = oauthApp.name;
     document.getElementById('editOAuthAppDescription').value = oauthApp.description || '';
-    document.getElementById('editOAuthAppRedirectUris').value = oauthApp.redirect_uris.join(', ');
+   document.getElementById('editOAuthAppRedirectUris').value = oauthApp.redirect_uris.join(', ');
     document.getElementById('editOAuthAppActive').checked = oauthApp.is_active;
+
+    // Set selected scopes
+    const scopesSelect = document.getElementById('editOAuthAppScopes');
+    Array.from(scopesSelect.options).forEach(option => {
+        option.selected = oauthApp.scopes.includes(option.value);
+    });
 
     openModal('editOAuthAppModal');
 }
@@ -2481,27 +2773,27 @@ async function executeDeleteOAuthApp(oauthAppId) {
     }
 }
 
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('modal-backdrop')) {
-            e.target.classList.remove('show');
-        }
-    });
+ document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('modal-backdrop')) {
+   e.target.classList.remove('show');
+  }
+ });
 
 function copyApiKey() {
     const apiKeyInput = document.getElementById('generatedApiKey');
     apiKeyInput.select();
     apiKeyInput.setSelectionRange(0, 99999); // For mobile devices
-    
+
     navigator.clipboard.writeText(apiKeyInput.value).then(() => {
         // Only show one toast message
         showToast('success', 'API key copied to clipboard!');
-        
+
         // Update the copy button to show success
         const copyButton = event.target.closest('button');
         const originalHtml = copyButton.innerHTML;
         copyButton.innerHTML = '<i class="fas fa-check"></i> Copied!';
         copyButton.style.background = '#10b981';
-        
+
         setTimeout(() => {
             copyButton.innerHTML = originalHtml;
             copyButton.style.background = '#ec3750';
@@ -2522,15 +2814,15 @@ function copyClientId() {
     const clientIdInput = document.getElementById('generatedClientId');
     clientIdInput.select();
     clientIdInput.setSelectionRange(0, 99999);
-    
+
     navigator.clipboard.writeText(clientIdInput.value).then(() => {
         showToast('success', 'Client ID copied to clipboard!');
-        
+
         const copyButton = event.target.closest('button');
         const originalHtml = copyButton.innerHTML;
         copyButton.innerHTML = '<i class="fas fa-check"></i> Copied!';
         copyButton.style.background = '#10b981';
-        
+
         setTimeout(() => {
             copyButton.innerHTML = originalHtml;
             copyButton.style.background = '#ec3750';
@@ -2549,15 +2841,15 @@ function copyClientSecret() {
     const clientSecretInput = document.getElementById('generatedClientSecret');
     clientSecretInput.select();
     clientSecretInput.setSelectionRange(0, 99999);
-    
+
     navigator.clipboard.writeText(clientSecretInput.value).then(() => {
         showToast('success', 'Client Secret copied to clipboard!');
-        
+
         const copyButton = event.target.closest('button');
         const originalHtml = copyButton.innerHTML;
         copyButton.innerHTML = '<i class="fas fa-check"></i> Copied!';
         copyButton.style.background = '#10b981';
-        
+
         setTimeout(() => {
             copyButton.innerHTML = originalHtml;
             copyButton.style.background = '#ec3750';
@@ -2591,7 +2883,7 @@ function showToast(type, message) {
         transition: all 0.3s ease;
         transform: translateX(100%);
     `;
-    
+
     // Set background color based on type
     switch(type) {
         case 'success':
@@ -2606,15 +2898,15 @@ function showToast(type, message) {
         default:
             toast.style.backgroundColor = '#6b7280';
     }
-    
+
     toast.textContent = message;
     document.body.appendChild(toast);
-    
+
     // Animate in
     setTimeout(() => {
         toast.style.transform = 'translateX(0)';
     }, 10);
-    
+
     // Auto remove after 5 seconds
     setTimeout(() => {
         toast.style.transform = 'translateX(100%)';
@@ -2624,7 +2916,7 @@ function showToast(type, message) {
             }
         }, 300);
     }, 5000);
-    
+
     // Allow manual close on click
     toast.addEventListener('click', () => {
         toast.style.transform = 'translateX(100%)';

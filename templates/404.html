@@ -3,16 +3,263 @@
 
 {% block title %}Page Not Found - Hack Club Dashboard{% endblock %}
 
+{% block extra_head %}
+<style>
+    .error-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+        background: linear-gradient(135deg, #ec3750, #ff6b6b, #ffa726);
+        background-size: 400% 400%;
+        animation: gradientShift 8s ease infinite;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .error-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="40" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="40" cy="80" r="1.5" fill="rgba(255,255,255,0.1)"/></svg>');
+        animation: float 6s ease-in-out infinite;
+        pointer-events: none;
+    }
+
+    @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-20px) rotate(5deg); }
+    }
+
+    @keyframes bounce {
+        0%, 20%, 53%, 80%, 100% { transform: translate3d(0,0,0); }
+        40%, 43% { transform: translate3d(0,-20px,0); }
+        70% { transform: translate3d(0,-10px,0); }
+        90% { transform: translate3d(0,-4px,0); }
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .error-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 24px;
+        padding: 3rem;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1), 0 8px 25px rgba(236, 55, 80, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        position: relative;
+        z-index: 2;
+        max-width: 500px;
+        width: 100%;
+        animation: slideUp 0.8s ease-out;
+    }
+
+    .error-number {
+        font-size: 8rem;
+        font-weight: 900;
+        color: #ec3750;
+        margin-bottom: 1rem;
+        text-shadow: 0 4px 20px rgba(236, 55, 80, 0.3);
+        animation: bounce 2s infinite;
+        line-height: 1;
+    }
+
+    .error-title {
+        font-size: 2.5rem;
+        color: #1a202c;
+        margin-bottom: 1rem;
+        font-weight: 700;
+    }
+
+    .error-description {
+        color: #64748b;
+        margin-bottom: 2.5rem;
+        font-size: 1.2rem;
+        line-height: 1.6;
+    }
+
+    .error-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        animation: bounce 2s infinite 0.5s;
+    }
+
+    .btn-group {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem 2rem;
+        border: none;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        transition: left 0.5s;
+    }
+
+    .btn:hover::before {
+        left: 100%;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #ec3750, #d63146);
+        color: white;
+        box-shadow: 0 4px 15px rgba(236, 55, 80, 0.3);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(236, 55, 80, 0.4);
+    }
+
+    .btn-secondary {
+        background: linear-gradient(135deg, #6b7280, #4b5563);
+        color: white;
+        box-shadow: 0 4px 15px rgba(107, 114, 128, 0.3);
+    }
+
+    .btn-secondary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(107, 114, 128, 0.4);
+    }
+
+    .helpful-links {
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .helpful-links h3 {
+        color: #374151;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+    }
+
+    .links-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .link-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #6b7280;
+        text-decoration: none;
+        padding: 0.5rem;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        font-size: 0.9rem;
+    }
+
+    .link-item:hover {
+        background: #f3f4f6;
+        color: #ec3750;
+        transform: translateX(3px);
+    }
+
+    .search-suggestion {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        background: #f8fafc;
+        border-radius: 12px;
+        border-left: 4px solid #ec3750;
+    }
+
+    .search-suggestion h4 {
+        margin: 0 0 0.5rem 0;
+        color: #374151;
+        font-size: 1rem;
+    }
+
+    .search-suggestion p {
+        margin: 0;
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+        .error-card {
+            padding: 2rem 1.5rem;
+            margin: 1rem;
+        }
+
+        .error-number {
+            font-size: 6rem;
+        }
+
+        .error-title {
+            font-size: 2rem;
+        }
+
+        .btn-group {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .btn {
+            width: 100%;
+            max-width: 250px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container">
-    <div style="text-align: center; padding: 4rem 2rem; min-height: 60vh; display: flex; flex-direction: column; justify-content: center;">
-        <div style="font-size: 6rem; font-weight: 900; color: #ec3750; margin-bottom: 1rem;">404</div>
-        <h1 style="font-size: 2rem; color: #1a202c; margin-bottom: 1rem;">Page Not Found</h1>
-        <p style="color: #64748b; margin-bottom: 2rem; font-size: 1.1rem;">
-            The page you're looking for doesn't exist or has been moved.
+<div class="error-container">
+    <div class="error-card">
+        <div class="error-icon">🔍</div>
+        <div class="error-number">404</div>
+        <h1 class="error-title">Page Not Found</h1>
+        <p class="error-description">
+            Oops! The page you're looking for seems to have wandered off into the digital wilderness. 
+            Let's get you back on track!
         </p>
-        <div>
-            <a href="{{ url_for('index') }}" class="btn btn-primary" style="margin-right: 1rem;">
+
+        <div class="btn-group">
+            <a href="{{ url_for('index') }}" class="btn btn-primary">
                 <i class="fas fa-home"></i> Go Home
             </a>
             {% if current_user and current_user.id %}
@@ -20,6 +267,38 @@
                 <i class="fas fa-dashboard"></i> Dashboard
             </a>
             {% endif %}
+        </div>
+
+        <div class="helpful-links">
+            <h3>Try these instead:</h3>
+            <div class="links-grid">
+                {% if current_user and current_user.id %}
+                <a href="{{ url_for('dashboard') }}" class="link-item">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+                <a href="{{ url_for('account') }}" class="link-item">
+                    <i class="fas fa-user"></i> Account
+                </a>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="link-item">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </a>
+                <a href="{{ url_for('signup') }}" class="link-item">
+                    <i class="fas fa-user-plus"></i> Sign Up
+                </a>
+                {% endif %}
+                <a href="{{ url_for('index') }}#about" class="link-item">
+                    <i class="fas fa-info-circle"></i> About
+                </a>
+                <a href="https://hackclub.com" class="link-item" target="_blank">
+                    <i class="fas fa-external-link-alt"></i> Hack Club
+                </a>
+            </div>
+        </div>
+
+        <div class="search-suggestion">
+            <h4><i class="fas fa-lightbulb"></i> Did you know?</h4>
+            <p>You can always use the navigation menu at the top to find what you're looking for!</p>
         </div>
     </div>
 </div>

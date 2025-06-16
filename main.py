@@ -143,6 +143,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_login = db.Column(db.DateTime)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
+    is_suspended = db.Column(db.Boolean, default=False, nullable=False)
     hackatime_api_key = db.Column(db.String(255))
     slack_user_id = db.Column(db.String(255), unique=True)
 
@@ -480,12 +481,25 @@ class Club(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     balance = db.Column(db.Numeric(10, 2), default=0.00)
+    is_suspended = db.Column(db.Boolean, default=False, nullable=False)
+    airtable_data = db.Column(db.Text)  # JSON field for additional Airtable metadata
 
     leader = db.relationship('User', backref='led_clubs')
     members = db.relationship('ClubMembership', back_populates='club', cascade='all, delete-orphan')
 
     def generate_join_code(self):
         self.join_code = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+
+    def get_airtable_data(self):
+        """Get parsed Airtable data"""
+        try:
+            return json.loads(self.airtable_data) if self.airtable_data else {}
+        except:
+            return {}
+
+    def set_airtable_data(self, data):
+        """Set Airtable data as JSON"""
+        self.airtable_data = json.dumps(data)
 
 class ClubMembership(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -620,6 +634,13 @@ def login_required(f):
                 return jsonify({'error': 'Authentication required'}), 401
             flash('Please log in to access this page.', 'info')
             return redirect(url_for('login'))
+        
+        # Check if user is suspended (but allow access to suspended page and logout)
+        if current_user.is_suspended and request.endpoint not in ['suspended', 'logout']:
+            if request.is_json:
+                return jsonify({'error': 'Account suspended'}), 403
+            return redirect(url_for('suspended'))
+            
         return f(*args, **kwargs)
     return decorated_function
 
@@ -628,35 +649,89 @@ def login_required(f):
 def inject_user():
     return dict(current_user=get_current_user())
 
-# Airtable Service for Pizza Grants
+# Airtable Service for Pizza Grants and Club Management
 class AirtableService:
     def __init__(self):
         self.api_token = os.environ.get('AIRTABLE_TOKEN')
         self.base_id = os.environ.get('AIRTABLE_BASE_ID', 'appSnnIu0BhjI3E1p')
         self.table_name = os.environ.get('AIRTABLE_TABLE_NAME', 'Grants')
+        # New club management base
+        self.clubs_base_id = os.environ.get('AIRTABLE_CLUBS_BASE_ID', 'appSUAc40CDu6bDAp')
+        self.clubs_table_id = os.environ.get('AIRTABLE_CLUBS_TABLE_ID', 'tbl5saCV1f7ZWjsn0')
+        self.clubs_table_name = os.environ.get('AIRTABLE_CLUBS_TABLE_NAME', 'Clubs Dashboard')
         self.headers = {
             'Authorization': f'Bearer {self.api_token}',
             'Content-Type': 'application/json'
         }
         encoded_table_name = urllib.parse.quote(self.table_name)
         self.base_url = f'https://api.airtable.com/v0/{self.base_id}/{encoded_table_name}'
+        
+        # Club management URLs - use table ID for direct access
+        self.clubs_base_url = f'https://api.airtable.com/v0/{self.clubs_base_id}/{self.clubs_table_id}'
 
     def verify_club_leader(self, email, club_name):
         if not self.api_token:
+            app.logger.error("Airtable API token not configured")
             return False
-        leaders_table_name = urllib.parse.quote('Club Leaders & Emails')
-        leaders_url = f'https://api.airtable.com/v0/{self.base_id}/{leaders_table_name}'
+        
+        if not self.clubs_base_id or not self.clubs_table_name:
+            app.logger.error("Airtable clubs base ID or table name not configured")
+            return False
+            
         try:
-            params = {
-                'filterByFormula': f'AND(FIND("{email}", {{Current Leaders\' Emails}}) > 0, FIND("{club_name}", {{Venue}}) > 0)'
+            # First, try to find records with the email address
+            email_filter_params = {
+                'filterByFormula': f'FIND("{email}", {{Current Leaders\' Emails}}) > 0'
             }
-            response = requests.get(leaders_url, headers=self.headers, params=params)
+            
+            app.logger.info(f"Verifying club leader: email={email}, club={club_name}")
+            app.logger.debug(f"Airtable URL: {self.clubs_base_url}")
+            app.logger.debug(f"Email filter formula: {email_filter_params['filterByFormula']}")
+            
+            response = requests.get(self.clubs_base_url, headers=self.headers, params=email_filter_params)
+            
+            app.logger.info(f"Airtable response status: {response.status_code}")
+            
             if response.status_code == 200:
                 data = response.json()
                 records = data.get('records', [])
-                return len(records) > 0
-            return False
-        except:
+                app.logger.info(f"Found {len(records)} records with email {email}")
+                
+                if len(records) == 0:
+                    app.logger.info("No records found with that email address")
+                    return False
+                
+                # Check if any of the records match the club name (case-insensitive partial match)
+                club_name_lower = club_name.lower()
+                for record in records:
+                    fields = record.get('fields', {})
+                    venue = fields.get('Venue', '').lower()
+                    app.logger.debug(f"Checking venue: '{venue}' against club name: '{club_name_lower}'")
+                    
+                    # Try multiple matching strategies
+                    if (club_name_lower in venue or 
+                        venue.find(club_name_lower) >= 0 or
+                        any(word in venue for word in club_name_lower.split() if len(word) > 2)):
+                        app.logger.info(f"Found matching club: {fields.get('Venue', '')}")
+                        return True
+                
+                # If no exact match, log all available venues for debugging
+                venues = [record.get('fields', {}).get('Venue', '') for record in records]
+                app.logger.info(f"No venue match found. Available venues for {email}: {venues}")
+                return False
+                
+            elif response.status_code == 403:
+                app.logger.error(f"Airtable 403 Forbidden - check API token permissions. Response: {response.text}")
+                return False
+            elif response.status_code == 404:
+                app.logger.error(f"Airtable 404 Not Found - check base ID and table name. Response: {response.text}")
+                return False
+            else:
+                app.logger.error(f"Airtable API error {response.status_code}: {response.text}")
+                return False
+                
+        except Exception as e:
+            app.logger.error(f"Exception during Airtable verification: {str(e)}")
             return False
 
     def log_pizza_grant(self, submission_data):
@@ -838,6 +913,242 @@ class AirtableService:
         except Exception as e:
             app.logger.error(f"Error deleting submission: {str(e)}")
             return False
+
+    def get_all_clubs_from_airtable(self):
+        """Fetch all clubs from Airtable"""
+        if not self.api_token:
+            return []
+
+        try:
+            all_records = []
+            offset = None
+            
+            while True:
+                params = {}
+                if offset:
+                    params['offset'] = offset
+                
+                response = requests.get(self.clubs_base_url, headers=self.headers, params=params)
+                if response.status_code != 200:
+                    app.logger.error(f"Airtable API error: {response.status_code} - {response.text}")
+                    break
+                
+                data = response.json()
+                all_records.extend(data.get('records', []))
+                
+                offset = data.get('offset')
+                if not offset:
+                    break
+            
+            clubs = []
+            for record in all_records:
+                fields = record.get('fields', {})
+                
+                # Extract club information from Airtable fields
+                club_data = {
+                    'airtable_id': record['id'],
+                    'name': fields.get('Venue', '').strip(),
+                    'leader_email': fields.get("Current Leaders' Emails", '').split(',')[0].strip() if fields.get("Current Leaders' Emails") else '',
+                    'location': fields.get('Location', '').strip(),
+                    'description': fields.get('Description', '').strip(),
+                    'status': fields.get('Status', '').strip(),
+                    'meeting_day': fields.get('Meeting Day', '').strip(),
+                    'meeting_time': fields.get('Meeting Time', '').strip(),
+                    'website': fields.get('Website', '').strip(),
+                    'slack_channel': fields.get('Slack Channel', '').strip(),
+                    'github': fields.get('GitHub', '').strip(),
+                    'latitude': fields.get('Latitude'),
+                    'longitude': fields.get('Longitude'),
+                    'country': fields.get('Country', '').strip(),
+                    'region': fields.get('Region', '').strip(),
+                    'timezone': fields.get('Timezone', '').strip(),
+                    'primary_leader': fields.get('Primary Leader', '').strip(),
+                    'co_leaders': fields.get('Co-Leaders', '').strip(),
+                    'meeting_notes': fields.get('Meeting Notes', '').strip(),
+                    'club_applications_link': fields.get('Club Applications Link', '').strip(),
+                }
+                
+                # Only include clubs with valid names and leader emails
+                if club_data['name'] and club_data['leader_email']:
+                    clubs.append(club_data)
+            
+            return clubs
+            
+        except Exception as e:
+            app.logger.error(f"Error fetching clubs from Airtable: {str(e)}")
+            return []
+
+    def sync_club_with_airtable(self, club_id, airtable_data):
+        """Sync a specific club with Airtable data"""
+        try:
+            club = Club.query.get(club_id)
+            if not club:
+                return False
+            
+            # Update club fields with Airtable data
+            club.name = airtable_data.get('name', club.name)
+            club.location = airtable_data.get('location', club.location)
+            club.description = airtable_data.get('description', club.description)
+            
+            # Store additional Airtable metadata as JSON in a new field
+            club.airtable_data = json.dumps({
+                'airtable_id': airtable_data.get('airtable_id'),
+                'status': airtable_data.get('status'),
+                'meeting_day': airtable_data.get('meeting_day'),
+                'meeting_time': airtable_data.get('meeting_time'),
+                'website': airtable_data.get('website'),
+                'slack_channel': airtable_data.get('slack_channel'),
+                'github': airtable_data.get('github'),
+                'latitude': airtable_data.get('latitude'),
+                'longitude': airtable_data.get('longitude'),
+                'country': airtable_data.get('country'),
+                'region': airtable_data.get('region'),
+                'timezone': airtable_data.get('timezone'),
+                'primary_leader': airtable_data.get('primary_leader'),
+                'co_leaders': airtable_data.get('co_leaders'),
+                'meeting_notes': airtable_data.get('meeting_notes'),
+                'club_applications_link': airtable_data.get('club_applications_link'),
+            })
+            
+            club.updated_at = datetime.now(timezone.utc)
+            db.session.commit()
+            return True
+            
+        except Exception as e:
+            app.logger.error(f"Error syncing club {club_id} with Airtable: {str(e)}")
+            db.session.rollback()
+            return False
+
+    def create_club_from_airtable(self, airtable_data):
+        """Create a new club from Airtable data"""
+        try:
+            # Find or create leader by email
+            leader_email = airtable_data.get('leader_email')
+            if not leader_email:
+                return None
+            
+            leader = User.query.filter_by(email=leader_email).first()
+            if not leader:
+                # Create a placeholder leader account
+                username = leader_email.split('@')[0]
+                # Ensure username is unique
+                counter = 1
+                original_username = username
+                while User.query.filter_by(username=username).first():
+                    username = f"{original_username}{counter}"
+                    counter += 1
+                
+                leader = User(
+                    username=username,
+                    email=leader_email,
+                    first_name=airtable_data.get('primary_leader', '').split(' ')[0] if airtable_data.get('primary_leader') else '',
+                    last_name=' '.join(airtable_data.get('primary_leader', '').split(' ')[1:]) if airtable_data.get('primary_leader') else ''
+                )
+                leader.set_password(secrets.token_urlsafe(16))  # Random password
+                db.session.add(leader)
+                db.session.flush()
+            
+            # Create club
+            club = Club(
+                name=airtable_data.get('name'),
+                description=airtable_data.get('description', f"Official {airtable_data.get('name')} Hack Club"),
+                location=airtable_data.get('location'),
+                leader_id=leader.id,
+                airtable_data=json.dumps({
+                    'airtable_id': airtable_data.get('airtable_id'),
+                    'status': airtable_data.get('status'),
+                    'meeting_day': airtable_data.get('meeting_day'),
+                    'meeting_time': airtable_data.get('meeting_time'),
+                    'website': airtable_data.get('website'),
+                    'slack_channel': airtable_data.get('slack_channel'),
+                    'github': airtable_data.get('github'),
+                    'latitude': airtable_data.get('latitude'),
+                    'longitude': airtable_data.get('longitude'),
+                    'country': airtable_data.get('country'),
+                    'region': airtable_data.get('region'),
+                    'timezone': airtable_data.get('timezone'),
+                    'primary_leader': airtable_data.get('primary_leader'),
+                    'co_leaders': airtable_data.get('co_leaders'),
+                    'meeting_notes': airtable_data.get('meeting_notes'),
+                    'club_applications_link': airtable_data.get('club_applications_link'),
+                })
+            )
+            club.generate_join_code()
+            
+            db.session.add(club)
+            db.session.commit()
+            
+            return club
+            
+        except Exception as e:
+            app.logger.error(f"Error creating club from Airtable data: {str(e)}")
+            db.session.rollback()
+            return None
+
+    def update_club_in_airtable(self, airtable_record_id, fields):
+        """Update a specific club record in Airtable"""
+        if not self.api_token or not airtable_record_id:
+            return False
+            
+        try:
+            update_url = f"{self.clubs_base_url}/{airtable_record_id}"
+            payload = {'fields': fields}
+            
+            response = requests.patch(update_url, headers=self.headers, json=payload)
+            
+            if response.status_code == 200:
+                return True
+            else:
+                app.logger.error(f"Airtable update error: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            app.logger.error(f"Error updating Airtable record: {str(e)}")
+            return False
+
+    def sync_all_clubs_with_airtable(self):
+        """Sync all clubs with Airtable data"""
+        try:
+            airtable_clubs = self.get_all_clubs_from_airtable()
+            
+            created_count = 0
+            updated_count = 0
+            
+            for airtable_club in airtable_clubs:
+                # Try to find existing club by leader email
+                leader_email = airtable_club.get('leader_email')
+                if not leader_email:
+                    continue
+                
+                leader = User.query.filter_by(email=leader_email).first()
+                existing_club = None
+                
+                if leader:
+                    existing_club = Club.query.filter_by(leader_id=leader.id).first()
+                
+                if existing_club:
+                    # Update existing club
+                    if self.sync_club_with_airtable(existing_club.id, airtable_club):
+                        updated_count += 1
+                else:
+                    # Create new club
+                    new_club = self.create_club_from_airtable(airtable_club)
+                    if new_club:
+                        created_count += 1
+            
+            return {
+                'success': True,
+                'created': created_count,
+                'updated': updated_count,
+                'total_airtable_clubs': len(airtable_clubs)
+            }
+            
+        except Exception as e:
+            app.logger.error(f"Error syncing all clubs with Airtable: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
 
 airtable_service = AirtableService()
 
@@ -1065,18 +1376,7 @@ def signup():
             flash('Username already taken', 'error')
             return render_template('signup.html')
 
-        if is_leader:
-            session['signup_data'] = {
-                'username': username,
-                'email': email,
-                'password': password,
-                'first_name': first_name,
-                'last_name': last_name,
-                'birthday': birthday,
-                'is_leader': True
-            }
-            return redirect(url_for('verify_leader'))
-
+        # Create user account first (regardless of leader status)
         user = User(
             username=username, 
             email=email, 
@@ -1088,6 +1388,12 @@ def signup():
         db.session.add(user)
         db.session.commit()
 
+        if is_leader:
+            # Log them in and redirect to leader verification
+            login_user(user, remember=False)
+            flash('Account created! Now please verify your club leadership.', 'info')
+            return redirect(url_for('verify_leader'))
+
         flash('Account created successfully! Please log in.', 'success')
         return redirect(url_for('login'))
 
@@ -1098,6 +1404,11 @@ def logout():
     logout_user()
     flash('You have been logged out.', 'success')
     return redirect(url_for('index'))
+
+@app.route('/suspended')
+@login_required
+def suspended():
+    return render_template('suspended.html')
 
 @app.route('/dashboard')
 @login_required
@@ -1133,6 +1444,11 @@ def club_dashboard(club_id=None):
         if not is_leader and not is_member:
             flash('You are not a member of this club', 'error')
             return redirect(url_for('dashboard'))
+            
+        # Check if club is suspended
+        if club.is_suspended and not current_user.is_admin:
+            flash('This club has been suspended', 'error')
+            return redirect(url_for('dashboard'))
     else:
         club = Club.query.filter_by(leader_id=current_user.id).first()
         if not club:
@@ -1142,6 +1458,11 @@ def club_dashboard(club_id=None):
 
         if not club:
             flash('You are not a member of any club', 'error')
+            return redirect(url_for('dashboard'))
+            
+        # Check if club is suspended
+        if club.is_suspended and not current_user.is_admin:
+            flash('This club has been suspended', 'error')
             return redirect(url_for('dashboard'))
 
     return render_template('club_dashboard.html', club=club)
@@ -1157,6 +1478,11 @@ def verify_leader():
         if not email or not club_name:
             return jsonify({'error': 'Email and club name are required'}), 400
 
+        # Check if Airtable is configured
+        if not airtable_service.api_token:
+            app.logger.error("Airtable verification failed: API token not configured")
+            return jsonify({'error': 'Club verification service is not configured. Please contact support.'}), 500
+
         is_verified = airtable_service.verify_club_leader(email, club_name)
 
         if is_verified:
@@ -1168,7 +1494,32 @@ def verify_leader():
             }
             return jsonify({'success': True, 'message': 'Leader verification successful!'})
         else:
-            return jsonify({'error': 'Club leader verification failed. Please check your email and club name.'}), 400
+            app.logger.error(f"Club leader verification failed for {email}/{club_name}")
+            
+            # Try to get available venues for this email to help with debugging
+            try:
+                email_params = {'filterByFormula': f'FIND("{email}", {{Current Leaders\' Emails}}) > 0'}
+                email_response = requests.get(airtable_service.clubs_base_url, headers=airtable_service.headers, params=email_params)
+                if email_response.status_code == 200:
+                    email_data = email_response.json()
+                    email_records = email_data.get('records', [])
+                    if email_records:
+                        venues = [record.get('fields', {}).get('Venue', '') for record in email_records]
+                        return jsonify({
+                            'error': f'Club verification failed. Your email was found but the club name didn\'t match. Available clubs for your email: {", ".join(venues)}'
+                        }), 400
+                    else:
+                        return jsonify({
+                            'error': 'Email address not found in the Hack Club directory. Please ensure you are using the email address registered with Hack Club.'
+                        }), 400
+                else:
+                    return jsonify({
+                        'error': 'Club leader verification failed. Please ensure you are using the correct email address and club name that are registered in the Hack Club directory.'
+                    }), 400
+            except:
+                return jsonify({
+                    'error': 'Club leader verification failed. Please ensure you are using the correct email address and club name that are registered in the Hack Club directory.'
+                }), 400
 
     return render_template('verify_leader.html')
 
@@ -1189,47 +1540,145 @@ def complete_leader_signup():
             return redirect(url_for('verify_leader'))
 
     try:
-        signup_data = session.get('signup_data')
+        user = get_current_user()
+        if not user:
+            flash('Please log in first.', 'error')
+            return redirect(url_for('login'))
 
-        if signup_data:
-            user = User(
-                username=signup_data['username'],
-                email=signup_data['email'],
-                first_name=signup_data['first_name'],
-                last_name=signup_data['last_name'],
-                birthday=datetime.strptime(signup_data['birthday'], '%Y-%m-%d').date() if signup_data['birthday'] else None
+        # Fetch full club data from Airtable
+        email = leader_verification['email']
+        club_data = None
+        
+        try:
+            # Search for the club in Airtable using the verified email
+            email_filter_params = {
+                'filterByFormula': f'FIND("{email}", {{Current Leaders\' Emails}}) > 0'
+            }
+            
+            response = requests.get(airtable_service.clubs_base_url, headers=airtable_service.headers, params=email_filter_params)
+            
+            if response.status_code == 200:
+                data = response.json()
+                records = data.get('records', [])
+                
+                if records:
+                    # Find the matching club record
+                    club_name_lower = leader_verification['club_name'].lower()
+                    for record in records:
+                        fields = record.get('fields', {})
+                        venue = fields.get('Venue', '').lower()
+                        
+                        if (club_name_lower in venue or 
+                            venue.find(club_name_lower) >= 0 or
+                            any(word in venue for word in club_name_lower.split() if len(word) > 2)):
+                            
+                            club_data = {
+                                'airtable_id': record['id'],
+                                'name': fields.get('Venue', '').strip(),
+                                'location': fields.get('Location', '').strip(),
+                                'description': fields.get('Description', '').strip() or f"Official {fields.get('Venue', '')} Hack Club",
+                                'status': fields.get('Status', '').strip(),
+                                'meeting_day': fields.get('Meeting Day', '').strip(),
+                                'meeting_time': fields.get('Meeting Time', '').strip(),
+                                'website': fields.get('Website', '').strip(),
+                                'slack_channel': fields.get('Slack Channel', '').strip(),
+                                'github': fields.get('GitHub', '').strip(),
+                                'latitude': fields.get('Latitude'),
+                                'longitude': fields.get('Longitude'),
+                                'country': fields.get('Address Country', '').strip(),
+                                'region': fields.get('Continent', '').strip(),
+                                'timezone': fields.get('Timezone', '').strip(),
+                                'primary_leader': fields.get('Current Leader(s)', '').strip(),
+                                'co_leaders': fields.get('Co-Leaders', '').strip(),
+                                'meeting_notes': fields.get('Meeting Notes', '').strip(),
+                                'club_applications_link': fields.get('Application Link', '').strip(),
+                            }
+                            break
+        except Exception as e:
+            app.logger.warning(f"Failed to fetch club data from Airtable: {str(e)}")
+
+        # Check if user already has a club
+        existing_club = Club.query.filter_by(leader_id=user.id).first()
+        
+        if existing_club:
+            # User already has a club - update it with Airtable data if verification succeeded
+            if club_data:
+                # Update existing club with verified Airtable data
+                existing_club.name = club_data['name']
+                existing_club.description = club_data['description']
+                existing_club.location = club_data['location']
+                existing_club.airtable_data = json.dumps({
+                    'airtable_id': club_data['airtable_id'],
+                    'status': club_data['status'],
+                    'meeting_day': club_data['meeting_day'],
+                    'meeting_time': club_data['meeting_time'],
+                    'website': club_data['website'],
+                    'slack_channel': club_data['slack_channel'],
+                    'github': club_data['github'],
+                    'latitude': club_data['latitude'],
+                    'longitude': club_data['longitude'],
+                    'country': club_data['country'],
+                    'region': club_data['region'],
+                    'timezone': club_data['timezone'],
+                    'primary_leader': club_data['primary_leader'],
+                    'co_leaders': club_data['co_leaders'],
+                    'meeting_notes': club_data['meeting_notes'],
+                    'club_applications_link': club_data['club_applications_link'],
+                })
+                existing_club.updated_at = datetime.now(timezone.utc)
+                db.session.commit()
+                
+                session.pop('leader_verification', None)
+                flash(f'Club successfully verified and updated with official data from the Hack Club directory! Welcome to {club_data["name"]}!', 'success')
+                return redirect(url_for('club_dashboard', club_id=existing_club.id))
+            else:
+                # User already has a club but verification failed to find it in Airtable
+                session.pop('leader_verification', None)
+                flash("We can't find your club in the Hack Club directory! Please verify your club information again to sync it properly.", 'warning')
+                return redirect(url_for('club_dashboard', club_id=existing_club.id))
+        else:
+            # Create new club after successful verification
+            if not club_data:
+                session.pop('leader_verification', None)
+                flash("We can't find your club in the Hack Club directory! Please verify your club information again.", 'error')
+                return redirect(url_for('verify_leader'))
+            
+            # Create club with Airtable data
+            club = Club(
+                name=club_data['name'],
+                description=club_data['description'],
+                location=club_data['location'],
+                leader_id=user.id,
+                airtable_data=json.dumps({
+                    'airtable_id': club_data['airtable_id'],
+                    'status': club_data['status'],
+                    'meeting_day': club_data['meeting_day'],
+                    'meeting_time': club_data['meeting_time'],
+                    'website': club_data['website'],
+                    'slack_channel': club_data['slack_channel'],
+                    'github': club_data['github'],
+                    'latitude': club_data['latitude'],
+                    'longitude': club_data['longitude'],
+                    'country': club_data['country'],
+                    'region': club_data['region'],
+                    'timezone': club_data['timezone'],
+                    'primary_leader': club_data['primary_leader'],
+                    'co_leaders': club_data['co_leaders'],
+                    'meeting_notes': club_data['meeting_notes'],
+                    'club_applications_link': club_data['club_applications_link'],
+                })
             )
-            user.set_password(signup_data['password'])
-            db.session.add(user)
-            db.session.flush()
-
-            session.pop('signup_data', None)
-            flash_message = f'Account created successfully! Welcome to {leader_verification["club_name"]}!'
-            redirect_route = 'login'
-        else:
-            user = get_current_user()
-            flash_message = f'Club created successfully! Welcome to {leader_verification["club_name"]}!'
-            redirect_route = 'club_dashboard'
-
-        club = Club(
-            name=leader_verification['club_name'],
-            description=f"Official {leader_verification['club_name']} Hack Club",
-            leader_id=user.id
-        )
-        club.generate_join_code()
-        db.session.add(club)
-        db.session.commit()
-
-        session.pop('leader_verification', None)
-        flash(flash_message, 'success')
-
-        if redirect_route == 'club_dashboard':
+            club.generate_join_code()
+            db.session.add(club)
+            db.session.commit()
+            
+            session.pop('leader_verification', None)
+            flash(f'Club created successfully! Welcome to {club_data["name"]}!', 'success')
             return redirect(url_for('club_dashboard', club_id=club.id))
-        else:
-            return redirect(url_for(redirect_route))
 
     except Exception as e:
         db.session.rollback()
+        app.logger.error(f"Error in complete_leader_signup: {str(e)}")
         flash('Database error. Please try again later.', 'error')
         return redirect(url_for('dashboard'))
 
@@ -1447,20 +1896,18 @@ def complete_slack_signup():
             db.session.add(user)
             db.session.flush()
 
-            if is_leader:
-                club = Club(
-                    name=f"{username}'s Club",
-                    description="A new Hack Club - edit your club details in the dashboard",
-                    leader_id=user.id
-                )
-                club.generate_join_code()
-                db.session.add(club)
-
             db.session.commit()
 
             session.pop('slack_signup_data', None)
 
             login_user(user, remember=True)
+
+            if is_leader:
+                return jsonify({
+                    'success': True, 
+                    'message': 'Account created! Now please verify your club leadership.',
+                    'redirect': '/verify-leader'
+                })
 
             return jsonify({'success': True, 'message': 'Account created successfully!'})
 
@@ -1921,10 +2368,62 @@ def remove_club_member(club_id, user_id):
 
     return jsonify({'success': True, 'message': 'Member removed successfully'})
 
-@app.route('/api/clubs/<int:club_id>/pizza-grants', methods=['POST'])
+@app.route('/api/clubs/<int:club_id>/settings', methods=['PUT'])
+@login_required
+@limiter.limit("50 per hour")
+def update_club_settings(club_id):
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    if club.leader_id != current_user.id:
+        return jsonify({'error': 'Only club leaders can update settings'}), 403
+
+    data = request.get_json()
+    
+    # Update local club data
+    if 'name' in data:
+        club.name = sanitize_string(data['name'], max_length=100)
+    if 'description' in data:
+        club.description = sanitize_string(data['description'], max_length=1000)
+    if 'location' in data:
+        club.location = sanitize_string(data['location'], max_length=255)
+    
+    club.updated_at = datetime.now(timezone.utc)
+    
+    # Sync with Airtable if club has airtable_data
+    airtable_data = club.get_airtable_data()
+    if airtable_data and airtable_data.get('airtable_id'):
+        try:
+            # Update Airtable record
+            airtable_record_id = airtable_data['airtable_id']
+            update_url = f"{airtable_service.clubs_base_url}/{airtable_record_id}"
+            
+            airtable_fields = {}
+            if 'name' in data:
+                airtable_fields['Venue'] = club.name
+            if 'description' in data:
+                airtable_fields['Description'] = club.description
+            if 'location' in data:
+                airtable_fields['Location'] = club.location
+            
+            if airtable_fields:
+                payload = {'fields': airtable_fields}
+                response = requests.patch(update_url, headers=airtable_service.headers, json=payload)
+                
+                if response.status_code == 200:
+                    app.logger.info(f"Successfully synced club {club_id} changes to Airtable")
+                else:
+                    app.logger.warning(f"Failed to sync club {club_id} to Airtable: {response.status_code} - {response.text}")
+        except Exception as e:
+            app.logger.error(f"Error syncing club {club_id} to Airtable: {str(e)}")
+    
+    db.session.commit()
+    return jsonify({'message': 'Club settings updated successfully'})
+
+@app.route('/api/clubs/<int:club_id>/pizza-grants', methods=['GET', 'POST'])
 @login_required
 @limiter.limit("10 per hour")
-def submit_pizza_grant(club_id):
+def club_pizza_grants(club_id):
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
@@ -1933,6 +2432,20 @@ def submit_pizza_grant(club_id):
 
     if not is_leader and not is_member:
         return jsonify({'error': 'Unauthorized'}), 403
+
+    if request.method == 'GET':
+        # Fetch actual pizza grant submissions for this club
+        try:
+            all_submissions = airtable_service.get_pizza_grant_submissions()
+            # Filter submissions by club name
+            club_submissions = [
+                submission for submission in all_submissions 
+                if submission.get('club_name', '').lower() == club.name.lower()
+            ]
+            return jsonify({'submissions': club_submissions})
+        except Exception as e:
+            app.logger.error(f"Error fetching pizza grant submissions for club {club_id}: {str(e)}")
+            return jsonify({'submissions': []})
 
     data = request.get_json()
     member_id = data.get('member_id')
@@ -2077,7 +2590,7 @@ def admin_get_users():
         'username': user.username,
         'email': user.email,
         'is_admin': user.is_admin,
-        'is_suspended': False,  # Add suspended field when implemented
+        'is_suspended': user.is_suspended,
         'created_at': user.created_at.isoformat() if user.created_at else None,
         'last_login': user.last_login.isoformat() if user.last_login else None,
         'clubs_led': len(user.led_clubs),
@@ -2218,6 +2731,74 @@ def admin_manage_user(user_id):
             app.logger.error(f"Error updating user {user_id}: {str(e)}")
             return jsonify({'error': 'Failed to update user'}), 500
 
+@app.route('/api/admin/clubs', methods=['POST'])
+@login_required
+@limiter.limit("20 per hour")
+def admin_create_club():
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    data = request.get_json()
+    
+    name = sanitize_string(data.get('name', '').strip(), max_length=100)
+    description = sanitize_string(data.get('description', '').strip(), max_length=1000)
+    location = sanitize_string(data.get('location', '').strip(), max_length=255)
+    leader_email = data.get('leader_email', '').strip().lower()
+    balance = data.get('balance', 0)
+
+    if not name:
+        return jsonify({'error': 'Club name is required'}), 400
+
+    if not leader_email:
+        return jsonify({'error': 'Leader email is required'}), 400
+
+    # Validate email format
+    valid, email_result = validate_email(leader_email)
+    if not valid:
+        return jsonify({'error': email_result}), 400
+
+    # Find the leader user
+    leader = User.query.filter_by(email=email_result).first()
+    if not leader:
+        return jsonify({'error': 'User with that email not found'}), 404
+
+    # Check if user is already leading a club
+    existing_club = Club.query.filter_by(leader_id=leader.id).first()
+    if existing_club:
+        return jsonify({'error': f'User is already leading club: {existing_club.name}'}), 400
+
+    try:
+        # Create the club
+        club = Club(
+            name=name,
+            description=description or f"Admin-created club: {name}",
+            location=location,
+            leader_id=leader.id,
+            balance=balance
+        )
+        club.generate_join_code()
+
+        db.session.add(club)
+        db.session.commit()
+
+        app.logger.info(f"Admin {current_user.username} created club {name} for user {leader.username}")
+
+        return jsonify({
+            'message': 'Club created successfully',
+            'club': {
+                'id': club.id,
+                'name': club.name,
+                'leader': leader.username,
+                'join_code': club.join_code
+            }
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error creating club: {str(e)}")
+        return jsonify({'error': 'Failed to create club'}), 500
+
 @app.route('/api/admin/clubs/<int:club_id>', methods=['PUT', 'DELETE'])
 @login_required
 @limiter.limit("50 per hour")
@@ -2350,6 +2931,127 @@ def admin_reset_password(user_id):
     app.logger.info(f"Admin reset password for user {user.username} (ID: {user.id})")
 
     return jsonify({'message': 'Password reset successfully'})
+
+@app.route('/api/admin/users/<int:user_id>/suspend', methods=['PUT'])
+@login_required
+@limiter.limit("20 per hour")
+def admin_suspend_user(user_id):
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    user = User.query.get_or_404(user_id)
+    data = request.get_json()
+    
+    # Don't allow suspending super admin
+    if user.email == 'ethan@hackclub.com':
+        return jsonify({'error': 'Cannot suspend super admin'}), 400
+
+    new_suspension_status = data.get('is_suspended', not user.is_suspended)
+    suspend_club_members = data.get('suspend_club_members', False)
+    suspend_club = data.get('suspend_club', False)
+
+    try:
+        user.is_suspended = new_suspension_status
+        
+        actions_taken = []
+        
+        if new_suspension_status:  # Suspending user
+            actions_taken.append(f"User {user.username} suspended")
+            
+            # Handle club leader suspension options
+            led_clubs = Club.query.filter_by(leader_id=user.id).all()
+            
+            if led_clubs and (suspend_club_members or suspend_club):
+                for club in led_clubs:
+                    if suspend_club:
+                        club.is_suspended = True
+                        actions_taken.append(f"Club '{club.name}' suspended")
+                    
+                    if suspend_club_members:
+                        # Suspend all club members
+                        for membership in club.members:
+                            if membership.user.email != 'ethan@hackclub.com':  # Don't suspend super admin
+                                membership.user.is_suspended = True
+                                actions_taken.append(f"Club member {membership.user.username} suspended")
+        else:  # Unsuspending user
+            actions_taken.append(f"User {user.username} unsuspended")
+        
+        db.session.commit()
+        
+        action_verb = "suspended" if new_suspension_status else "unsuspended"
+        app.logger.info(f"Admin {current_user.username} {action_verb} user {user.username} (ID: {user.id}). Actions: {'; '.join(actions_taken)}")
+        
+        message = f"User {action_verb} successfully"
+        if len(actions_taken) > 1:
+            message += f". Additional actions: {'; '.join(actions_taken[1:])}"
+        
+        return jsonify({'message': message})
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error suspending/unsuspending user {user_id}: {str(e)}")
+        return jsonify({'error': 'Failed to update suspension status'}), 500
+
+@app.route('/api/admin/sync-clubs-airtable', methods=['POST'])
+@login_required
+@limiter.limit("5 per hour")
+def admin_sync_clubs_airtable():
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    try:
+        result = airtable_service.sync_all_clubs_with_airtable()
+        
+        if result['success']:
+            message = f"Sync completed: {result['created']} clubs created, {result['updated']} clubs updated from {result['total_airtable_clubs']} Airtable records"
+            app.logger.info(f"Admin {current_user.username} synced clubs with Airtable: {message}")
+            return jsonify({
+                'success': True,
+                'message': message,
+                'stats': {
+                    'created': result['created'],
+                    'updated': result['updated'],
+                    'total_airtable_clubs': result['total_airtable_clubs']
+                }
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Unknown error during sync')
+            }), 500
+            
+    except Exception as e:
+        app.logger.error(f"Error in admin club sync: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to sync clubs with Airtable'
+        }), 500
+
+@app.route('/api/admin/clubs/airtable-preview', methods=['GET'])
+@login_required
+@limiter.limit("10 per hour")
+def admin_preview_airtable_clubs():
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    try:
+        airtable_clubs = airtable_service.get_all_clubs_from_airtable()
+        
+        return jsonify({
+            'success': True,
+            'clubs': airtable_clubs[:50],  # Limit to first 50 for preview
+            'total_count': len(airtable_clubs)
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error previewing Airtable clubs: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to fetch clubs from Airtable'
+        }), 500
 
 # API Key Management
 @app.route('/api/admin/api-keys', methods=['GET'])
@@ -2686,6 +3388,7 @@ def api_get_clubs():
         clubs = query.all()
         clubs_data = []
         for club in clubs:
+            airtable_data = club.get_airtable_data()
             clubs_data.append({
                 'id': club.id,
                 'name': club.name,
@@ -2698,7 +3401,9 @@ def api_get_clubs():
                 },
                 'member_count': len(club.members) + 1,
                 'balance': float(club.balance),
-                'created_at': club.created_at.isoformat() if club.created_at else None
+                'created_at': club.created_at.isoformat() if club.created_at else None,
+                'updated_at': club.updated_at.isoformat() if club.updated_at else None,
+                'airtable_data': airtable_data
             })
 
         return jsonify({
@@ -2715,6 +3420,7 @@ def api_get_clubs():
 
         clubs_data = []
         for club in clubs_paginated.items:
+            airtable_data = club.get_airtable_data()
             clubs_data.append({
                 'id': club.id,
                 'name': club.name,
@@ -2727,7 +3433,9 @@ def api_get_clubs():
                 },
                 'member_count': len(club.members) + 1,
                 'balance': float(club.balance),
-                'created_at': club.created_at.isoformat() if club.created_at else None
+                'created_at': club.created_at.isoformat() if club.created_at else None,
+                'updated_at': club.updated_at.isoformat() if club.updated_at else None,
+                'airtable_data': airtable_data
             })
 
         return jsonify({
@@ -2752,7 +3460,7 @@ def api_get_club(club_id):
         # Try Airtable lookup as fallback
         try:
             # Search for club in Airtable
-            airtable_url = f'https://api.airtable.com/v0/{airtable_service.base_id}/Club%20Leaders%20%26%20Emails'
+            airtable_url = f'https://api.airtable.com/v0/{airtable_service.clubs_base_id}/{urllib.parse.quote(airtable_service.clubs_table_name)}'
             headers = {'Authorization': f'Bearer {airtable_service.api_token}'}
             params = {'filterByFormula': f'{{ID}} = "{club_id}"'}
 
@@ -2775,7 +3483,15 @@ def api_get_club(club_id):
                             'member_count': 0,
                             'balance': 0.0,
                             'created_at': None,
-                            'source': 'airtable'
+                            'source': 'airtable',
+                            'airtable_data': {
+                                'status': fields.get('Status', ''),
+                                'meeting_day': fields.get('Meeting Day', ''),
+                                'meeting_time': fields.get('Meeting Time', ''),
+                                'website': fields.get('Website', ''),
+                                'country': fields.get('Country', ''),
+                                'region': fields.get('Region', ''),
+                            }
                         }
                     })
         except:
@@ -2783,6 +3499,8 @@ def api_get_club(club_id):
 
         return jsonify({'error': 'Club not found'}), 404
 
+    airtable_data = club.get_airtable_data()
+    
     club_data = {
         'id': club.id,
         'name': club.name,
@@ -2797,7 +3515,9 @@ def api_get_club(club_id):
         'balance': float(club.balance),
         'join_code': club.join_code,
         'created_at': club.created_at.isoformat() if club.created_at else None,
-        'source': 'database'
+        'updated_at': club.updated_at.isoformat() if club.updated_at else None,
+        'source': 'database',
+        'airtable_data': airtable_data
     }
 
     return jsonify({'club': club_data})
@@ -2874,6 +3594,102 @@ def api_get_user(user_id):
     }
 
     return jsonify({'user': user_data})
+
+@app.route('/api/v1/clubs/search', methods=['GET'])
+@api_key_required(['clubs:read'])
+@limiter.limit("200 per hour")
+def api_search_clubs():
+    """Search clubs by name, location, or description. Returns basic info to help find club IDs."""
+    query = request.args.get('q', '').strip()
+    limit = min(int(request.args.get('limit', 20)), 100)  # Max 100 results
+    
+    if not query:
+        return jsonify({
+            'error': 'Search query required',
+            'message': 'Use ?q=search_term to search for clubs',
+            'example': '/api/v1/clubs/search?q=tech'
+        }), 400
+    
+    # Search clubs by name, location, or description
+    search_term = f"%{query}%"
+    clubs = Club.query.filter(
+        db.or_(
+            Club.name.ilike(search_term),
+            Club.location.ilike(search_term),
+            Club.description.ilike(search_term)
+        )
+    ).limit(limit).all()
+    
+    clubs_data = []
+    for club in clubs:
+        clubs_data.append({
+            'id': club.id,
+            'name': club.name,
+            'location': club.location,
+            'description': club.description[:100] + ('...' if len(club.description or '') > 100 else ''),
+            'leader': {
+                'id': club.leader.id,
+                'username': club.leader.username,
+                'email': club.leader.email
+            },
+            'member_count': len(club.members) + 1,
+            'created_at': club.created_at.isoformat() if club.created_at else None
+        })
+    
+    return jsonify({
+        'clubs': clubs_data,
+        'total_results': len(clubs_data),
+        'search_query': query,
+        'limit': limit
+    })
+
+@app.route('/api/v1/users/search', methods=['GET'])
+@api_key_required(['users:read'])
+@limiter.limit("200 per hour")
+def api_search_users():
+    """Search users by username, email, or name. Returns basic info to help find user IDs."""
+    query = request.args.get('q', '').strip()
+    limit = min(int(request.args.get('limit', 20)), 100)  # Max 100 results
+    
+    if not query:
+        return jsonify({
+            'error': 'Search query required',
+            'message': 'Use ?q=search_term to search for users',
+            'example': '/api/v1/users/search?q=john'
+        }), 400
+    
+    # Search users by username, email, first name, or last name
+    search_term = f"%{query}%"
+    users = User.query.filter(
+        db.or_(
+            User.username.ilike(search_term),
+            User.email.ilike(search_term),
+            User.first_name.ilike(search_term),
+            User.last_name.ilike(search_term)
+        )
+    ).limit(limit).all()
+    
+    users_data = []
+    for user in users:
+        full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+        users_data.append({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'full_name': full_name if full_name else None,
+            'is_admin': user.is_admin,
+            'clubs_led': len(user.led_clubs),
+            'clubs_joined': len(user.club_memberships),
+            'created_at': user.created_at.isoformat() if user.created_at else None,
+            'last_login': user.last_login.isoformat() if user.last_login else None
+        })
+    
+    return jsonify({
+        'users': users_data,
+        'total_results': len(users_data),
+        'search_query': query,
+        'limit': limit
+    })
 
 @app.route('/api/v1/analytics/overview', methods=['GET'])
 @api_key_required(['analytics:read'])
@@ -3219,10 +4035,167 @@ def oauth_user():
         'username': user.username,
         'email': user.email,
         'first_name': user.first_name,
-        'last_name': user.last_name
+        'last_name': user.last_name,
+        'created_at': user.created_at.isoformat() if user.created_at else None,
+        'last_login': user.last_login.isoformat() if user.last_login else None
     }
 
     return jsonify({'user': user_data})
+
+@app.route('/oauth/user/clubs', methods=['GET'])
+@oauth_required(['clubs:read'])
+@limiter.limit("200 per hour")
+def oauth_user_clubs():
+    user = request.oauth_user
+    
+    # Get clubs where user is leader
+    led_clubs = Club.query.filter_by(leader_id=user.id).all()
+    
+    # Get clubs where user is member
+    memberships = ClubMembership.query.filter_by(user_id=user.id).all()
+    member_clubs = [m.club for m in memberships]
+    
+    clubs_data = []
+    
+    # Add led clubs
+    for club in led_clubs:
+        airtable_data = club.get_airtable_data()
+        clubs_data.append({
+            'id': club.id,
+            'name': club.name,
+            'description': club.description,
+            'location': club.location,
+            'role': 'leader',
+            'member_count': len(club.members) + 1,
+            'balance': float(club.balance),
+            'join_code': club.join_code,
+            'created_at': club.created_at.isoformat() if club.created_at else None,
+            'airtable_data': airtable_data
+        })
+    
+    # Add member clubs
+    for club in member_clubs:
+        airtable_data = club.get_airtable_data()
+        membership = next(m for m in memberships if m.club_id == club.id)
+        clubs_data.append({
+            'id': club.id,
+            'name': club.name,
+            'description': club.description,
+            'location': club.location,
+            'role': membership.role,
+            'member_count': len(club.members) + 1,
+            'joined_at': membership.joined_at.isoformat() if membership.joined_at else None,
+            'airtable_data': airtable_data
+        })
+    
+    return jsonify({
+        'clubs': clubs_data,
+        'total_clubs': len(clubs_data),
+        'clubs_led': len(led_clubs),
+        'clubs_joined': len(member_clubs)
+    })
+
+@app.route('/oauth/user/projects', methods=['GET'])
+@oauth_required(['projects:read'])
+@limiter.limit("200 per hour")
+def oauth_user_projects():
+    user = request.oauth_user
+    
+    # Get all projects by this user
+    projects = ClubProject.query.filter_by(user_id=user.id).order_by(ClubProject.updated_at.desc()).all()
+    
+    projects_data = []
+    for project in projects:
+        projects_data.append({
+            'id': project.id,
+            'name': project.name,
+            'description': project.description,
+            'url': project.url,
+            'github_url': project.github_url,
+            'featured': project.featured,
+            'club': {
+                'id': project.club.id,
+                'name': project.club.name
+            },
+            'created_at': project.created_at.isoformat() if project.created_at else None,
+            'updated_at': project.updated_at.isoformat() if project.updated_at else None
+        })
+    
+    return jsonify({
+        'projects': projects_data,
+        'total_projects': len(projects_data)
+    })
+
+@app.route('/oauth/user/assignments', methods=['GET'])
+@oauth_required(['assignments:read'])
+@limiter.limit("200 per hour")
+def oauth_user_assignments():
+    user = request.oauth_user
+    
+    # Get clubs where user is member or leader
+    led_club_ids = [club.id for club in Club.query.filter_by(leader_id=user.id).all()]
+    member_club_ids = [m.club_id for m in ClubMembership.query.filter_by(user_id=user.id).all()]
+    all_club_ids = list(set(led_club_ids + member_club_ids))
+    
+    # Get assignments from all user's clubs
+    assignments = ClubAssignment.query.filter(ClubAssignment.club_id.in_(all_club_ids)).order_by(ClubAssignment.created_at.desc()).all()
+    
+    assignments_data = []
+    for assignment in assignments:
+        assignments_data.append({
+            'id': assignment.id,
+            'title': assignment.title,
+            'description': assignment.description,
+            'due_date': assignment.due_date.isoformat() if assignment.due_date else None,
+            'status': assignment.status,
+            'club': {
+                'id': assignment.club.id,
+                'name': assignment.club.name
+            },
+            'created_at': assignment.created_at.isoformat() if assignment.created_at else None
+        })
+    
+    return jsonify({
+        'assignments': assignments_data,
+        'total_assignments': len(assignments_data)
+    })
+
+@app.route('/oauth/user/meetings', methods=['GET'])
+@oauth_required(['meetings:read'])
+@limiter.limit("200 per hour")
+def oauth_user_meetings():
+    user = request.oauth_user
+    
+    # Get clubs where user is member or leader
+    led_club_ids = [club.id for club in Club.query.filter_by(leader_id=user.id).all()]
+    member_club_ids = [m.club_id for m in ClubMembership.query.filter_by(user_id=user.id).all()]
+    all_club_ids = list(set(led_club_ids + member_club_ids))
+    
+    # Get meetings from all user's clubs
+    meetings = ClubMeeting.query.filter(ClubMeeting.club_id.in_(all_club_ids)).order_by(ClubMeeting.meeting_date.desc()).all()
+    
+    meetings_data = []
+    for meeting in meetings:
+        meetings_data.append({
+            'id': meeting.id,
+            'title': meeting.title,
+            'description': meeting.description,
+            'meeting_date': meeting.meeting_date.isoformat(),
+            'start_time': meeting.start_time,
+            'end_time': meeting.end_time,
+            'location': meeting.location,
+            'meeting_link': meeting.meeting_link,
+            'club': {
+                'id': meeting.club.id,
+                'name': meeting.club.name
+            },
+            'created_at': meeting.created_at.isoformat() if meeting.created_at else None
+        })
+    
+    return jsonify({
+        'meetings': meetings_data,
+        'total_meetings': len(meetings_data)
+    })
 
 @app.route('/pizza-order/<int:club_id>')
 @login_required
@@ -3293,9 +4266,37 @@ def submit_pizza_order(club_id):
     else:
         return jsonify({'error': 'Failed to submit pizza order. Please try again.'}), 500
 
+@app.route('/oauth/debug')
+def oauth_debug():
+    return render_template('oauth_debug.html')
+
+@app.route('/oauth/debug/callback')
+def oauth_debug_callback():
+    # This is just a callback endpoint for the debug page
+    # It will show the authorization code in the URL for testing
+    return render_template('oauth_debug.html')
+
 @app.route('/api/docs')
 def api_documentation():
     return render_template('api_docs.html')
+
+# Error handlers
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('404.html'), 404
+
+@app.errorhandler(403)
+def forbidden_error(error):
+    return render_template('403.html'), 403
+
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    return render_template('500.html'), 500
+
+@app.errorhandler(429)
+def rate_limit_error(error):
+    return render_template('429.html'), 429
 
 if __name__ == '__main__':
     import logging

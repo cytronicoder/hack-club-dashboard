@@ -1,279 +1,493 @@
+
 {% extends "base.html" %}
 
-{% block title %}Account Settings - Hack Club Dashboard{% endblock %}
+{% block title %}Account Settings - Hack Clubs Dash{% endblock %}
 
 {% block extra_head %}
 <style>
     .account-container {
         max-width: 800px;
         margin: 2rem auto;
-        padding: 0 1rem;
-    }
-
-    .account-header {
-        text-align: center;
-        margin-bottom: 3rem;
-    }
-
-    .account-header h1 {
-        font-size: 2.5rem;
-        color: var(--text);
-        margin-bottom: 0.5rem;
-        font-weight: 700;
-    }
-
-    .account-header p {
-        color: var(--text-secondary);
-        font-size: 1.1rem;
-    }
-
-    .account-sections {
-        display: grid;
-        gap: 2rem;
-    }
-
-    .account-section {
-        background: var(--surface);
-        border-radius: 16px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        overflow: hidden;
-        border: 1px solid var(--border);
-    }
-
-    .section-header {
-        padding: 1.5rem;
-        border-bottom: 1px solid var(--border);
-        background: var(--background);
-    }
-
-    .section-header h2 {
-        margin: 0;
-        color: var(--text);
-        font-size: 1.25rem;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .section-body {
         padding: 2rem;
     }
 
-    .form-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
+    .account-section {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
         gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #f1f5f9;
     }
 
-    .password-section {
-        margin-top: 2rem;
-        padding-top: 2rem;
-        border-top: 1px solid var(--border);
+    .section-icon {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #ec3750, #d63146);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.2rem;
     }
 
-    .password-section h3 {
-        margin: 0 0 1rem 0;
-        color: var(--text);
-        font-size: 1.1rem;
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
         font-weight: 600;
+        color: #374151;
     }
 
-    .btn-danger {
-        background-color: var(--error);
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #ec3750;
+        box-shadow: 0 0 0 3px rgba(236, 55, 80, 0.1);
+    }
+
+    .btn {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-primary {
+        background: #ec3750;
         color: white;
     }
 
-    .btn-danger:hover {
-        background-color: #dc2626;
-        transform: translateY(-1px);
+    .btn-primary:hover {
+        background: #d63146;
+        transform: translateY(-2px);
     }
 
-    @media (max-width: 768px) {
-        .form-row {
-            grid-template-columns: 1fr;
-        }
+    .btn-secondary {
+        background: #6b7280;
+        color: white;
+    }
 
-        .account-header h1 {
-            font-size: 2rem;
-        }
+    .btn-secondary:hover {
+        background: #4b5563;
+    }
+
+    .btn-slack {
+        background: #4a154b;
+        color: white;
+    }
+
+    .btn-slack:hover {
+        background: #350e35;
+    }
+
+    .slack-status {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: #f0f9ff;
+        border: 1px solid #bae6fd;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+
+    .slack-connected {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+        color: #166534;
+    }
+
+    .slack-disconnected {
+        background: #fef2f2;
+        border-color: #fecaca;
+        color: #dc2626;
+    }
+
+    .club-verification {
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .club-verification h4 {
+        margin: 0 0 0.5rem 0;
+        color: #9a3412;
+    }
+
+    .club-verification p {
+        margin: 0;
+        color: #c2410c;
+        font-size: 0.9rem;
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="account-container">
-    <div class="account-header">
-        <h1><i class="fas fa-user-cog"></i> Account Settings</h1>
-        <p>Manage your account information and preferences</p>
-    </div>
-
-    <div class="account-sections">
-        <div class="account-section">
-            <div class="section-header">
-                <h2><i class="fas fa-user"></i> Profile Information</h2>
+    <div class="account-section">
+        <div class="section-header">
+            <div class="section-icon">
+                <i class="fas fa-user"></i>
             </div>
-            <div class="section-body">
-                <form id="profileForm">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Username</label>
-                            <input type="text" class="form-control" id="username" value="{{ current_user.username }}" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email" value="{{ current_user.email }}" required>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">First Name</label>
-                            <input type="text" class="form-control" id="firstName" value="{{ current_user.first_name or '' }}" maxlength="50">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Last Name</label>
-                            <input type="text" class="form-control" id="lastName" value="{{ current_user.last_name or '' }}" maxlength="50">
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Birthday</label>
-                            <input type="date" class="form-control" id="birthday" value="{{ current_user.birthday.strftime('%Y-%m-%d') if current_user.birthday else '' }}">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Hackatime API Key</label>
-                            <input type="password" class="form-control" id="hackatimeApiKey" value="{{ current_user.hackatime_api_key or '' }}" placeholder="Enter your Hackatime API key">
-                            <small style="color: #64748b; font-size: 0.875rem;">Get your API key from <a href="https://hackatime.hackclub.com/my/settings" target="_blank">Hackatime Settings</a></small>
-                        </div>
-                    </div>
-
-                    
-
-                    <div class="password-section">
-                        <h3><i class="fas fa-lock"></i> Change Password</h3>
-                        <div class="form-group">
-                            <label class="form-label">Current Password</label>
-                            <input type="password" class="form-control" id="currentPassword" placeholder="Enter current password to change">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">New Password</label>
-                                <input type="password" class="form-control" id="newPassword" placeholder="Enter new password">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Confirm New Password</label>
-                                <input type="password" class="form-control" id="confirmPassword" placeholder="Confirm new password">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="margin-top: 2rem; display: flex; gap: 1rem;">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> Save Changes
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="resetForm()">
-                            <i class="fas fa-undo"></i> Reset
-                        </button>
-                    </div>
-                </form>
+            <div>
+                <h2>Account Information</h2>
+                <p style="margin: 0; color: #64748b;">Manage your personal details</p>
             </div>
         </div>
 
-        <div class="account-section">
-            <div class="section-header">
-                <h2><i class="fas fa-info-circle"></i> Account Information</h2>
-            </div>
-            <div class="section-body">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Member Since</label>
-                        <input type="text" class="form-control" value="{{ current_user.created_at.strftime('%B %d, %Y') }}" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Last Login</label>
-                        <input type="text" class="form-control" value="{{ current_user.last_login.strftime('%B %d, %Y at %I:%M %p') if current_user.last_login else 'Never' }}" readonly>
-                    </div>
+        <form id="accountForm">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" value="{{ current_user.username }}">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" value="{{ current_user.email }}">
                 </div>
             </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label">First Name</label>
+                    <input type="text" class="form-control" id="firstName" value="{{ current_user.first_name or '' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Last Name</label>
+                    <input type="text" class="form-control" id="lastName" value="{{ current_user.last_name or '' }}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Birthday</label>
+                <input type="date" class="form-control" id="birthday" value="{{ current_user.birthday.isoformat() if current_user.birthday else '' }}">
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Save Changes
+            </button>
+        </form>
+    </div>
+
+    <div class="account-section">
+        <div class="section-header">
+            <div class="section-icon">
+                <i class="fab fa-slack"></i>
+            </div>
+            <div>
+                <h2>Slack Integration</h2>
+                <p style="margin: 0; color: #64748b;">Connect your Slack account for easier access</p>
+            </div>
         </div>
+
+        {% if current_user.slack_user_id %}
+            <div class="slack-status slack-connected">
+                <i class="fas fa-check-circle"></i>
+                <div>
+                    <strong>Slack Connected</strong>
+                    <p style="margin: 0; font-size: 0.9rem;">Your account is linked to Slack</p>
+                </div>
+            </div>
+            <button id="unlinkSlack" class="btn btn-secondary">
+                <i class="fas fa-unlink"></i> Unlink Slack
+            </button>
+        {% else %}
+            <div class="slack-status slack-disconnected">
+                <i class="fas fa-exclamation-circle"></i>
+                <div>
+                    <strong>Slack Not Connected</strong>
+                    <p style="margin: 0; font-size: 0.9rem;">Link your Slack account for easier login</p>
+                </div>
+            </div>
+            <a href="{{ url_for('slack_login') }}" class="btn btn-slack">
+                <i class="fab fa-slack"></i> Link Slack Account
+            </a>
+        {% endif %}
+    </div>
+
+    <div class="account-section">
+        <div class="section-header">
+            <div class="section-icon">
+                <i class="fas fa-crown"></i>
+            </div>
+            <div>
+                <h2>Club Leadership</h2>
+                <p style="margin: 0; color: #64748b;">Verify leadership of existing clubs</p>
+            </div>
+        </div>
+
+        <div class="club-verification">
+            <h4><i class="fas fa-info-circle"></i> Already a club leader?</h4>
+            <p>If you're already leading a Hack Club, you can verify and link to your existing club instead of creating a new one.</p>
+        </div>
+
+        <a href="{{ url_for('verify_leader') }}" class="btn btn-primary">
+            <i class="fas fa-shield-alt"></i> Verify Club Leadership
+        </a>
+    </div>
+
+    <div class="account-section">
+        <div class="section-header">
+            <div class="section-icon">
+                <i class="fas fa-lock"></i>
+            </div>
+            <div>
+                <h2>Change Password</h2>
+                <p style="margin: 0; color: #64748b;">Update your account password</p>
+            </div>
+        </div>
+
+        <form id="passwordForm">
+            <div class="form-group">
+                <label class="form-label">Current Password</label>
+                <input type="password" class="form-control" id="currentPassword">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input type="password" class="form-control" id="newPassword">
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-key"></i> Update Password
+            </button>
+        </form>
+    </div>
+
+    <div class="account-section">
+        <div class="section-header">
+            <div class="section-icon">
+                <i class="fas fa-code"></i>
+            </div>
+            <div>
+                <h2>Hackatime Integration</h2>
+                <p style="margin: 0; color: #64748b;">Connect your Hackatime account to track coding time</p>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Hackatime API Key</label>
+            <input type="password" class="form-control" id="hackatimeKey" value="{{ current_user.hackatime_api_key or '' }}" placeholder="Enter your Hackatime API key">
+            <small style="color: #64748b; font-size: 0.875rem;">Get your API key from your Hackatime settings</small>
+        </div>
+
+        <button id="saveHackatime" class="btn btn-primary">
+            <i class="fas fa-clock"></i> Save Hackatime Key
+        </button>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_scripts %}
 <script>
-    document.getElementById('profileForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const username = document.getElementById('username').value;
-        const email = document.getElementById('email').value;
-        const firstName = document.getElementById('firstName').value;
-        const lastName = document.getElementById('lastName').value;
-        const birthday = document.getElementById('birthday').value;
-        const hackatimeApiKey = document.getElementById('hackatimeApiKey').value;
-        const currentPassword = document.getElementById('currentPassword').value;
-        const newPassword = document.getElementById('newPassword').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-
-        if (newPassword && newPassword !== confirmPassword) {
-            showToast('error', 'New passwords do not match', 'Validation Error');
-            return;
-        }
-
-        const data = {
-            username: username,
-            email: email,
-            first_name: firstName,
-            last_name: lastName,
-            birthday: birthday,
-            hackatime_api_key: hackatimeApiKey
-        };
-
-        if (newPassword) {
-            if (!currentPassword) {
-                showToast('error', 'Current password is required to change password', 'Validation Error');
-                return;
-            }
-            data.current_password = currentPassword;
-            data.new_password = newPassword;
-        }
-
-        fetch('/api/user/update', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.message) {
-                showToast('success', data.message, 'Account Updated');
-                document.getElementById('currentPassword').value = '';
-                document.getElementById('newPassword').value = '';
-                document.getElementById('confirmPassword').value = '';
-            } else {
-                showToast('error', data.error || 'Failed to update account', 'Error');
-            }
-        })
-        .catch(error => {
-            showToast('error', 'Error updating account', 'Error');
+document.addEventListener('DOMContentLoaded', function() {
+    // Account form handler
+    const accountForm = document.getElementById('accountForm');
+    if (accountForm) {
+        accountForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const data = {
+                username: document.getElementById('username').value,
+                email: document.getElementById('email').value,
+                first_name: document.getElementById('firstName').value,
+                last_name: document.getElementById('lastName').value,
+                birthday: document.getElementById('birthday').value
+            };
+            
+            fetch('/api/user/update', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    if (typeof showToast === 'function') {
+                        showToast('success', data.message, 'Account Updated');
+                    } else {
+                        alert(data.message);
+                    }
+                } else {
+                    if (typeof showToast === 'function') {
+                        showToast('error', data.error || 'Failed to update account', 'Error');
+                    } else {
+                        alert(data.error || 'Failed to update account');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (typeof showToast === 'function') {
+                    showToast('error', 'Network error. Please try again.', 'Error');
+                } else {
+                    alert('Network error. Please try again.');
+                }
+            });
         });
-    });
-
-    function resetForm() {
-        document.getElementById('username').value = '{{ current_user.username }}';
-        document.getElementById('email').value = '{{ current_user.email }}';
-        document.getElementById('firstName').value = '{{ current_user.first_name or '' }}';
-        document.getElementById('lastName').value = '{{ current_user.last_name or '' }}';
-        document.getElementById('birthday').value = '{{ current_user.birthday.strftime('%Y-%m-%d') if current_user.birthday else '' }}';
-        document.getElementById('hackatimeApiKey').value = '{{ current_user.hackatime_api_key or '' }}';
-        document.getElementById('currentPassword').value = '';
-        document.getElementById('newPassword').value = '';
-        document.getElementById('confirmPassword').value = '';
-        showToast('info', 'Form reset to original values', 'Reset');
     }
+
+    // Password form handler
+    const passwordForm = document.getElementById('passwordForm');
+    if (passwordForm) {
+        passwordForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const data = {
+                current_password: document.getElementById('currentPassword').value,
+                new_password: document.getElementById('newPassword').value
+            };
+            
+            fetch('/api/user/update', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    if (typeof showToast === 'function') {
+                        showToast('success', data.message, 'Password Updated');
+                    } else {
+                        alert(data.message);
+                    }
+                    document.getElementById('currentPassword').value = '';
+                    document.getElementById('newPassword').value = '';
+                } else {
+                    if (typeof showToast === 'function') {
+                        showToast('error', data.error || 'Failed to update password', 'Error');
+                    } else {
+                        alert(data.error || 'Failed to update password');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (typeof showToast === 'function') {
+                    showToast('error', 'Network error. Please try again.', 'Error');
+                } else {
+                    alert('Network error. Please try again.');
+                }
+            });
+        });
+    }
+
+    // Hackatime key handler
+    const saveHackatime = document.getElementById('saveHackatime');
+    if (saveHackatime) {
+        saveHackatime.addEventListener('click', function() {
+            const data = {
+                hackatime_api_key: document.getElementById('hackatimeKey').value
+            };
+            
+            fetch('/api/user/update', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    if (typeof showToast === 'function') {
+                        showToast('success', data.message, 'Hackatime Updated');
+                    } else {
+                        alert(data.message);
+                    }
+                } else {
+                    if (typeof showToast === 'function') {
+                        showToast('error', data.error || 'Failed to update Hackatime key', 'Error');
+                    } else {
+                        alert(data.error || 'Failed to update Hackatime key');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (typeof showToast === 'function') {
+                    showToast('error', 'Network error. Please try again.', 'Error');
+                } else {
+                    alert('Network error. Please try again.');
+                }
+            });
+        });
+    }
+
+    // Unlink Slack handler
+    const unlinkSlack = document.getElementById('unlinkSlack');
+    if (unlinkSlack) {
+        unlinkSlack.addEventListener('click', function() {
+            if (confirm('Are you sure you want to unlink your Slack account?')) {
+                fetch('/api/user/unlink-slack', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (typeof showToast === 'function') {
+                            showToast('success', 'Slack account unlinked successfully', 'Success');
+                        } else {
+                            alert('Slack account unlinked successfully');
+                        }
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        if (typeof showToast === 'function') {
+                            showToast('error', data.error || 'Failed to unlink Slack', 'Error');
+                        } else {
+                            alert(data.error || 'Failed to unlink Slack');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if (typeof showToast === 'function') {
+                        showToast('error', 'Network error. Please try again.', 'Error');
+                    } else {
+                        alert('Network error. Please try again.');
+                    }
+                });
+            }
+        });
+    }
+});
 </script>
 {% endblock %}
+
