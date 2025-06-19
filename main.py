@@ -2841,6 +2841,86 @@ def admin_manage_club(club_id):
         db.session.commit()
         return jsonify({'message': 'Club updated successfully'})
 
+@app.route('/api/admin/users/search', methods=['GET'])
+@login_required
+@limiter.limit("100 per hour")
+def admin_search_users():
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    query = request.args.get('q', '').strip()
+    limit = min(int(request.args.get('limit', 50)), 200)  # Max 200 results
+
+    if not query:
+        return jsonify({'error': 'Search query required'}), 400
+
+    # Search users by username, email, first name, or last name
+    search_term = f"%{query}%"
+    users = User.query.filter(
+        db.or_(
+            User.username.ilike(search_term),
+            User.email.ilike(search_term),
+            User.first_name.ilike(search_term),
+            User.last_name.ilike(search_term)
+        )
+    ).limit(limit).all()
+
+    users_data = [{
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'is_admin': user.is_admin,
+        'is_suspended': user.is_suspended,
+        'created_at': user.created_at.isoformat() if user.created_at else None,
+        'last_login': user.last_login.isoformat() if user.last_login else None,
+        'clubs_led': len(user.led_clubs),
+        'clubs_joined': len(user.club_memberships)
+    } for user in users]
+
+    return jsonify({'users': users_data})
+
+@app.route('/api/admin/clubs/search', methods=['GET'])
+@login_required
+@limiter.limit("100 per hour")
+def admin_search_clubs():
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    query = request.args.get('q', '').strip()
+    limit = min(int(request.args.get('limit', 50)), 200)  # Max 200 results
+
+    if not query:
+        return jsonify({'error': 'Search query required'}), 400
+
+    # Search clubs by name, location, description, or leader info
+    search_term = f"%{query}%"
+    clubs = Club.query.join(User, Club.leader_id == User.id).filter(
+        db.or_(
+            Club.name.ilike(search_term),
+            Club.location.ilike(search_term),
+            Club.description.ilike(search_term),
+            User.username.ilike(search_term),
+            User.email.ilike(search_term)
+        )
+    ).limit(limit).all()
+
+    clubs_data = [{
+        'id': club.id,
+        'name': club.name,
+        'description': club.description,
+        'location': club.location,
+        'leader': club.leader.username,
+        'leader_email': club.leader.email,
+        'member_count': len(club.members) + 1,  # +1 for leader
+        'balance': float(club.balance),
+        'created_at': club.created_at.isoformat() if club.created_at else None,
+        'join_code': club.join_code
+    } for club in clubs]
+
+    return jsonify({'clubs': clubs_data})</old_str>
+
 @app.route('/api/admin/administrators', methods=['POST'])
 @login_required
 @limiter.limit("20 per hour")
