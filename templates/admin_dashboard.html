@@ -336,6 +336,174 @@
         box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3);
     }
 
+    /* Custom Dropdown Styles */
+    .action-dropdown {
+        position: relative;
+        display: inline-block;
+    }
+
+    .dropdown-toggle {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 80px;
+        justify-content: center;
+    }
+
+    .dropdown-toggle:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        min-width: 160px;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.2s ease;
+    }
+
+    .action-dropdown.active .dropdown-menu {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+        color: #374151;
+        text-decoration: none;
+        border: none;
+        background: none;
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .dropdown-item:last-child {
+        border-bottom: none;
+    }
+
+    .dropdown-item:hover {
+        background: #f8fafc;
+        color: #1f2937;
+    }
+
+    .dropdown-item.edit:hover {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .dropdown-item.login:hover {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .dropdown-item.reset:hover {
+        background: #ede9fe;
+        color: #5b21b6;
+    }
+
+    .dropdown-item.suspend:hover {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .dropdown-item.danger:hover {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .dropdown-item i {
+        width: 14px;
+        text-align: center;
+        font-size: 0.8rem;
+    }
+
+    /* Pagination Styles */
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1.5rem;
+        padding: 1rem 0;
+    }
+
+    .pagination-info {
+        color: #64748b;
+        font-size: 0.875rem;
+    }
+
+    .pagination-controls {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .pagination-btn {
+        background: white;
+        border: 1px solid #e2e8f0;
+        color: #374151;
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+        background: #f8fafc;
+        border-color: #ec3750;
+        color: #ec3750;
+    }
+
+    .pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .pagination-btn.active {
+        background: #ec3750;
+        border-color: #ec3750;
+        color: white;
+    }
+
+    .page-size-select {
+        padding: 0.5rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        background: white;
+        margin-left: 1rem;
+    }
+
     .activity-feed {
         background: white;
         border-radius: 20px;
@@ -1427,6 +1595,16 @@ let currentSuspendUserId = null;
 let currentSuspendUsername = null;
 let isClubLeader = false;
 
+// Pagination variables
+let currentUsersPage = 1;
+let currentClubsPage = 1;
+let usersPerPage = 10;
+let clubsPerPage = 10;
+let totalUsers = 0;
+let totalClubs = 0;
+let filteredUsersData = [];
+let filteredClubsData = [];
+
 function showAdminSection(section) {
     // Hide all sections
     document.querySelectorAll('.admin-section').forEach(sec => {
@@ -1491,16 +1669,20 @@ document.addEventListener('DOMContentLoaded', function() {
     showAdminSection('overview');
 });
 
-async function loadUsers() {
+async function loadUsers(page = 1) {
     const loading = document.getElementById('usersLoading');
     const table = document.getElementById('usersTable');
 
     try {
-        const response = await fetch('/api/admin/users');
+        const response = await fetch(`/api/admin/users?page=${page}&per_page=${usersPerPage}`);
         const data = await response.json();
         usersData = data.users;
+        totalUsers = data.total;
+        currentUsersPage = page;
+        filteredUsersData = usersData;
 
-        renderUsersTable(usersData);
+        renderUsersTable(filteredUsersData);
+        renderUsersPagination();
 
         loading.style.display = 'none';
         table.style.display = 'table';
@@ -1510,16 +1692,20 @@ async function loadUsers() {
     }
 }
 
-async function loadClubs() {
+async function loadClubs(page = 1) {
     const loading = document.getElementById('clubsLoading');
     const table = document.getElementById('clubsTable');
 
     try {
-        const response = await fetch('/api/admin/clubs');
+        const response = await fetch(`/api/admin/clubs?page=${page}&per_page=${clubsPerPage}`);
         const data = await response.json();
         clubsData = data.clubs;
+        totalClubs = data.total;
+        currentClubsPage = page;
+        filteredClubsData = clubsData;
 
-        renderClubsTable(clubsData);
+        renderClubsTable(filteredClubsData);
+        renderClubsPagination();
 
         loading.style.display = 'none';
         table.style.display = 'table';
@@ -1553,22 +1739,27 @@ function renderUsersTable(users) {
             <td>${user.clubs_led + user.clubs_joined} clubs</td>
             <td>${user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}</td>
             <td>
-                <div class="action-buttons">
-                    <button class="btn-action btn-edit" onclick="editUser(${user.id})">
-                        <i class="fas fa-edit"></i> Edit
+                <div class="action-dropdown">
+                    <button class="dropdown-toggle" onclick="toggleDropdown(this)">
+                        <i class="fas fa-cog"></i> Actions <i class="fas fa-chevron-down"></i>
                     </button>
-                    <button class="btn-action btn-login" onclick="loginAsUser(${user.id}, '${user.username}')">
-                        <i class="fas fa-sign-in-alt"></i> Login as
-                    </button>
-                    <button class="btn-action btn-reset" onclick="resetUserPassword(${user.id}, '${user.username}')">
-                        <i class="fas fa-key"></i> Reset Pwd
-                    </button>
-                    <button class="btn-action btn-suspend" onclick="suspendUser(${user.id}, '${user.username}', ${user.clubs_led > 0})" ${user.is_suspended ? 'style="background: #10b981;"' : ''}>
-                        <i class="fas fa-ban"></i> ${user.is_suspended ? 'Unsuspend' : 'Suspend'}
-                    </button>
-                    <button class="btn-action btn-delete" onclick="deleteUser(${user.id}, '${user.username}')">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
+                    <div class="dropdown-menu">
+                        <button class="dropdown-item edit" onclick="editUser(${user.id}); closeDropdown(this)">
+                            <i class="fas fa-edit"></i> Edit User
+                        </button>
+                        <button class="dropdown-item login" onclick="loginAsUser(${user.id}, '${user.username}'); closeDropdown(this)">
+                            <i class="fas fa-sign-in-alt"></i> Login as User
+                        </button>
+                        <button class="dropdown-item reset" onclick="resetUserPassword(${user.id}, '${user.username}'); closeDropdown(this)">
+                            <i class="fas fa-key"></i> Reset Password
+                        </button>
+                        <button class="dropdown-item suspend" onclick="suspendUser(${user.id}, '${user.username}', ${user.clubs_led > 0}); closeDropdown(this)">
+                            <i class="fas fa-ban"></i> ${user.is_suspended ? 'Unsuspend User' : 'Suspend User'}
+                        </button>
+                        <button class="dropdown-item danger" onclick="deleteUser(${user.id}, '${user.username}'); closeDropdown(this)">
+                            <i class="fas fa-trash"></i> Delete User
+                        </button>
+                    </div>
                 </div>
             </td>
         `;
@@ -1590,13 +1781,18 @@ function renderClubsTable(clubs) {
             <td>$${club.balance.toFixed(2)}</td>
             <td>${club.created_at ? new Date(club.created_at).toLocaleDateString() : 'Unknown'}</td>
             <td>
-                <div class="action-buttons">
-                    <button class="btn-action btn-edit" onclick="editClub(${club.id})">
-                        <i class="fas fa-edit"></i> Edit
+                <div class="action-dropdown">
+                    <button class="dropdown-toggle" onclick="toggleDropdown(this)">
+                        <i class="fas fa-cog"></i> Actions <i class="fas fa-chevron-down"></i>
                     </button>
-                    <button class="btn-action btn-delete" onclick="deleteClub(${club.id}, '${club.name}')">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
+                    <div class="dropdown-menu">
+                        <button class="dropdown-item edit" onclick="editClub(${club.id}); closeDropdown(this)">
+                            <i class="fas fa-edit"></i> Edit Club
+                        </button>
+                        <button class="dropdown-item danger" onclick="deleteClub(${club.id}, '${club.name}'); closeDropdown(this)">
+                            <i class="fas fa-trash"></i> Delete Club
+                        </button>
+                    </div>
                 </div>
             </td>
         `;
@@ -1938,23 +2134,207 @@ function removeAdmin(adminId, username) {
     openModal('confirmModal');
 }
 
-document.getElementById('userSearch').addEventListener('input', function(e) {
-    const searchTerm = e.target.value.toLowerCase();
-    const filteredUsers = usersData.filter(user => 
-        user.username.toLowerCase().includes(searchTerm) ||
-        user.email.toLowerCase().includes(searchTerm)
-    );
-    renderUsersTable(filteredUsers);
+// Dropdown functionality
+function toggleDropdown(button) {
+    // Close all other dropdowns
+    document.querySelectorAll('.action-dropdown.active').forEach(dropdown => {
+        if (dropdown !== button.parentElement) {
+            dropdown.classList.remove('active');
+        }
+    });
+    
+    // Toggle current dropdown
+    button.parentElement.classList.toggle('active');
+}
+
+function closeDropdown(element) {
+    const dropdown = element.closest('.action-dropdown');
+    if (dropdown) {
+        dropdown.classList.remove('active');
+    }
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.action-dropdown')) {
+        document.querySelectorAll('.action-dropdown.active').forEach(dropdown => {
+            dropdown.classList.remove('active');
+        });
+    }
 });
 
-document.getElementById('clubSearch').addEventListener('input', function(e) {
+// Pagination functions
+function renderUsersPagination() {
+    const container = document.getElementById('usersPagination');
+    if (!container) {
+        // Create pagination container if it doesn't exist
+        const pagination = document.createElement('div');
+        pagination.id = 'usersPagination';
+        pagination.className = 'pagination-container';
+        document.getElementById('usersTable').parentNode.appendChild(pagination);
+    }
+    
+    const totalPages = Math.ceil(totalUsers / usersPerPage);
+    const container2 = document.getElementById('usersPagination');
+    
+    container2.innerHTML = `
+        <div class="pagination-info">
+            Showing ${((currentUsersPage - 1) * usersPerPage) + 1} to ${Math.min(currentUsersPage * usersPerPage, totalUsers)} of ${totalUsers} users
+        </div>
+        <div class="pagination-controls">
+            <button class="pagination-btn" onclick="loadUsers(${currentUsersPage - 1})" ${currentUsersPage <= 1 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-left"></i> Previous
+            </button>
+            ${generatePageNumbers(currentUsersPage, totalPages, 'loadUsers')}
+            <button class="pagination-btn" onclick="loadUsers(${currentUsersPage + 1})" ${currentUsersPage >= totalPages ? 'disabled' : ''}>
+                Next <i class="fas fa-chevron-right"></i>
+            </button>
+            <select class="page-size-select" onchange="changeUsersPageSize(this.value)">
+                <option value="10" ${usersPerPage === 10 ? 'selected' : ''}>10 per page</option>
+                <option value="25" ${usersPerPage === 25 ? 'selected' : ''}>25 per page</option>
+                <option value="50" ${usersPerPage === 50 ? 'selected' : ''}>50 per page</option>
+            </select>
+        </div>
+    `;
+}
+
+function renderClubsPagination() {
+    const container = document.getElementById('clubsPagination');
+    if (!container) {
+        // Create pagination container if it doesn't exist
+        const pagination = document.createElement('div');
+        pagination.id = 'clubsPagination';
+        pagination.className = 'pagination-container';
+        document.getElementById('clubsTable').parentNode.appendChild(pagination);
+    }
+    
+    const totalPages = Math.ceil(totalClubs / clubsPerPage);
+    const container2 = document.getElementById('clubsPagination');
+    
+    container2.innerHTML = `
+        <div class="pagination-info">
+            Showing ${((currentClubsPage - 1) * clubsPerPage) + 1} to ${Math.min(currentClubsPage * clubsPerPage, totalClubs)} of ${totalClubs} clubs
+        </div>
+        <div class="pagination-controls">
+            <button class="pagination-btn" onclick="loadClubs(${currentClubsPage - 1})" ${currentClubsPage <= 1 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-left"></i> Previous
+            </button>
+            ${generatePageNumbers(currentClubsPage, totalPages, 'loadClubs')}
+            <button class="pagination-btn" onclick="loadClubs(${currentClubsPage + 1})" ${currentClubsPage >= totalPages ? 'disabled' : ''}>
+                Next <i class="fas fa-chevron-right"></i>
+            </button>
+            <select class="page-size-select" onchange="changeClubsPageSize(this.value)">
+                <option value="10" ${clubsPerPage === 10 ? 'selected' : ''}>10 per page</option>
+                <option value="25" ${clubsPerPage === 25 ? 'selected' : ''}>25 per page</option>
+                <option value="50" ${clubsPerPage === 50 ? 'selected' : ''}>50 per page</option>
+            </select>
+        </div>
+    `;
+}
+
+function generatePageNumbers(currentPage, totalPages, functionName) {
+    let html = '';
+    const maxVisible = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages, start + maxVisible - 1);
+    
+    if (end - start + 1 < maxVisible) {
+        start = Math.max(1, end - maxVisible + 1);
+    }
+    
+    for (let i = start; i <= end; i++) {
+        html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" onclick="${functionName}(${i})">${i}</button>`;
+    }
+    
+    return html;
+}
+
+function changeUsersPageSize(newSize) {
+    usersPerPage = parseInt(newSize);
+    currentUsersPage = 1;
+    loadUsers(1);
+}
+
+function changeClubsPageSize(newSize) {
+    clubsPerPage = parseInt(newSize);
+    currentClubsPage = 1;
+    loadClubs(1);
+}
+
+// Updated search functions with global search
+document.getElementById('userSearch').addEventListener('input', async function(e) {
     const searchTerm = e.target.value.toLowerCase();
-    const filteredClubs = clubsData.filter(club => 
-        club.name.toLowerCase().includes(searchTerm) ||
-        club.leader.toLowerCase().includes(searchTerm) ||
-        (club.location && club.location.toLowerCase().includes(searchTerm))
-    );
-    renderClubsTable(filteredClubs);
+    
+    if (searchTerm === '') {
+        // Reset to paginated view
+        filteredUsersData = usersData;
+        renderUsersTable(filteredUsersData);
+        const pagination = document.getElementById('usersPagination');
+        if (pagination) {
+            pagination.style.display = 'flex';
+        }
+        renderUsersPagination();
+    } else {
+        // Search through ALL users
+        try {
+            const response = await fetch(`/api/admin/users/search?q=${encodeURIComponent(searchTerm)}`);
+            const data = await response.json();
+            filteredUsersData = data.users || [];
+            renderUsersTable(filteredUsersData);
+            
+            // Hide pagination during search
+            const pagination = document.getElementById('usersPagination');
+            if (pagination) {
+                pagination.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error searching users:', error);
+            // Fallback to local search
+            filteredUsersData = usersData.filter(user => 
+                user.username.toLowerCase().includes(searchTerm) ||
+                user.email.toLowerCase().includes(searchTerm)
+            );
+            renderUsersTable(filteredUsersData);
+        }
+    }
+});
+
+document.getElementById('clubSearch').addEventListener('input', async function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    
+    if (searchTerm === '') {
+        // Reset to paginated view
+        filteredClubsData = clubsData;
+        renderClubsTable(filteredClubsData);
+        const pagination = document.getElementById('clubsPagination');
+        if (pagination) {
+            pagination.style.display = 'flex';
+        }
+        renderClubsPagination();
+    } else {
+        // Search through ALL clubs
+        try {
+            const response = await fetch(`/api/admin/clubs/search?q=${encodeURIComponent(searchTerm)}`);
+            const data = await response.json();
+            filteredClubsData = data.clubs || [];
+            renderClubsTable(filteredClubsData);
+            
+            // Hide pagination during search
+            const pagination = document.getElementById('clubsPagination');
+            if (pagination) {
+                pagination.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error searching clubs:', error);
+            // Fallback to local search
+            filteredClubsData = clubsData.filter(club => 
+                club.name.toLowerCase().includes(searchTerm) ||
+                club.leader.toLowerCase().includes(searchTerm) ||
+                (club.location && club.location.toLowerCase().includes(searchTerm))
+            );
+            renderClubsTable(filteredClubsData);
+        }
+    }
 });
 
 document.getElementById('adminSearch').addEventListener('input', function(e) {
