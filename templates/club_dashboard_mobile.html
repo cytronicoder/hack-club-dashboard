@@ -1,0 +1,952 @@
+{% extends "base.html" %}
+
+{% block title %}{{ club.name }} - Hack Clubs Dash{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/dash.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/dash-mobile.css') }}">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+{% endblock %}
+
+{% block content %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Hide navbar on mobile dashboard
+    document.body.classList.add('mobile-dashboard-active');
+    const navbar = document.querySelector('.navbar');
+    if (navbar) {
+        navbar.style.display = 'none';
+    }
+});
+</script>
+<div class="mobile-club-dashboard" data-club-id="{{ club.id }}" data-join-code="{{ club.join_code }}">
+    <!-- Mobile Header -->
+    <div class="mobile-header">
+        <div class="mobile-header-content">
+            <div class="club-avatar-mobile">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="club-info-mobile">
+                <h1>{{ club.name }}</h1>
+                <div class="club-stats">
+                    <span><i class="fas fa-user-friends"></i> {{ club.members|length + 1 }}</span>
+                    {% if current_user.id == club.leader_id %}
+                    <span class="balance"><i class="fas fa-dollar-sign"></i> ${{ "%.2f"|format(club.balance|float) }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% if current_user.id == club.leader_id %}
+            <div class="header-actions">
+                <button class="action-btn" onclick="showQRModal()">
+                    <i class="fas fa-qrcode"></i>
+                </button>
+                <button class="action-btn" onclick="generateNewJoinCode()">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+        {% if current_user.id == club.leader_id %}
+        <div class="join-code-mobile">
+            <span>Join Code: <strong>{{ club.join_code }}</strong></span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav">
+        <div class="nav-tabs">
+            <button class="nav-tab active" data-section="dashboard">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </button>
+            <button class="nav-tab" data-section="stream">
+                <i class="fas fa-stream"></i>
+                <span>Stream</span>
+            </button>
+            <button class="nav-tab" data-section="members">
+                <i class="fas fa-users"></i>
+                <span>Members</span>
+            </button>
+            <button class="nav-tab" data-section="more">
+                <i class="fas fa-ellipsis-h"></i>
+                <span>More</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="mobile-content">
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="mobile-section active">
+            <!-- PWA Install Banner -->
+            <div id="pwa-install-banner" class="pwa-install-card" style="display: none;">
+                <div class="pwa-install-icon">
+                    <i class="fas fa-download"></i>
+                </div>
+                <div class="pwa-install-content">
+                    <h4>Install as App</h4>
+                    <p>Add Hack Club Dashboard to your home screen for the best experience!</p>
+                    <button id="pwa-install-btn-mobile" class="pwa-install-btn">
+                        <i class="fas fa-plus"></i> Add to Home Screen
+                    </button>
+                </div>
+                <button class="pwa-close-btn" onclick="closePWABanner()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            {% if not club.get_airtable_data() or not club.get_airtable_data().get('airtable_id') %}
+            <div class="alert-card">
+                <div class="alert-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="alert-content">
+                    <h4>Club Not Connected</h4>
+                    <p>Connect to the official Hack Club directory for full features.</p>
+                    {% if current_user.id == club.leader_id %}
+                    <a href="{{ url_for('verify_leader') }}" class="alert-btn">
+                        <i class="fas fa-link"></i> Connect Now
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if current_user.id == club.leader_id %}
+            <div class="quick-actions">
+                <button class="quick-action-btn pizza" onclick="purchasePizza()">
+                    <i class="fas fa-pizza-slice"></i>
+                    <span>Pizza Party</span>
+                </button>
+                <button class="quick-action-btn" onclick="openCreateMeetingModal()">
+                    <i class="fas fa-calendar-plus"></i>
+                    <span>Schedule</span>
+                </button>
+                <button class="quick-action-btn" onclick="openCreateAssignmentModal()">
+                    <i class="fas fa-tasks"></i>
+                    <span>Assignment</span>
+                </button>
+            </div>
+            {% endif %}
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon members">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">{{ club.members|length + 1 }}</div>
+                        <div class="stat-label">Members</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon meetings">
+                        <i class="fas fa-calendar"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number" id="meetingsCountMobile">0</div>
+                        <div class="stat-label">Meetings</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon assignments">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number" id="assignmentsCountMobile">0</div>
+                        <div class="stat-label">Tasks</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon projects">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number" id="projectsCountMobile">0</div>
+                        <div class="stat-label">Projects</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stream Section -->
+        <section id="stream" class="mobile-section">
+            {% if current_user.id == club.leader_id %}
+            <div class="mobile-composer">
+                <textarea id="postContentMobile" placeholder="Share an announcement with your club..." rows="3"></textarea>
+                <button class="composer-btn" onclick="createPost()">
+                    <i class="fas fa-paper-plane"></i> Post
+                </button>
+            </div>
+            {% endif %}
+
+            <div class="posts-list-mobile" id="postsListMobile">
+                <div class="empty-state-mobile">
+                    <i class="fas fa-stream"></i>
+                    <h3>No posts yet</h3>
+                    <p>Be the first to share something!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Members Section -->
+        <section id="members" class="mobile-section">
+            <div class="mobile-members-list">
+                <div class="member-card leader">
+                    <div class="member-avatar">
+                        {{ club.leader.username[0].upper() }}
+                    </div>
+                    <div class="member-info">
+                        <div class="member-name">{{ club.leader.username }}</div>
+                        <div class="member-role">
+                            <i class="fas fa-crown"></i> Leader
+                        </div>
+                    </div>
+                    <div class="member-date">
+                        {{ club.created_at.strftime('%b %Y') }}
+                    </div>
+                </div>
+
+                {% for membership in club.members %}
+                <div class="member-card">
+                    <div class="member-avatar">
+                        {{ membership.user.username[0].upper() }}
+                    </div>
+                    <div class="member-info">
+                        <div class="member-name">{{ membership.user.username }}</div>
+                        <div class="member-role">
+                            <i class="fas fa-user"></i> Member
+                        </div>
+                    </div>
+                    <div class="member-actions-mobile">
+                        <div class="member-date">{{ membership.joined_at.strftime('%b %Y') }}</div>
+                        {% if club.leader_id == current_user.id %}
+                        <button class="remove-btn" 
+                            data-user-id="{{ membership.user.id }}" 
+                            data-username="{{ membership.user.username }}" 
+                            onclick="confirmRemoveMember(this.dataset.userId, this.dataset.username)">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- More Section -->
+        <section id="more" class="mobile-section">
+            <div class="more-options">
+                <div class="more-group">
+                    <h3>Activities</h3>
+                    <button class="more-option" onclick="showMobileSection('assignments')">
+                        <i class="fas fa-tasks"></i>
+                        <span>Assignments</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button class="more-option" onclick="showMobileSection('projects')">
+                        <i class="fas fa-code"></i>
+                        <span>Projects</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button class="more-option" onclick="showMobileSection('resources')">
+                        <i class="fas fa-link"></i>
+                        <span>Resources</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button class="more-option" onclick="showMobileSection('schedule')">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>Schedule</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+
+                <div class="more-group">
+                    <h3>Club Features</h3>
+                    <button class="more-option" onclick="showMobileSection('pizza')">
+                        <i class="fas fa-hand-holding-usd"></i>
+                        <span>Project Grants</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    {% if current_user.id == club.leader_id %}
+                    <button class="more-option" onclick="showMobileSection('shop')">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span>Club Shop</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button class="more-option" onclick="showMobileSection('ysws')">
+                        <i class="fas fa-rocket"></i>
+                        <span>YSWSs</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button class="more-option" onclick="showMobileSection('settings')">
+                        <i class="fas fa-cogs"></i>
+                        <span>Settings</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    {% endif %}
+                </div>
+
+                <div class="more-group">
+                    <h3>App Features</h3>
+                    <button class="more-option" onclick="showMobileSection('pwa-install')">
+                        <i class="fas fa-download"></i>
+                        <span>Install App</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mobile Detail Sections (overlay style) -->
+        <section id="assignments" class="mobile-section detail-section">
+            <div class="detail-header">
+                <button class="back-btn" onclick="showMobileSection('more')">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2>Assignments</h2>
+                {% if current_user.id == club.leader_id %}
+                <button class="add-btn" onclick="openCreateAssignmentModal()">
+                    <i class="fas fa-plus"></i>
+                </button>
+                {% endif %}
+            </div>
+            <div id="assignmentsListMobile">
+                <div class="empty-state-mobile">
+                    <i class="fas fa-clipboard-list"></i>
+                    <h3>No assignments yet</h3>
+                    <p>Create your first assignment to get started!</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="projects" class="mobile-section detail-section">
+            <div class="detail-header">
+                <button class="back-btn" onclick="showMobileSection('more')">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2>Projects</h2>
+            </div>
+            <div class="mobile-card">
+                <h3><i class="fas fa-clock"></i> Hackatime Projects</h3>
+                <p>Track your coding time across projects</p>
+                <select class="mobile-select" id="hackatimeMemberSelectMobile" onchange="loadHackatimeProjectsMobile()">
+                    <option value="">Select member</option>
+                    <option value="{{ club.leader.id }}">{{ club.leader.username }} (Leader)</option>
+                    {% for membership in club.members %}
+                    <option value="{{ membership.user.id }}">{{ membership.user.username }}</option>
+                    {% endfor %}
+                </select>
+                <div id="hackatimeProjectsListMobile">
+                    <div class="empty-state-mobile">
+                        <i class="fas fa-clock"></i>
+                        <h3>Select a member</h3>
+                        <p>Choose a member to view their projects</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="resources" class="mobile-section detail-section">
+            <div class="detail-header">
+                <button class="back-btn" onclick="showMobileSection('more')">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2>Resources</h2>
+                {% if current_user.id == club.leader_id %}
+                <button class="add-btn" onclick="openAddResourceModal()">
+                    <i class="fas fa-plus"></i>
+                </button>
+                {% endif %}
+            </div>
+            <div id="resourcesListMobile">
+                <div class="empty-state-mobile">
+                    <i class="fas fa-book"></i>
+                    <h3>No resources yet</h3>
+                    <p>Add helpful links and materials!</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="schedule" class="mobile-section detail-section">
+            <div class="detail-header">
+                <button class="back-btn" onclick="showMobileSection('more')">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2>Schedule</h2>
+                {% if current_user.id == club.leader_id %}
+                <button class="add-btn" onclick="openCreateMeetingModal()">
+                    <i class="fas fa-plus"></i>
+                </button>
+                {% endif %}
+            </div>
+            <div id="meetingsListMobile">
+                <div class="empty-state-mobile">
+                    <i class="fas fa-calendar-times"></i>
+                    <h3>No meetings scheduled</h3>
+                    <p>Schedule your first meeting!</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="pizza" class="mobile-section detail-section">
+            <div class="detail-header">
+                <button class="back-btn" onclick="showMobileSection('more')">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2>Project Grants</h2>
+                <button class="add-btn" onclick="openPizzaGrantModal()">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <div class="mobile-card">
+                <h3><i class="fas fa-list"></i> Club Submissions</h3>
+                <div id="clubSubmissionsListMobile">
+                    <div class="empty-state-mobile">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <h3>Loading submissions...</h3>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {% if current_user.id == club.leader_id %}
+        <section id="shop" class="mobile-section detail-section">
+            <div class="detail-header">
+                <button class="back-btn" onclick="showMobileSection('more')">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2>Club Shop</h2>
+            </div>
+            <div class="balance-card">
+                <div class="balance-amount">${{ "%.2f"|format(club.balance|float) }}</div>
+                <div class="balance-label">Available Balance</div>
+            </div>
+            <div class="shop-items-mobile">
+                <div class="shop-item-mobile" onclick="purchasePizza()">
+                    <img src="{{ url_for('static', filename='assets/pizza.png') }}" alt="Pizza">
+                    <div class="shop-item-info">
+                        <h4>Pizza for your club!</h4>
+                        <p>Get a virtual card to buy pizza</p>
+                        <button class="shop-btn">Order Now</button>
+                    </div>
+                </div>
+                <div class="shop-item-mobile" onclick="window.open('https://forms.hackclub.com/stickers', '_blank')">
+                    <img src="{{ url_for('static', filename='assets/sticker.png') }}" alt="Stickers">
+                    <div class="shop-item-info">
+                        <h4>Hack Club Stickers</h4>
+                        <p>Free stickers for your club</p>
+                        <button class="shop-btn free">Free</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="ysws" class="mobile-section detail-section">
+            <div class="detail-header">
+                <button class="back-btn" onclick="showMobileSection('more')">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2>YSWSs</h2>
+            </div>
+            <div class="ysws-items">
+                <div class="ysws-item" onclick="window.open('https://workshops.hackclub.com/', '_blank')">
+                    <div class="ysws-icon">
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <div class="ysws-info">
+                        <h4>View All Workshops</h4>
+                        <p>Browse all available workshops</p>
+                    </div>
+                    <i class="fas fa-external-link-alt"></i>
+                </div>
+                <div class="ysws-item" onclick="window.open('https://forms.hackclub.com/t/5r7VGppu9wus', '_blank')">
+                    <img src="{{ url_for('static', filename='assets/boba.png') }}" alt="Boba" class="ysws-img">
+                    <div class="ysws-info">
+                        <h4>Boba Drops</h4>
+                        <p>Get Boba for workshop participants</p>
+                    </div>
+                    <i class="fas fa-external-link-alt"></i>
+                </div>
+            </div>
+        </section>
+
+        <section id="settings" class="mobile-section detail-section">
+            <div class="detail-header">
+                <button class="back-btn" onclick="showMobileSection('more')">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2>Settings</h2>
+            </div>
+            <div class="mobile-card">
+                <h3>Club Information</h3>
+                <form id="clubSettingsFormMobile">
+                    <div class="form-group-mobile">
+                        <label>Club Name</label>
+                        <input type="text" id="clubNameMobile" value="{{ club.name }}">
+                    </div>
+                    <div class="form-group-mobile">
+                        <label>Description</label>
+                        <textarea id="clubDescriptionMobile" rows="3">{{ club.description or '' }}</textarea>
+                    </div>
+                    <div class="form-group-mobile">
+                        <label>Location</label>
+                        <input type="text" id="clubLocationMobile" value="{{ club.location or '' }}">
+                    </div>
+                    <button type="submit" class="save-btn">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </form>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- PWA Installation Instructions -->
+        <section id="pwa-install" class="mobile-section detail-section">
+            <div class="detail-header">
+                <button class="back-btn" onclick="showMobileSection('more')">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2>Install App</h2>
+            </div>
+            
+            <div class="pwa-install-instructions">
+                <div class="mobile-card">
+                    <h3><i class="fas fa-mobile-alt"></i> Install on Your Device</h3>
+                    <p>Get the best experience by installing Hack Club Dashboard as an app on your device!</p>
+                    
+                    <div class="pwa-install-option">
+                        <button id="pwa-install-btn-page" class="pwa-install-btn-large">
+                            <i class="fas fa-download"></i>
+                            <span>Install Now</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mobile-card">
+                    <h3><i class="fab fa-apple"></i> iPhone/iPad Instructions</h3>
+                    <div class="install-steps">
+                        <div class="install-step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <strong>Open in Safari</strong>
+                                <p>Make sure you're viewing this page in Safari browser</p>
+                            </div>
+                        </div>
+                        <div class="install-step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <strong>Tap Share Button</strong>
+                                <p>Tap the <i class="fas fa-share"></i> share button at the bottom of the screen</p>
+                            </div>
+                        </div>
+                        <div class="install-step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <strong>Add to Home Screen</strong>
+                                <p>Scroll down and tap "Add to Home Screen"</p>
+                            </div>
+                        </div>
+                        <div class="install-step">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <strong>Confirm</strong>
+                                <p>Tap "Add" to install the app on your home screen</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mobile-card">
+                    <h3><i class="fab fa-android"></i> Android Instructions</h3>
+                    <div class="install-steps">
+                        <div class="install-step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <strong>Open in Chrome</strong>
+                                <p>Make sure you're viewing this page in Chrome browser</p>
+                            </div>
+                        </div>
+                        <div class="install-step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <strong>Tap Menu</strong>
+                                <p>Tap the <i class="fas fa-ellipsis-v"></i> menu button (three dots)</p>
+                            </div>
+                        </div>
+                        <div class="install-step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <strong>Install App</strong>
+                                <p>Tap "Install app" or "Add to Home screen"</p>
+                            </div>
+                        </div>
+                        <div class="install-step">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <strong>Confirm</strong>
+                                <p>Tap "Install" to add the app to your device</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mobile-card">
+                    <h3><i class="fas fa-star"></i> Benefits of Installing</h3>
+                    <div class="pwa-benefits">
+                        <div class="benefit-item">
+                            <i class="fas fa-rocket"></i>
+                            <span>Faster loading and smoother performance</span>
+                        </div>
+                        <div class="benefit-item">
+                            <i class="fas fa-wifi"></i>
+                            <span>Works offline with cached content</span>
+                        </div>
+                        <div class="benefit-item">
+                            <i class="fas fa-mobile-alt"></i>
+                            <span>Native app-like experience</span>
+                        </div>
+                        <div class="benefit-item">
+                            <i class="fas fa-home"></i>
+                            <span>Quick access from your home screen</span>
+                        </div>
+                        <div class="benefit-item">
+                            <i class="fas fa-bell"></i>
+                            <span>Push notifications for club updates</span>
+                        </div>
+                        <div class="benefit-item">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>Secure and always up-to-date</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Mobile Bottom Nav Spacer -->
+    <div class="mobile-nav-spacer"></div>
+</div>
+
+<!-- Keep all modals from original template -->
+<div id="toastContainer" class="toast-container" style="position: fixed; bottom: 80px; right: 20px; z-index: 9999"></div>
+
+<div id="confirmModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-exclamation-triangle text-warning"></i> Confirm Action</h3>
+            <button class="close" onclick="document.getElementById('confirmModal').style.display='none'">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="confirmMessage">Are you sure you want to proceed?</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="document.getElementById('confirmModal').style.display='none'">Cancel</button>
+            <button id="confirmButton" class="btn btn-primary">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<div id="qrModal" class="modal qr-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-qrcode"></i> Join {{ club.name }}</h3>
+            <button class="close" onclick="document.getElementById('qrModal').style.display='none'">&times;</button>
+        </div>
+        <div class="modal-body" style="text-align: center;">
+            <div class="qr-code-container">
+                <div id="qrcode" style="display: flex; justify-content: center; margin-bottom: 1rem;"></div>
+                <p style="margin-bottom: 1rem; color: #6b7280;">Scan this QR code to join the club</p>
+                <div class="join-url-box" style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                    <input type="text" id="joinUrl" readonly style="flex: 1; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.875rem;">
+                    <button class="btn btn-secondary btn-sm" onclick="copyJoinUrl()">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="createAssignmentModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Create Assignment</h3>
+            <button class="close" onclick="document.getElementById('createAssignmentModal').style.display='none'">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="createAssignmentForm">
+                <div class="form-group">
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-control" id="assignmentTitle" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="assignmentDescription" rows="4" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Due Date (Optional)</label>
+                    <input type="date" class="form-control" id="assignmentDueDate">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="assignmentForAll" checked> For all members
+                    </label>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="document.getElementById('createAssignmentModal').style.display='none'">Cancel</button>
+            <button class="btn btn-primary" onclick="createAssignment()">
+                <i class="fas fa-plus"></i> Create Assignment
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="createMeetingModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Schedule Meeting</h3>
+            <button class="close" onclick="document.getElementById('createMeetingModal').style.display='none'">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="createMeetingForm">
+                <div class="form-group">
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-control" id="meetingTitle" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="meetingDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" class="form-control" id="meetingDate" required>
+                </div>
+                <div class="row">
+                    <div class="col-6">
+                        <div class="form-group">
+                            <label class="form-label">Start Time</label>
+                            <input type="time" class="form-control" id="meetingStartTime" required>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-group">
+                            <label class="form-label">End Time</label>
+                            <input type="time" class="form-control" id="meetingEndTime">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Location</label>
+                    <input type="text" class="form-control" id="meetingLocation">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Meeting Link (Optional)</label>
+                    <input type="url" class="form-control" id="meetingLink" placeholder="https://...">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="document.getElementById('createMeetingModal').style.display='none'">Cancel</button>
+            <button class="btn btn-primary" onclick="createMeeting()">
+                <i class="fas fa-calendar-plus"></i> Schedule Meeting
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="addResourceModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Add Resource</h3>
+            <button class="close" onclick="document.getElementById('addResourceModal').style.display='none'">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="addResourceForm">
+                <div class="form-group">
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-control" id="resourceTitle" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">URL</label>
+                    <input type="url" class="form-control" id="resourceUrl" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="resourceDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Icon</label>
+                    <select class="form-control" id="resourceIcon">
+                        <option value="book">Book</option>
+                        <option value="link">Link</option>
+                        <option value="video">Video</option>
+                        <option value="code">Code</option>
+                        <option value="file-alt">Article</option>
+                        <option value="graduation-cap">Tutorial</option>
+                        <option value="external-link-alt">External</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="document.getElementById('addResourceModal').style.display='none'">Cancel</button>
+            <button class="btn btn-primary" onclick="addResource()">
+                <i class="fas fa-plus"></i> Add Resource
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="pizzaGrantModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h3>Submit Project for Grant</h3>
+            <button class="close" onclick="document.getElementById('pizzaGrantModal').style.display='none'">&times;</button>
+        </div>
+        <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+            <form id="pizzaGrantForm">
+                <div class="form-group">
+                    <label class="form-label">Select Club Member *</label>
+                    <select class="form-control" id="grantMemberSelect" onchange="loadMemberHackatimeProjects()" required>
+                        <option value="{{ current_user.id }}">{{ current_user.username }} (You)</option>
+                        {% if club.leader_id == current_user.id %}
+                            {% for membership in club.members %}
+                            <option value="{{ membership.user.id }}">{{ membership.user.username }}</option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Select Your Project *</label>
+                    <select class="form-control" id="grantProjectSelect" required>
+                        <option value="">Select your project</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Project Description *</label>
+                    <textarea class="form-control" id="grantDescription" rows="3" required></textarea>
+                </div>
+
+                <div class="row">
+                    <div class="col-6">
+                        <div class="form-group">
+                            <label class="form-label">GitHub URL *</label>
+                            <input type="url" class="form-control" id="grantGithubUrl" required>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-group">
+                            <label class="form-label">Live URL *</label>
+                            <input type="url" class="form-control" id="grantLiveUrl" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Upload Screenshot *</label>
+                    <input type="file" class="form-control" id="grantScreenshot" accept="image/*" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">What did you learn? *</label>
+                    <textarea class="form-control" id="grantLearning" rows="3" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">What are we doing well? *</label>
+                    <textarea class="form-control" id="grantDoingWell" rows="2" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">How can we improve? *</label>
+                    <textarea class="form-control" id="grantImprove" rows="2" required></textarea>
+                </div>
+
+                <div class="row">
+                    <div class="col-6">
+                        <div class="form-group">
+                            <label class="form-label">First Name *</label>
+                            <input type="text" class="form-control" id="grantFirstName" required>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-group">
+                            <label class="form-label">Last Name *</label>
+                            <input type="text" class="form-control" id="grantLastName" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-6">
+                        <div class="form-group">
+                            <label class="form-label">Email *</label>
+                            <input type="email" class="form-control" id="grantEmail" required>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-group">
+                            <label class="form-label">Birthday *</label>
+                            <input type="date" class="form-control" id="grantBirthday" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Address Line 1 *</label>
+                    <input type="text" class="form-control" id="grantAddress1" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Address Line 2</label>
+                    <input type="text" class="form-control" id="grantAddress2">
+                </div>
+
+                <div class="row">
+                    <div class="col-4">
+                        <div class="form-group">
+                            <label class="form-label">City *</label>
+                            <input type="text" class="form-control" id="grantCity" required>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="form-group">
+                            <label class="form-label">State/Province *</label>
+                            <input type="text" class="form-control" id="grantState" required>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="form-group">
+                            <label class="form-label">ZIP/Postal Code *</label>
+                            <input type="text" class="form-control" id="grantZip" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Country *</label>
+                    <input type="text" class="form-control" id="grantCountry" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="document.getElementById('pizzaGrantModal').style.display='none'">Cancel</button>
+            <button class="btn btn-primary" onclick="submitPizzaGrant()">
+                <i class="fas fa-paper-plane"></i> Submit Grant
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
+<script src="{{ url_for('static', filename='js/dash.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dash-mobile.js') }}"></script>
+{% endblock %}
