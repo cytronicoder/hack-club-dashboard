@@ -22,5 +22,5 @@ EXPOSE ${PORT:-5000}
 ENV FLASK_ENV=production
 ENV PYTHONUNBUFFERED=1
 
-# Use environment variable for port binding
-CMD gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120 --log-level info --access-logfile - --error-logfile - main:app
+# Use Gunicorn with the config file
+CMD gunicorn -c gunicorn.conf.py main:app
