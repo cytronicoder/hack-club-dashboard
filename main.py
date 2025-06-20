@@ -2919,7 +2919,7 @@ def admin_search_clubs():
         'join_code': club.join_code
     } for club in clubs]
 
-    return jsonify({'clubs': clubs_data})</old_str>
+    return jsonify({'clubs': clubs_data})
 
 @app.route('/api/admin/administrators', methods=['POST'])
 @login_required
