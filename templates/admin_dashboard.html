@@ -336,6 +336,174 @@
         box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3);
     }
 
+    /* Custom Dropdown Styles */
+    .action-dropdown {
+        position: relative;
+        display: inline-block;
+    }
+
+    .dropdown-toggle {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 80px;
+        justify-content: center;
+    }
+
+    .dropdown-toggle:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        min-width: 160px;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.2s ease;
+    }
+
+    .action-dropdown.active .dropdown-menu {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+        color: #374151;
+        text-decoration: none;
+        border: none;
+        background: none;
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .dropdown-item:last-child {
+        border-bottom: none;
+    }
+
+    .dropdown-item:hover {
+        background: #f8fafc;
+        color: #1f2937;
+    }
+
+    .dropdown-item.edit:hover {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .dropdown-item.login:hover {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .dropdown-item.reset:hover {
+        background: #ede9fe;
+        color: #5b21b6;
+    }
+
+    .dropdown-item.suspend:hover {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .dropdown-item.danger:hover {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .dropdown-item i {
+        width: 14px;
+        text-align: center;
+        font-size: 0.8rem;
+    }
+
+    /* Pagination Styles */
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1.5rem;
+        padding: 1rem 0;
+    }
+
+    .pagination-info {
+        color: #64748b;
+        font-size: 0.875rem;
+    }
+
+    .pagination-controls {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .pagination-btn {
+        background: white;
+        border: 1px solid #e2e8f0;
+        color: #374151;
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+        background: #f8fafc;
+        border-color: #ec3750;
+        color: #ec3750;
+    }
+
+    .pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .pagination-btn.active {
+        background: #ec3750;
+        border-color: #ec3750;
+        color: white;
+    }
+
+    .page-size-select {
+        padding: 0.5rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        background: white;
+        margin-left: 1rem;
+    }
+
     .activity-feed {
         background: white;
         border-radius: 20px;
@@ -1427,6 +1595,16 @@ let currentSuspendUserId = null;
 let currentSuspendUsername = null;
 let isClubLeader = false;
 
+// Pagination variables
+let currentUsersPage = 1;
+let currentClubsPage = 1;
+let usersPerPage = 10;
+let clubsPerPage = 10;
+let totalUsers = 0;
+let totalClubs = 0;
+let filteredUsersData = [];
+let filteredClubsData = [];
+
 function showAdminSection(section) {
     // Hide all sections
     document.querySelectorAll('.admin-section').forEach(sec => {
@@ -1452,9 +1630,9 @@ function showAdminSection(section) {
 
     // Load data if needed
     if (section === 'users') {
-        loadUsers();
+        loadUsers(1, '');
     } else if (section === 'clubs') {
-        loadClubs();
+        loadClubs(1, '');
     } else if (section === 'admins') {
         // Only super admins can access this section
         {% if current_user.email == 'ethan@hackclub.com' %}
@@ -1491,41 +1669,69 @@ document.addEventListener('DOMContentLoaded', function() {
     showAdminSection('overview');
 });
 
-async function loadUsers() {
-    const loading = document.getElementById('usersLoading');
-    const table = document.getElementById('usersTable');
-
+async function loadUsers(page = 1, search = '') {
     try {
-        const response = await fetch('/api/admin/users');
+        const usersTableBody = document.getElementById('usersTableBody');
+        usersTableBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-2">Loading users...</p>
+                </td>
+            </tr>`;
+
+        let url = `/api/admin/users?page=${page}&per_page=${usersPerPage}`;
+        if (search) {
+            url += `&search=${encodeURIComponent(search)}`;
+        }
+
+        const response = await fetch(url);
         const data = await response.json();
-        usersData = data.users;
-
-        renderUsersTable(usersData);
-
-        loading.style.display = 'none';
-        table.style.display = 'table';
+        
+        if (response.ok) {
+            renderUsersTable(data.items || data.users || []);
+            totalUsers = data.total || (data.items ? data.items.length : 0);
+            currentUsersPage = page;
+            renderUsersPagination();
+        } else {
+            throw new Error(data.error || 'Failed to load users');
+        }
     } catch (error) {
         console.error('Error loading users:', error);
-        showToast('error', 'Failed to load users');
+        showToast('error', 'Failed to load users. Please try again.');
     }
 }
 
-async function loadClubs() {
-    const loading = document.getElementById('clubsLoading');
-    const table = document.getElementById('clubsTable');
-
+async function loadClubs(page = 1, search = '') {
     try {
-        const response = await fetch('/api/admin/clubs');
+        const clubsTableBody = document.getElementById('clubsTableBody');
+        clubsTableBody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-4">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-2">Loading clubs...</p>
+                </td>
+            </tr>`;
+
+        let url = `/api/admin/clubs?page=${page}&per_page=${clubsPerPage}`;
+        if (search) {
+            url += `&search=${encodeURIComponent(search)}`;
+        }
+
+        const response = await fetch(url);
         const data = await response.json();
-        clubsData = data.clubs;
-
-        renderClubsTable(clubsData);
-
-        loading.style.display = 'none';
-        table.style.display = 'table';
+        
+        if (response.ok) {
+            renderClubsTable(data.items || data.clubs || []);
+            totalClubs = data.total || (data.items ? data.items.length : 0);
+            currentClubsPage = page;
+            renderClubsPagination();
+        } else {
+            throw new Error(data.error || 'Failed to load clubs');
+        }
     } catch (error) {
         console.error('Error loading clubs:', error);
-        showToast('error', 'Failed to load clubs');
+        showToast('error', 'Failed to load clubs. Please try again.');
     }
 }
 
@@ -1553,22 +1759,27 @@ function renderUsersTable(users) {
             <td>${user.clubs_led + user.clubs_joined} clubs</td>
             <td>${user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}</td>
             <td>
-                <div class="action-buttons">
-                    <button class="btn-action btn-edit" onclick="editUser(${user.id})">
-                        <i class="fas fa-edit"></i> Edit
+                <div class="action-dropdown">
+                    <button class="dropdown-toggle" onclick="toggleDropdown(this)">
+                        <i class="fas fa-cog"></i> Actions <i class="fas fa-chevron-down"></i>
                     </button>
-                    <button class="btn-action btn-login" onclick="loginAsUser(${user.id}, '${user.username}')">
-                        <i class="fas fa-sign-in-alt"></i> Login as
-                    </button>
-                    <button class="btn-action btn-reset" onclick="resetUserPassword(${user.id}, '${user.username}')">
-                        <i class="fas fa-key"></i> Reset Pwd
-                    </button>
-                    <button class="btn-action btn-suspend" onclick="suspendUser(${user.id}, '${user.username}', ${user.clubs_led > 0})" ${user.is_suspended ? 'style="background: #10b981;"' : ''}>
-                        <i class="fas fa-ban"></i> ${user.is_suspended ? 'Unsuspend' : 'Suspend'}
-                    </button>
-                    <button class="btn-action btn-delete" onclick="deleteUser(${user.id}, '${user.username}')">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
+                    <div class="dropdown-menu">
+                        <button class="dropdown-item edit" onclick="editUser(${user.id}); closeDropdown(this)">
+                            <i class="fas fa-edit"></i> Edit User
+                        </button>
+                        <button class="dropdown-item login" onclick="loginAsUser(${user.id}, '${user.username}'); closeDropdown(this)">
+                            <i class="fas fa-sign-in-alt"></i> Login as User
+                        </button>
+                        <button class="dropdown-item reset" onclick="resetUserPassword(${user.id}, '${user.username}'); closeDropdown(this)">
+                            <i class="fas fa-key"></i> Reset Password
+                        </button>
+                        <button class="dropdown-item suspend" onclick="suspendUser(${user.id}, '${user.username}', ${user.clubs_led > 0}); closeDropdown(this)">
+                            <i class="fas fa-ban"></i> ${user.is_suspended ? 'Unsuspend User' : 'Suspend User'}
+                        </button>
+                        <button class="dropdown-item danger" onclick="deleteUser(${user.id}, '${user.username}'); closeDropdown(this)">
+                            <i class="fas fa-trash"></i> Delete User
+                        </button>
+                    </div>
                 </div>
             </td>
         `;
@@ -1590,246 +1801,18 @@ function renderClubsTable(clubs) {
             <td>$${club.balance.toFixed(2)}</td>
             <td>${club.created_at ? new Date(club.created_at).toLocaleDateString() : 'Unknown'}</td>
             <td>
-                <div class="action-buttons">
-                    <button class="btn-action btn-edit" onclick="editClub(${club.id})">
-                        <i class="fas fa-edit"></i> Edit
+                <div class="action-dropdown">
+                    <button class="dropdown-toggle" onclick="toggleDropdown(this)">
+                        <i class="fas fa-cog"></i> Actions <i class="fas fa-chevron-down"></i>
                     </button>
-                    <button class="btn-action btn-delete" onclick="deleteClub(${club.id}, '${club.name}')">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
-                </div>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-}
-
-function editUser(userId) {
-    const user = usersData.find(u => u.id === userId);
-    if (!user) return;
-
-    document.getElementById('editUserId').value = user.id;
-    document.getElementById('editUsername').value = user.username;
-    document.getElementById('editEmail').value = user.email;
-    document.getElementById('editIsAdmin').checked = user.is_admin;
-    document.getElementById('editIsSuspended').checked = user.is_suspended;
-
-    openModal('editUserModal');
-}
-
-function editClub(clubId) {
-    const club = clubsData.find(c => c.id === clubId);
-    if (!club) return;
-
-    document.getElementById('editClubId').value = club.id;
-    document.getElementById('editClubName').value = club.name;
-    document.getElementById('editClubDescription').value = club.description || '';
-    document.getElementById('editClubLocation').value = club.location || '';
-    document.getElementById('editClubBalance').value = club.balance;
-
-    openModal('editClubModal');
-}
-
-async function saveUserChanges() {
-    const userId = document.getElementById('editUserId').value;
-    const userData = {
-        username: document.getElementById('editUsername').value,
-        email: document.getElementById('editEmail').value,
-        is_admin: document.getElementById('editIsAdmin').checked,
-        is_suspended: document.getElementById('editIsSuspended').checked
-    };
-
-    try {
-        const response = await fetch(`/api/admin/users/${userId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(userData)
-        });
-
-        if (response.ok) {
-            showToast('success', 'User updated successfully');
-            closeModal('editUserModal');
-            loadUsers();
-        } else {
-            const error = await response.json();
-            showToast('error', error.error || 'Failed to update user');
-        }
-    } catch (error) {
-        showToast('error', 'Failed to update user');
-    }
-}
-
-async function saveClubChanges() {
-    const clubId = document.getElementById('editClubId').value;
-    const clubData = {
-        name: document.getElementById('editClubName').value,
-        description: document.getElementById('editClubDescription').value,
-        location: document.getElementById('editClubLocation').value,
-        balance: parseFloat(document.getElementById('editClubBalance').value)
-    };
-
-    try {
-        const response = await fetch(`/api/admin/clubs/${clubId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(clubData)
-        });
-
-        if (response.ok) {
-            showToast('success', 'Club updated successfully');
-            closeModal('editClubModal');
-            loadClubs();
-        } else {
-            const error = await response.json();
-            showToast('error', error.error || 'Failed to update club');
-        }
-    } catch (error) {
-        showToast('error', 'Failed to update club');
-    }
-}
-
-function deleteUser(userId, username) {
-    document.getElementById('confirmTitle').textContent = 'Delete User';
-    document.getElementById('confirmMessage').innerHTML = `Are you sure you want to delete user "<strong>${username}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This action cannot be undone.</span>`;
-    pendingAction = 'deleteUser';
-    pendingUserId = userId;
-    pendingUsername = username;
-    openModal('confirmModal');
-}
-
-function deleteClub(clubId, clubName) {
-    document.getElementById('confirmTitle').textContent = 'Delete Club';
-    document.getElementById('confirmMessage').innerHTML = `Are you sure you want to delete club "<strong>${clubName}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This action cannot be undone.</span>`;
-    pendingAction = 'deleteClub';
-    pendingUserId = clubId;
-    pendingUsername = clubName;
-    openModal('confirmModal');
-}
-
-async function executeConfirmedAction() {
-    if (pendingAction === 'deleteUser') {
-        try {
-            const response = await fetch(`/api/admin/users/${pendingUserId}`, {
-                method: 'DELETE'
-            });
-
-            if (response.ok) {
-                showToast('success', 'User deleted successfully');
-                loadUsers();
-            } else {
-                const error = await response.json();
-                showToast('error', error.error || 'Failed to delete user');
-            }
-        } catch (error) {
-            showToast('error', 'Failed to delete user');
-        }
-    } else if (pendingAction === 'deleteClub') {
-        try {
-            const response = await fetch(`/api/admin/clubs/${pendingUserId}`, {
-                method: 'DELETE'
-            });
-
-            if (response.ok) {
-                showToast('success', 'Club deleted successfully');
-                loadClubs();
-            } else {
-                const error = await response.json();                showToast('error', error.error || 'Failed to delete club');
-            }
-        } catch (error) {
-            showToast('error', 'Failed to delete club');
-        }
-    } else if (pendingAction === 'removeAdmin') {
-        try {
-            const response = await fetch(`/api/admin/administrators/${pendingUserId}`, {
-                method: 'DELETE'
-            });
-
-            if (response.ok) {
-                showToast('success', 'Administrator privileges removed successfully');
-                loadAdmins();
-            } else {
-                const error = await response.json();
-                showToast('error', error.error || 'Failed to remove administrator');
-            }
-        } catch (error) {
-            showToast('error', 'Failed to remove administrator');
-        }
-    } else if (pendingAction === 'deleteSubmission') {
-        await executeDeleteSubmission();
-    } else if (pendingAction === 'deleteApiKey') {
-        await executeDeleteApiKey(pendingUserId);
-    } else if (pendingAction === 'deleteOAuthApp') {
-        await executeDeleteOAuthApp(pendingUserId);
-    }
-
-    closeModal('confirmModal');
-    pendingAction = null;
-    pendingUserId = null;
-    pendingUsername = null;
-    pendingSubmissionId = null;
-    pendingProjectName = null;
-}
-
-function openModal(modalId) {
-    document.getElementById(modalId).classList.add('show');
-}
-
-function closeModal(modalId) {
-    document.getElementById(modalId).classList.remove('show');
-}
-
-async function loadAdmins() {
-    const loading = document.getElementById('adminsLoading');
-    const table = document.getElementById('adminsTable');
-
-    try {
-        const response = await fetch('/api/admin/administrators');
-        const data = await response.json();
-        adminsData = data.admins;
-
-        renderAdminsTable(adminsData);
-
-        loading.style.display = 'none';
-        table.style.display = 'table';
-    } catch (error) {
-        console.error('Error loading admins:', error);
-        showToast('error', 'Failed to load administrators');
-    }
-}
-
-function renderAdminsTable(admins) {
-    const tbody = document.getElementById('adminsTableBody');
-    tbody.innerHTML = '';
-
-    admins.forEach(admin => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>
-                <strong>${admin.username}</strong>
-            </td>
-            <td>${admin.email}</td>
-            <td>
-                <span class="status-badge ${admin.is_suspended ? 'status-suspended' : 'status-active'}">
-                    ${admin.is_suspended ? 'Suspended' : 'Active'}
-                </span>
-            </td>
-            <td>${admin.clubs_led} clubs</td>
-            <td>${admin.last_login ? new Date(admin.last_login).toLocaleDateString() : 'Never'}</td>
-            <td>${admin.created_at ? new Date(admin.created_at).toLocaleDateString() : 'Unknown'}</td>
-            <td>
-                <div class="action-buttons">
-                    <button class="btn-action btn-edit" onclick="editAdmin(${admin.id})">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                    ${!admin.is_super_admin ? `
-                        <button class="btn-action btn-delete" onclick="removeAdmin(${admin.id}, '${admin.username}')">
-                            <i class="fas fa-user-minus"></i> Remove
+                    <div class="dropdown-menu">
+                        <button class="dropdown-item edit" onclick="editClub(${club.id}); closeDropdown(this)">
+                            <i class="fas fa-edit"></i> Edit Club
                         </button>
-                    ` : ''}
+                        <button class="dropdown-item danger" onclick="deleteClub(${club.id}, '${club.name}'); closeDropdown(this)">
+                            <i class="fas fa-trash"></i> Delete Club
+                        </button>
+                    </div>
                 </div>
             </td>
         `;
@@ -1837,124 +1820,246 @@ function renderAdminsTable(admins) {
     });
 }
 
-function editAdmin(adminId) {
-    const admin = adminsData.find(a => a.id === adminId);
-    if (!admin) return;
-
-    document.getElementById('editUserId').value = admin.id;
-    document.getElementById('editUsername').value = admin.username;
-    document.getElementById('editEmail').value = admin.email;
-    document.getElementById('editIsAdmin').checked = admin.is_admin;
-    document.getElementById('editIsSuspended').checked = admin.is_suspended;
-
-    openModal('editUserModal');
-}
-
-async function addNewAdmin() {
-    const email = document.getElementById('addAdminEmail').value.trim();
-
-    if (!email) {
-        showToast('error', 'Email address is required');
+function renderUsersPagination() {
+    const pagination = document.getElementById('usersPagination');
+    if (!pagination) return;
+    
+    const totalPages = Math.ceil(totalUsers / usersPerPage);
+    
+    // Don't show pagination if no results or only one page
+    if (totalPages <= 1) {
+        pagination.innerHTML = totalUsers > 0 ? `
+            <div class="pagination-info">
+                Showing ${totalUsers} result${totalUsers !== 1 ? 's' : ''}
+            </div>
+        ` : '';
         return;
     }
+    
+    const startItem = ((currentUsersPage - 1) * usersPerPage) + 1;
+    const endItem = Math.min(currentUsersPage * usersPerPage, totalUsers);
+    
+    let html = `
+        <div class="pagination">
+            <div class="pagination-info">
+                Showing ${startItem} to ${endItem} of ${totalUsers}
+            </div>
+            
+            <div class="pagination-buttons">
+                <button class="pagination-btn" onclick="loadUsers(1)" ${currentUsersPage === 1 ? 'disabled' : ''}>
+                    &laquo; First
+                </button>
+                <button class="pagination-btn" onclick="loadUsers(${Math.max(1, currentUsersPage - 1)})" ${currentUsersPage === 1 ? 'disabled' : ''}>
+                    &lsaquo; Previous
+                </button>
+                
+                ${generatePageNumbers(currentUsersPage, totalPages, (page) => `loadUsers(${page})`)}
+                
+                <button class="pagination-btn" onclick="loadUsers(${Math.min(totalPages, currentUsersPage + 1)})" ${currentUsersPage === totalPages ? 'disabled' : ''}>
+                    Next &rsaquo;
+                </button>
+                <button class="pagination-btn" onclick="loadUsers(${totalPages})" ${currentUsersPage === totalPages ? 'disabled' : ''}>
+                    Last &raquo;
+                </button>
+            </div>
+            
+            <div class="page-size-selector">
+                <span>Show:</span>
+                <select onchange="changeUsersPageSize(this.value)">
+                    <option value="10" ${usersPerPage === 10 ? 'selected' : ''}>10</option>
+                    <option value="25" ${usersPerPage === 25 ? 'selected' : ''}>25</option>
+                    <option value="50" ${usersPerPage === 50 ? 'selected' : ''}>50</option>
+                </select>
+                <span>per page</span>
+            </div>
+        </div>
+    `;
+    
+    pagination.innerHTML = html;
+}
 
+function renderClubsPagination() {
+    const pagination = document.getElementById('clubsPagination');
+    if (!pagination) return;
+    
+    const totalPages = Math.ceil(totalClubs / clubsPerPage);
+    
+    // Don't show pagination if no results or only one page
+    if (totalPages <= 1) {
+        pagination.innerHTML = totalClubs > 0 ? `
+            <div class="pagination-info">
+                Showing ${totalClubs} result${totalClubs !== 1 ? 's' : ''}
+            </div>
+        ` : '';
+        return;
+    }
+    
+    const startItem = ((currentClubsPage - 1) * clubsPerPage) + 1;
+    const endItem = Math.min(currentClubsPage * clubsPerPage, totalClubs);
+    
+    let html = `
+        <div class="pagination">
+            <div class="pagination-info">
+                Showing ${startItem} to ${endItem} of ${totalClubs}
+            </div>
+            
+            <div class="pagination-buttons">
+                <button class="pagination-btn" onclick="loadClubs(1)" ${currentClubsPage === 1 ? 'disabled' : ''}>
+                    &laquo; First
+                </button>
+                <button class="pagination-btn" onclick="loadClubs(${Math.max(1, currentClubsPage - 1)})" ${currentClubsPage === 1 ? 'disabled' : ''}>
+                    &lsaquo; Previous
+                </button>
+                
+                ${generatePageNumbers(currentClubsPage, totalPages, (page) => `loadClubs(${page})`)}
+                
+                <button class="pagination-btn" onclick="loadClubs(${Math.min(totalPages, currentClubsPage + 1)})" ${currentClubsPage === totalPages ? 'disabled' : ''}>
+                    Next &rsaquo;
+                </button>
+                <button class="pagination-btn" onclick="loadClubs(${totalPages})" ${currentClubsPage === totalPages ? 'disabled' : ''}>
+                    Last &raquo;
+                </button>
+            </div>
+            
+            <div class="page-size-selector">
+                <span>Show:</span>
+                <select onchange="changeClubsPageSize(this.value)">
+                    <option value="10" ${clubsPerPage === 10 ? 'selected' : ''}>10</option>
+                    <option value="25" ${clubsPerPage === 25 ? 'selected' : ''}>25</option>
+                    <option value="50" ${clubsPerPage === 50 ? 'selected' : ''}>50</option>
+                </select>
+                <span>per page</span>
+            </div>
+        </div>
+    `;
+    
+    pagination.innerHTML = html;
+}
+
+function generatePageNumbers(currentPage, totalPages, functionName) {
+    let html = '';
+    const maxVisible = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages, start + maxVisible - 1);
+    
+    if (end - start + 1 < maxVisible) {
+        start = Math.max(1, end - maxVisible + 1);
+    }
+    
+    for (let i = start; i <= end; i++) {
+        html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" onclick="${functionName}(${i})">${i}</button>`;
+    }
+    
+    return html;
+}
+
+function changeUsersPageSize(newSize) {
+    usersPerPage = parseInt(newSize);
+    currentUsersPage = 1;
+    loadUsers(1);
+}
+
+function changeClubsPageSize(newSize) {
+    clubsPerPage = parseInt(newSize);
+    currentClubsPage = 1;
+    loadClubs(1);
+}
+
+// Debounce function to limit API calls during search
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Search users with debounce
+const handleUserSearch = debounce(async function(searchTerm) {
+    if (searchTerm === '') {
+        // Reset to paginated view
+        currentUsersPage = 1;
+        loadUsers(1);
+        return;
+    }
+    
     try {
-        const response = await fetch('/api/admin/administrators', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                email: email
-            })
-        });
-
+        const usersTableBody = document.getElementById('usersTableBody');
+        usersTableBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-2">Searching users...</p>
+                </td>
+            </tr>`;
+            
+        const response = await fetch(`/api/admin/users/search?q=${encodeURIComponent(searchTerm)}&page=1&per_page=${usersPerPage}`);
+        const data = await response.json();
+        
         if (response.ok) {
-            showToast('success', 'Administrator added successfully');
-            closeModal('addAdminModal');
-            document.getElementById('addAdminForm').reset();
-            loadAdmins();
+            renderUsersTable(data.items || data.users || []);
+            totalUsers = data.total || 0;
+            currentUsersPage = 1;
+            renderUsersPagination();
         } else {
-            const error = await response.json();
-            showToast('error', error.error || 'Failed to add administrator');
+            throw new Error(data.error || 'Search failed');
         }
     } catch (error) {
-        showToast('error', 'Failed to add administrator');
+        console.error('Error searching users:', error);
+        showToast('error', 'Failed to search users. Please try again.');
     }
-}
+}, 300);
 
-async function createNewClub() {
-    const clubName = document.getElementById('createClubName').value.trim();
-    const clubDescription = document.getElementById('createClubDescription').value.trim();
-    const clubLocation = document.getElementById('createClubLocation').value.trim();
-    const leaderEmail = document.getElementById('createClubLeaderEmail').value.trim();
-    const initialBalance = parseFloat(document.getElementById('createClubBalance').value) || 0;
-
-    if (!clubName) {
-        showToast('error', 'Club name is required');
-        return;
-    }
-
-    if (!leaderEmail) {
-        showToast('error', 'Leader email is required');
-        return;
-    }
-
-    try {
-        const response = await fetch('/api/admin/clubs', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                name: clubName,
-                description: clubDescription,
-                location: clubLocation,
-                leader_email: leaderEmail,
-                balance: initialBalance
-            })
-        });
-
-        if (response.ok) {
-            showToast('success', 'Club created successfully');
-            closeModal('createClubModal');
-            document.getElementById('createClubForm').reset();
-            loadClubs();
-        } else {
-            const error = await response.json();
-            showToast('error', error.error || 'Failed to create club');
-        }
-    } catch (error) {
-        showToast('error', 'Failed to create club');
-    }
-}
-
-function removeAdmin(adminId, username) {
-    document.getElementById('confirmTitle').textContent = 'Remove Administrator';
-    document.getElementById('confirmMessage').innerHTML = `Are you sure you want to remove administrator privileges from "<strong>${username}</strong>"?`;
-    pendingAction = 'removeAdmin';
-    pendingUserId = adminId;
-    pendingUsername = username;
-    openModal('confirmModal');
-}
-
+// Add event listener for user search
 document.getElementById('userSearch').addEventListener('input', function(e) {
-    const searchTerm = e.target.value.toLowerCase();
-    const filteredUsers = usersData.filter(user => 
-        user.username.toLowerCase().includes(searchTerm) ||
-        user.email.toLowerCase().includes(searchTerm)
-    );
-    renderUsersTable(filteredUsers);
+    const searchTerm = e.target.value.trim();
+    handleUserSearch(searchTerm);
 });
 
+// Search clubs with debounce
+const handleClubSearch = debounce(async function(searchTerm) {
+    if (searchTerm === '') {
+        // Reset to paginated view
+        currentClubsPage = 1;
+        loadClubs(1);
+        return;
+    }
+    
+    try {
+        const clubsTableBody = document.getElementById('clubsTableBody');
+        clubsTableBody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-4">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-2">Searching clubs...</p>
+                </td>
+            </tr>`;
+            
+        const response = await fetch(`/api/admin/clubs/search?q=${encodeURIComponent(searchTerm)}&page=1&per_page=${clubsPerPage}`);
+        const data = await response.json();
+        
+        if (response.ok) {
+            renderClubsTable(data.items || data.clubs || []);
+            totalClubs = data.total || 0;
+            currentClubsPage = 1;
+            renderClubsPagination();
+        } else {
+            throw new Error(data.error || 'Search failed');
+        }
+    } catch (error) {
+        console.error('Error searching clubs:', error);
+        showToast('error', 'Failed to search clubs. Please try again.');
+    }
+}, 300);
+
+// Add event listener for club search
 document.getElementById('clubSearch').addEventListener('input', function(e) {
-    const searchTerm = e.target.value.toLowerCase();
-    const filteredClubs = clubsData.filter(club => 
-        club.name.toLowerCase().includes(searchTerm) ||
-        club.leader.toLowerCase().includes(searchTerm) ||
-        (club.location && club.location.toLowerCase().includes(searchTerm))
-    );
-    renderClubsTable(filteredClubs);
+    const searchTerm = e.target.value.trim();
+    handleClubSearch(searchTerm);
 });
 
 document.getElementById('adminSearch').addEventListener('input', function(e) {
