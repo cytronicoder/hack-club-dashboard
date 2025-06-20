@@ -564,77 +564,85 @@
                             <p style="margin: 0.5rem 0 0 0; color: #6b7280; font-size: 0.9rem;">Run these workshops at your club and get rewarded!</p>
                         </div>
                         <div class="card-body">
-                            <div class="shop-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-                                <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer;" onclick="window.open('https://workshops.hackclub.com/', '_blank')">
-                                    <div style="margin-bottom: 1rem;">
-                                        <i class="fas fa-graduation-cap" style="font-size: 80px; color: #ec3750;"></i>
-                                    </div>
-                                    <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.25rem; font-weight: 600;">View All Workshops</h4>
-                                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5;">Browse all available workshops and tutorials</p>
-                                    <div style="background: #ec3750; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-block;">
-                                        <i class="fas fa-external-link-alt" style="margin-right: 0.5rem;"></i>
-                                        BrowseWorkshops
-                                                                        </div>
+                            <div class="shop-grid">
+                                <div class="shop-item" onclick="window.open('https://workshops.hackclub.com/', '_blank')">
+                                    <div class="icon"><i class="fas fa-graduation-cap"></i></div>
+                                    <h4>View All Workshops</h4>
+                                    <p>Browse all available workshops and tutorials</p>
+                                    <a class="btn" href="https://workshops.hackclub.com/" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i>
+                                    Browse Workshops
+                                    </a>
                                 </div>
 
-                                <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer;" onclick="window.open('https://forms.hackclub.com/t/5r7VGppu9wus', '_blank')">
-                                    <div style="margin-bottom: 1rem;">
-                                        <img src="{{ url_for('static', filename='assets/boba.png') }}" alt="Boba Drops" style="width: 80px; height: 80px; object-fit: contain;">
+                                <div class="shop-item" onclick="window.open('https://forms.hackclub.com/t/5r7VGppu9wus', '_blank')">
+                                    <div class="icon">
+                                    <img src="{{ url_for('static', filename='assets/boba.png') }}"
+                                        alt="Boba Drops"
+                                        style="width:80px;height:80px;object-fit:contain;">
                                     </div>
-                                    <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.25rem; font-weight: 600;">Boba Drops</h4>
-                                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5;">Run a personal website workshop and get Boba on Hack Club for every participant!</p>
-                                    <div style="background: #ec3750; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-block;">
-                                        <i class="fas fa-external-link-alt" style="margin-right: 0.5rem;"></i>
-                                        Get Boba
-                                    </div>
+                                    <h4>Boba Drops</h4>
+                                    <p>Run a personal website workshop and get Boba on Hack Club for every participant!</p>
+                                    <a class="btn" href="https://forms.hackclub.com/t/5r7VGppu9wus" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i>
+                                    Get Boba
+                                    </a>
                                 </div>
 
-                                <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer;" onclick="window.open('https://forms.hackclub.com/swirl-workshop', '_blank')">
-                                    <div style="margin-bottom: 1rem;">
-                                        <img src="{{ url_for('static', filename='assets/swirl.png') }}" alt="Swirl" style="width: 80px; height: 80px; object-fit: contain;">
+                                <div class="shop-item" onclick="window.open('https://forms.hackclub.com/swirl-workshop', '_blank')">
+                                    <div class="icon">
+                                    <img src="{{ url_for('static', filename='assets/swirl.png') }}"
+                                        alt="Swirl"
+                                        style="width:80px;height:80px;object-fit:contain;">
                                     </div>
-                                    <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.25rem; font-weight: 600;">Swirl</h4>
-                                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5.: Run a personal website workshop and get ice cream for the workshop!</p>
-                                    <div style="background: #ec3750; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-block;">
-                                        <i class="fas fa-external-link-alt" style="margin-right: 0.5rem;"></i>
-                                        Get Ice Cream
-                                    </div>
+                                    <h4>Swirl</h4>
+                                    <p>Run a personal website workshop and get ice cream for your club!</p>
+                                    <a class="btn" href="https://forms.hackclub.com/swirl-workshop" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i>
+                                    Get Ice Cream
+                                    </a>
                                 </div>
 
-                                <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer;" onclick="window.open('https://forms.hackclub.com/toppings-workshop', '_blank')">
-                                    <div style="margin-bottom: 1rem;">
-                                        <img src="{{ url_for('static', filename='assets/toppings.png') }}" alt="Toppings" style="width: 80px; height: 80px; object-fit: contain;">
+                                <div class="shop-item" onclick="window.open('https://forms.hackclub.com/toppings-workshop', '_blank')">
+                                    <div class="icon">
+                                    <img src="{{ url_for('static', filename='assets/toppings.png') }}"
+                                        alt="Toppings"
+                                        style="width:80px;height:80px;object-fit:contain;">
                                     </div>
-                                    <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.25rem; font-weight: 600;">Toppings</h4>
-                                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5;">Run a personal website workshop and get toppings for your Boba or Ice Cream!</p>
-                                    <div style="background: #ec3750; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-block;">
-                                        <i class="fas fa-external-link-alt" style="margin-right: 0.5rem;"></i>
-                                        Get Toppings
-                                    </div>
+                                    <h4>Toppings</h4>
+                                    <p>Run a personal website workshop and get toppings for your Boba or Ice Cream!</p>
+                                    <a class="btn" href="https://forms.hackclub.com/toppings-workshop" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i>
+                                    Get Toppings
+                                    </a>
                                 </div>
 
-                                <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer;" onclick="window.open('https://toppings.hackclub.com/', '_blank')">
-                                    <div style="margin-bottom: 1rem;">
-                                        <img src="{{ url_for('static', filename='assets/grublogo.png') }}" alt="Grub" style="width: 80px; height: 80px; object-fit: contain;">
+                                <div class="shop-item" onclick="window.open('https://toppings.hackclub.com/', '_blank')">
+                                    <div class="icon">
+                                    <img src="{{ url_for('static', filename='assets/grublogo.png') }}"
+                                        alt="Grub"
+                                        style="width:80px;height:80px;object-fit:contain;">
                                     </div>
-                                    <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.25rem; font-weight: 600;">Grub</h4>
-                                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5;">Run a Tailwind CSS workshop and get grant to buy Junk Food for your club!</p>
-                                    <div style="background: #ec3750; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-block;">
-                                        <i class="fas fa-external-link-alt" style="margin-right: 0.5rem;"></i>
-                                        Get Grant
-                                    </div>
+                                    <h4>Grub</h4>
+                                    <p>Run a Tailwind CSS workshop and get grant to buy junk food for your club!</p>
+                                    <a class="btn" href="https://toppings.hackclub.com/" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i>
+                                    Get Grant
+                                    </a>
                                 </div>
 
-                                <div class="shop-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer;" onclick="window.open('https://workshops.hackclub.com/sprig/', '_blank')">
-                                    <div style="margin-bottom: 1rem;">
-                                        <img src="{{ url_for('static', filename='assets/sprig.png') }}" alt="Sprig" style="width: 80px; height: 80px; object-fit: contain;">
+                                <div class="shop-item" onclick="window.open('https://workshops.hackclub.com/sprig/', '_blank')">
+                                    <div class="icon">
+                                    <img src="{{ url_for('static', filename='assets/sprig.png') }}"
+                                        alt="Sprig"
+                                        style="width:80px;height:80px;object-fit:contain;">
                                     </div>
-                                    <h4 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.25rem; font-weight: 600;">Sprig</h4>
-                                    <p style="color: #6b7280; margin: 0 0 1.5rem 0; line-height: 1.5;">Develop a JS game and get a console!</p>
-                                    <div style="background: #ec3750; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: inline-block;">
-                                        <i class="fas fa-external-link-alt" style="margin-right: 0.5rem;"></i>
-                                        Build Game
-                                    </div>
+                                    <h4>Sprig</h4>
+                                    <p>Develop a JS game and get a console!</p>
+                                    <a class="btn" href="https://workshops.hackclub.com/sprig/" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i>
+                                    Build Game
+                                    </a>
                                 </div>
                             </div>
 
@@ -1093,6 +1101,66 @@
         backdrop-filter: blur(20px);
         border: 1px solid rgba(255,255,255,0.1);
         position: relative;
+    }
+
+    .shop-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .shop-item {
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        cursor: pointer;
+
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .shop-item:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+
+    .shop-item .icon {
+        margin-bottom: 1rem;
+        font-size: 80px;
+        color: #ec3750;
+    }
+
+    .shop-item h4 {
+        margin: 0 0 0.5rem;
+        color: #1a202c;
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+
+    .shop-item p {
+        color: #6b7280;
+        margin: 0 0 1.5rem;
+        line-height: 1.5;
+        flex-grow: 1;
+    }
+
+    .shop-item .btn {
+        background: #ec3750;
+        color: #fff;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        text-decoration: none;
+    }
+    
+    .shop-item .btn i {
+        margin-right: 0.5rem;
     }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>

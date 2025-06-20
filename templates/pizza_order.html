@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('pizzaOrderForm');
     const amountInput = document.getElementById('grantAmount');
     const amountError = document.getElementById('amountError');
-    const maxBalance = {{ club.balance|float }};
+    const maxBalance = parseFloat('{{ club.balance|float }}');
 
     // Validate amount input
     amountInput.addEventListener('input', function() {

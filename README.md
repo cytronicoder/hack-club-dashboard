@@ -43,14 +43,18 @@ A comprehensive club management platform built for Hack Club communities worldwi
 ### Installation
 
 1. Clone the repository or fork on Replit
-2. Install dependencies:
+2. Highly recommended to use a virtual environment:
    ```bash
-   pip install flask flask-login flask-sqlalchemy requests psycopg2-binary werkzeug flask-limiter
+   python3 -m venv venv
+   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
    ```
-
-3. Set up environment variables (see Configuration section)
-
-4. Run the application:
+   If using Replit, this step is handled automatically.
+3. Install the required packages:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Set up environment variables (see Configuration section)
+5. Run the application:
    ```bash
    python3 main.py
    ```

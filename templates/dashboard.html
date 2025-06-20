@@ -501,7 +501,7 @@
             <div class="clubs-section">
                 <div class="clubs-grid">
                     {% for club in led_clubs %}
-                        <div class="club-card" onclick="window.location.href='{{ url_for('club_dashboard', club_id=club.id) }}'">
+                        <div class="club-card" onclick="window.location.href='{{ url_for(&quot;club_dashboard&quot;, club_id=club.id) }}'">
                             <div class="club-card-header">
                                 <div class="club-avatar">
                                     <i class="fas fa-crown"></i>
@@ -526,7 +526,7 @@
                     {% endfor %}
 
                     {% for membership in memberships %}
-                        <div class="club-card" onclick="window.location.href='{{ url_for('club_dashboard', club_id=membership.club.id) }}'">
+                        <div class="club-card" onclick="window.location.href='{{ url_for(&quot;club_dashboard&quot;, club_id=membership.club.id) }}'">
                             <div class="club-card-header">
                                 <div class="club-avatar">
                                     <i class="fas fa-users"></i>
