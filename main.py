@@ -4021,7 +4021,18 @@ def oauth_authorize():
             'description': scope_descriptions.get(scope_name, f'Access {scope_name}')
         })
 
-    return render_template('oauth_consent.html', 
+    # Check if mobile device
+    user_agent = request.headers.get('User-Agent', '').lower()
+    is_mobile = any(mobile in user_agent for mobile in ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 'windows phone'])
+    
+    # Check for mobile parameter override
+    force_mobile = request.args.get('mobile', '').lower() == 'true'
+    force_desktop = request.args.get('desktop', '').lower() == 'true'
+    
+    # Determine template to use
+    template_name = 'oauth_consent_mobile.html' if (is_mobile or force_mobile) and not force_desktop else 'oauth_consent.html'
+
+    return render_template(template_name, 
                          app=oauth_app, 
                          scopes=scopes_with_descriptions,
                          client_id=client_id,

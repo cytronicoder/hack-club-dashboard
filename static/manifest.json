@@ -12,13 +12,13 @@
   "categories": ["education", "productivity", "social"],
   "icons": [
     {
-      "src": "/static/assets/logo-rounded.png",
+      "src": "/static/assets/IOS_Logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/static/assets/logo-rounded.png",
+      "src": "/static/assets/IOS_Logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -32,7 +32,7 @@
       "url": "/club-dashboard",
       "icons": [
         {
-          "src": "/static/assets/logo-rounded.png",
+          "src": "/static/assets/IOS_Logo.png",
           "sizes": "96x96"
         }
       ]
@@ -44,7 +44,7 @@
       "url": "/club-dashboard#pizza",
       "icons": [
         {
-          "src": "/static/assets/logo-rounded.png",
+          "src": "/static/assets/IOS_Logo.png",
           "sizes": "96x96"
         }
       ]
