@@ -1266,6 +1266,19 @@ slack_oauth_service = SlackOAuthService()
 def index():
     if is_authenticated():
         return redirect(url_for('dashboard'))
+    
+    # Check if mobile device and redirect to login
+    user_agent = request.headers.get('User-Agent', '').lower()
+    is_mobile = any(mobile in user_agent for mobile in ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 'windows phone'])
+    
+    # Check for mobile parameter override
+    force_mobile = request.args.get('mobile', '').lower() == 'true'
+    force_desktop = request.args.get('desktop', '').lower() == 'true'
+    
+    # Redirect mobile users directly to login
+    if (is_mobile or force_mobile) and not force_desktop:
+        return redirect(url_for('login', mobile='true'))
+    
     return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -1281,7 +1294,15 @@ def login():
 
         if not email or not password:
             flash('Email and password are required', 'error')
-            return render_template('login.html')
+            # Check if mobile for error case
+            user_agent = request.headers.get('User-Agent', '').lower()
+            is_mobile = any(mobile in user_agent for mobile in ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 'windows phone'])
+            force_mobile = request.args.get('mobile', '').lower() == 'true'
+            force_desktop = request.args.get('desktop', '').lower() == 'true'
+            if (is_mobile or force_mobile) and not force_desktop:
+                return render_template('login_mobile.html')
+            else:
+                return render_template('login.html')
 
         try:
             user = User.query.filter_by(email=email).first()
@@ -1291,7 +1312,15 @@ def login():
                 user = User.query.filter_by(email=email).first()
             except:
                 flash('Database connection error. Please try again.', 'error')
-                return render_template('login.html')
+                # Check if mobile for error case
+                user_agent = request.headers.get('User-Agent', '').lower()
+                is_mobile = any(mobile in user_agent for mobile in ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 'windows phone'])
+                force_mobile = request.args.get('mobile', '').lower() == 'true'
+                force_desktop = request.args.get('desktop', '').lower() == 'true'
+                if (is_mobile or force_mobile) and not force_desktop:
+                    return render_template('login_mobile.html')
+                else:
+                    return render_template('login.html')
 
         if user and user.check_password(password):
             app.logger.info(f"User {user.username} (ID: {user.id}) logging in from IP: {request.remote_addr}")
@@ -1317,7 +1346,19 @@ def login():
         else:
             flash('Invalid email or password', 'error')
 
-    return render_template('login.html')
+    # Check if mobile device
+    user_agent = request.headers.get('User-Agent', '').lower()
+    is_mobile = any(mobile in user_agent for mobile in ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 'windows phone'])
+    
+    # Check for mobile parameter override
+    force_mobile = request.args.get('mobile', '').lower() == 'true'
+    force_desktop = request.args.get('desktop', '').lower() == 'true'
+    
+    # Determine template to use
+    if (is_mobile or force_mobile) and not force_desktop:
+        return render_template('login_mobile.html')
+    else:
+        return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
 @limiter.limit("5 per minute")
@@ -1467,7 +1508,19 @@ def club_dashboard(club_id=None):
             flash('This club has been suspended', 'error')
             return redirect(url_for('dashboard'))
 
-    return render_template('club_dashboard.html', club=club)
+    # Check if mobile device
+    user_agent = request.headers.get('User-Agent', '').lower()
+    is_mobile = any(mobile in user_agent for mobile in ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 'windows phone'])
+    
+    # Check for mobile parameter override
+    force_mobile = request.args.get('mobile', '').lower() == 'true'
+    force_desktop = request.args.get('desktop', '').lower() == 'true'
+    
+    # Determine template to use
+    if (is_mobile or force_mobile) and not force_desktop:
+        return render_template('club_dashboard_mobile.html', club=club)
+    else:
+        return render_template('club_dashboard.html', club=club)
 
 @app.route('/verify-leader', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
@@ -2841,6 +2894,86 @@ def admin_manage_club(club_id):
         db.session.commit()
         return jsonify({'message': 'Club updated successfully'})
 
+@app.route('/api/admin/users/search', methods=['GET'])
+@login_required
+@limiter.limit("100 per hour")
+def admin_search_users():
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    query = request.args.get('q', '').strip()
+    limit = min(int(request.args.get('limit', 50)), 200)  # Max 200 results
+
+    if not query:
+        return jsonify({'error': 'Search query required'}), 400
+
+    # Search users by username, email, first name, or last name
+    search_term = f"%{query}%"
+    users = User.query.filter(
+        db.or_(
+            User.username.ilike(search_term),
+            User.email.ilike(search_term),
+            User.first_name.ilike(search_term),
+            User.last_name.ilike(search_term)
+        )
+    ).limit(limit).all()
+
+    users_data = [{
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'is_admin': user.is_admin,
+        'is_suspended': user.is_suspended,
+        'created_at': user.created_at.isoformat() if user.created_at else None,
+        'last_login': user.last_login.isoformat() if user.last_login else None,
+        'clubs_led': len(user.led_clubs),
+        'clubs_joined': len(user.club_memberships)
+    } for user in users]
+
+    return jsonify({'users': users_data})
+
+@app.route('/api/admin/clubs/search', methods=['GET'])
+@login_required
+@limiter.limit("100 per hour")
+def admin_search_clubs():
+    current_user = get_current_user()
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    query = request.args.get('q', '').strip()
+    limit = min(int(request.args.get('limit', 50)), 200)  # Max 200 results
+
+    if not query:
+        return jsonify({'error': 'Search query required'}), 400
+
+    # Search clubs by name, location, description, or leader info
+    search_term = f"%{query}%"
+    clubs = Club.query.join(User, Club.leader_id == User.id).filter(
+        db.or_(
+            Club.name.ilike(search_term),
+            Club.location.ilike(search_term),
+            Club.description.ilike(search_term),
+            User.username.ilike(search_term),
+            User.email.ilike(search_term)
+        )
+    ).limit(limit).all()
+
+    clubs_data = [{
+        'id': club.id,
+        'name': club.name,
+        'description': club.description,
+        'location': club.location,
+        'leader': club.leader.username,
+        'leader_email': club.leader.email,
+        'member_count': len(club.members) + 1,  # +1 for leader
+        'balance': float(club.balance),
+        'created_at': club.created_at.isoformat() if club.created_at else None,
+        'join_code': club.join_code
+    } for club in clubs]
+
+    return jsonify({'clubs': clubs_data})
+
 @app.route('/api/admin/administrators', methods=['POST'])
 @login_required
 @limiter.limit("20 per hour")
@@ -3888,7 +4021,18 @@ def oauth_authorize():
             'description': scope_descriptions.get(scope_name, f'Access {scope_name}')
         })
 
-    return render_template('oauth_consent.html', 
+    # Check if mobile device
+    user_agent = request.headers.get('User-Agent', '').lower()
+    is_mobile = any(mobile in user_agent for mobile in ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 'windows phone'])
+    
+    # Check for mobile parameter override
+    force_mobile = request.args.get('mobile', '').lower() == 'true'
+    force_desktop = request.args.get('desktop', '').lower() == 'true'
+    
+    # Determine template to use
+    template_name = 'oauth_consent_mobile.html' if (is_mobile or force_mobile) and not force_desktop else 'oauth_consent.html'
+
+    return render_template(template_name, 
                          app=oauth_app, 
                          scopes=scopes_with_descriptions,
                          client_id=client_id,
